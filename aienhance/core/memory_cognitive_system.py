@@ -24,6 +24,17 @@ from ..behavior.adaptive_output import (
     IntegratedAdaptiveOutput,
     AdaptedContent
 )
+from ..memory import (
+    MemorySystem,
+    MemorySystemFactory,
+    MemorySystemConfig,
+    MemoryEntry,
+    MemoryQuery,
+    UserContext,
+    MemoryType,
+    create_user_context,
+    create_memory_entry
+)
 
 
 @dataclass
@@ -45,19 +56,22 @@ class MemoryCognitiveSystem:
     实现设计文档中的四层架构和核心功能
     """
     
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: Optional[Dict[str, Any]] = None, memory_config: Optional[MemorySystemConfig] = None):
         """
         初始化系统
         
         Args:
             config: 系统配置参数
+            memory_config: 记忆系统配置
         """
         self.config = config or {}
+        self.memory_config = memory_config
         
         # 初始化各层模块
         self._initialize_perception_layer()
         self._initialize_cognition_layer()
         self._initialize_behavior_layer()
+        self._initialize_memory_layer()
         # self._initialize_collaboration_layer()  # TODO: 实现协作层
         
         # 系统状态
@@ -79,7 +93,22 @@ class MemoryCognitiveSystem:
         """初始化行为层"""
         self.adaptive_output = IntegratedAdaptiveOutput()
     
-    def process_query(self, query: str, user_id: str, context: Optional[Dict[str, Any]] = None) -> SystemResponse:
+    def _initialize_memory_layer(self):
+        """初始化记忆层"""
+        if self.memory_config:
+            try:
+                self.memory_system = MemorySystemFactory.create_memory_system(self.memory_config)
+                # 异步初始化将在首次使用时进行
+                self._memory_initialized = False
+            except Exception as e:
+                print(f"记忆系统初始化失败: {e}")
+                self.memory_system = None
+                self._memory_initialized = False
+        else:
+            self.memory_system = None
+            self._memory_initialized = False
+    
+    async def process_query(self, query: str, user_id: str, context: Optional[Dict[str, Any]] = None) -> SystemResponse:
         """
         处理用户查询 - 系统主要接口
         
@@ -106,14 +135,27 @@ class MemoryCognitiveSystem:
         }
         
         try:
+            # ==================== 记忆系统初始化 ====================
+            if self.memory_system and not self._memory_initialized:
+                await self.memory_system.initialize()
+                self._memory_initialized = True
+                processing_metadata['processing_steps'].append('memory_initialized')
+            
             # ==================== 感知层处理 ====================
             processing_metadata['processing_steps'].append('perception_start')
             
-            # 1.1 用户建模
+            # 1.1 用户建模 - 结合记忆系统的用户数据
             user_profile = self.user_modeler.get_user_profile(user_id)
             if not user_profile:
                 # 为新用户创建初始画像
                 initial_data = self._extract_initial_user_data(query, context)
+                
+                # 从记忆系统获取用户历史数据
+                if self.memory_system:
+                    user_context = create_user_context(user_id)
+                    user_memories = await self.memory_system.get_user_memories(user_context, limit=50)
+                    initial_data['memory_context'] = user_memories.memories
+                
                 user_profile = self.user_modeler.create_user_profile(user_id, initial_data)
             
             # 1.2 情境分析
@@ -125,10 +167,25 @@ class MemoryCognitiveSystem:
             # ==================== 认知层处理 ====================
             processing_metadata['processing_steps'].append('cognition_start')
             
-            # 2.1 多层次记忆激活
+            # 2.0 记忆检索 - 从外部记忆系统获取相关记忆
+            relevant_memories = []
+            if self.memory_system:
+                user_context = create_user_context(user_id, context.get('session_id'))
+                memory_query = MemoryQuery(
+                    query=query,
+                    user_context=user_context,
+                    limit=20,
+                    similarity_threshold=0.6
+                )
+                memory_result = await self.memory_system.search_memories(memory_query)
+                relevant_memories = memory_result.memories
+                processing_metadata['processing_steps'].append('memory_retrieved')
+            
+            # 2.1 多层次记忆激活 - 整合外部记忆和内部激活
             cognitive_context = {
                 'user_profile': user_profile,
                 'context_profile': context_profile,
+                'external_memories': relevant_memories,
                 **enhanced_context
             }
             activation_results = self.memory_activator.activate_comprehensive_memories(query, cognitive_context)
@@ -137,6 +194,13 @@ class MemoryCognitiveSystem:
             all_fragments = []
             for result in activation_results:
                 all_fragments.extend(result.fragments)
+            
+            # 添加外部记忆作为片段
+            for memory in relevant_memories:
+                # 转换记忆为记忆片段格式
+                fragment = self._convert_memory_to_fragment(memory)
+                if fragment:
+                    all_fragments.append(fragment)
             
             semantic_result = self.semantic_enhancer.enhance_comprehensive_semantics(
                 all_fragments, cognitive_context
@@ -175,6 +239,58 @@ class MemoryCognitiveSystem:
                 adaptation_info=adapted_output,
                 processing_metadata=processing_metadata
             )
+            
+            # ==================== 记忆保存 ====================
+            if self.memory_system:
+                try:
+                    # 保存用户查询
+                    user_context = create_user_context(user_id, context.get('session_id'))
+                    
+                    query_memory = create_memory_entry(
+                        content=f"用户查询: {query}",
+                        memory_type=MemoryType.EPISODIC,
+                        user_context=user_context,
+                        metadata={
+                            "type": "user_query",
+                            "context_profile": context_profile.__dict__ if context_profile else {},
+                            "processing_metadata": processing_metadata
+                        }
+                    )
+                    await self.memory_system.add_memory(query_memory)
+                    
+                    # 保存系统响应
+                    response_memory = create_memory_entry(
+                        content=f"系统响应: {response.content}",
+                        memory_type=MemoryType.EPISODIC,
+                        user_context=user_context,
+                        metadata={
+                            "type": "system_response",
+                            "adaptation_info": adapted_output.__dict__,
+                            "activated_memories_count": len(relevant_memories)
+                        }
+                    )
+                    await self.memory_system.add_memory(response_memory)
+                    
+                    # 保存重要的语义增强结果
+                    if semantic_result and hasattr(semantic_result, 'enhanced_fragments'):
+                        for fragment in semantic_result.enhanced_fragments[:5]:  # 只保存前5个重要片段
+                            semantic_memory = create_memory_entry(
+                                content=f"语义增强: {fragment.content if hasattr(fragment, 'content') else str(fragment)}",
+                                memory_type=MemoryType.SEMANTIC,
+                                user_context=user_context,
+                                metadata={
+                                    "type": "semantic_enhancement",
+                                    "query": query,
+                                    "confidence": getattr(fragment, 'confidence', 0.8)
+                                }
+                            )
+                            await self.memory_system.add_memory(semantic_memory)
+                    
+                    processing_metadata['processing_steps'].append('memory_saved')
+                    
+                except Exception as e:
+                    print(f"保存记忆失败: {e}")
+                    processing_metadata['memory_save_error'] = str(e)
             
             # 更新用户画像
             self._update_user_profile(user_id, query, response)
@@ -240,14 +356,44 @@ class MemoryCognitiveSystem:
         import datetime
         return datetime.datetime.now().isoformat()
     
+    def _convert_memory_to_fragment(self, memory: MemoryEntry):
+        """将外部记忆转换为内部记忆片段格式"""
+        try:
+            # 创建简化的记忆片段
+            # 这里需要根据实际的MemoryFragment结构进行调整
+            fragment = type('MemoryFragment', (), {
+                'content': memory.content,
+                'confidence': memory.confidence,
+                'source': 'external_memory',
+                'memory_type': memory.memory_type.value,
+                'timestamp': memory.timestamp,
+                'metadata': memory.metadata or {}
+            })()
+            
+            return fragment
+            
+        except Exception as e:
+            print(f"转换记忆片段失败: {e}")
+            return None
+    
     def get_system_status(self) -> Dict[str, Any]:
         """获取系统状态"""
-        return {
+        status = {
             'initialized': self.is_initialized,
             'session_count': len(self.session_history),
             'user_count': len(self.user_modeler.user_profiles),
             'config': self.config
         }
+        
+        # 添加记忆系统状态
+        if self.memory_system:
+            status['memory_system'] = self.memory_system.get_system_info()
+            status['memory_initialized'] = self._memory_initialized
+        else:
+            status['memory_system'] = None
+            status['memory_initialized'] = False
+        
+        return status
     
     def reset_session(self):
         """重置会话"""
@@ -285,7 +431,7 @@ class SystemFactory:
     """系统工厂类 - 用于创建和配置系统实例"""
     
     @staticmethod
-    def create_default_system() -> MemoryCognitiveSystem:
+    def create_default_system(memory_config: Optional[MemorySystemConfig] = None) -> MemoryCognitiveSystem:
         """创建默认配置的系统"""
         default_config = {
             'memory_activation': {
@@ -303,7 +449,7 @@ class SystemFactory:
             }
         }
         
-        return MemoryCognitiveSystem(default_config)
+        return MemoryCognitiveSystem(default_config, memory_config)
     
     @staticmethod
     def create_system_from_config(config_path: str) -> MemoryCognitiveSystem:
@@ -312,7 +458,7 @@ class SystemFactory:
         return SystemFactory.create_default_system()
     
     @staticmethod
-    def create_educational_system() -> MemoryCognitiveSystem:
+    def create_educational_system(memory_config: Optional[MemorySystemConfig] = None) -> MemoryCognitiveSystem:
         """创建教育场景特化的系统"""
         educational_config = {
             'memory_activation': {
@@ -334,10 +480,10 @@ class SystemFactory:
             }
         }
         
-        return MemoryCognitiveSystem(educational_config)
+        return MemoryCognitiveSystem(educational_config, memory_config)
     
     @staticmethod
-    def create_research_system() -> MemoryCognitiveSystem:
+    def create_research_system(memory_config: Optional[MemorySystemConfig] = None) -> MemoryCognitiveSystem:
         """创建研究场景特化的系统"""
         research_config = {
             'memory_activation': {
@@ -359,4 +505,4 @@ class SystemFactory:
             }
         }
         
-        return MemoryCognitiveSystem(research_config)
+        return MemoryCognitiveSystem(research_config, memory_config)
