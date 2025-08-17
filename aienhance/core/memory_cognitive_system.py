@@ -35,6 +35,17 @@ from ..memory import (
     create_user_context,
     create_memory_entry
 )
+from ..llm import (
+    LLMProvider,
+    EmbeddingProvider,
+    LLMProviderFactory,
+    EmbeddingProviderFactory,
+    ModelConfig,
+    ChatMessage,
+    MessageRole,
+    create_chat_message,
+    create_model_config
+)
 
 
 @dataclass
@@ -56,22 +67,30 @@ class MemoryCognitiveSystem:
     实现设计文档中的四层架构和核心功能
     """
     
-    def __init__(self, config: Optional[Dict[str, Any]] = None, memory_config: Optional[MemorySystemConfig] = None):
+    def __init__(self, config: Optional[Dict[str, Any]] = None, 
+                 memory_config: Optional[MemorySystemConfig] = None,
+                 llm_config: Optional[ModelConfig] = None,
+                 embedding_config: Optional[ModelConfig] = None):
         """
         初始化系统
         
         Args:
             config: 系统配置参数
             memory_config: 记忆系统配置
+            llm_config: 大语言模型配置
+            embedding_config: 嵌入模型配置
         """
         self.config = config or {}
         self.memory_config = memory_config
+        self.llm_config = llm_config
+        self.embedding_config = embedding_config
         
         # 初始化各层模块
         self._initialize_perception_layer()
         self._initialize_cognition_layer()
         self._initialize_behavior_layer()
         self._initialize_memory_layer()
+        self._initialize_llm_layer()
         # self._initialize_collaboration_layer()  # TODO: 实现协作层
         
         # 系统状态
@@ -108,6 +127,34 @@ class MemoryCognitiveSystem:
             self.memory_system = None
             self._memory_initialized = False
     
+    def _initialize_llm_layer(self):
+        """初始化LLM层"""
+        # 初始化大语言模型
+        if self.llm_config:
+            try:
+                self.llm_provider = LLMProviderFactory.create_provider(self.llm_config)
+                self._llm_initialized = False
+            except Exception as e:
+                print(f"LLM初始化失败: {e}")
+                self.llm_provider = None
+                self._llm_initialized = False
+        else:
+            self.llm_provider = None
+            self._llm_initialized = False
+        
+        # 初始化嵌入模型
+        if self.embedding_config:
+            try:
+                self.embedding_provider = EmbeddingProviderFactory.create_provider(self.embedding_config)
+                self._embedding_initialized = False
+            except Exception as e:
+                print(f"嵌入模型初始化失败: {e}")
+                self.embedding_provider = None
+                self._embedding_initialized = False
+        else:
+            self.embedding_provider = None
+            self._embedding_initialized = False
+    
     async def process_query(self, query: str, user_id: str, context: Optional[Dict[str, Any]] = None) -> SystemResponse:
         """
         处理用户查询 - 系统主要接口
@@ -135,11 +182,24 @@ class MemoryCognitiveSystem:
         }
         
         try:
-            # ==================== 记忆系统初始化 ====================
+            # ==================== 系统初始化 ====================
+            # 初始化记忆系统
             if self.memory_system and not self._memory_initialized:
                 await self.memory_system.initialize()
                 self._memory_initialized = True
                 processing_metadata['processing_steps'].append('memory_initialized')
+            
+            # 初始化LLM
+            if self.llm_provider and not self._llm_initialized:
+                await self.llm_provider.initialize()
+                self._llm_initialized = True
+                processing_metadata['processing_steps'].append('llm_initialized')
+            
+            # 初始化嵌入模型
+            if self.embedding_provider and not self._embedding_initialized:
+                await self.embedding_provider.initialize()
+                self._embedding_initialized = True
+                processing_metadata['processing_steps'].append('embedding_initialized')
             
             # ==================== 感知层处理 ====================
             processing_metadata['processing_steps'].append('perception_start')
@@ -220,6 +280,33 @@ class MemoryCognitiveSystem:
                 user_profile,
                 cognitive_context
             )
+            
+            # 3.2 LLM生成响应 (如果配置了LLM)
+            if self.llm_provider and self._llm_initialized:
+                try:
+                    # 构建对话消息
+                    messages = await self._build_chat_messages(
+                        query, user_profile, context_profile, 
+                        relevant_memories, semantic_result, adapted_output
+                    )
+                    
+                    # 调用LLM生成响应
+                    llm_response = await self.llm_provider.chat(messages)
+                    
+                    # 更新适配输出
+                    adapted_output.content = llm_response.content
+                    adapted_output.metadata = adapted_output.metadata or {}
+                    adapted_output.metadata.update({
+                        "llm_generated": True,
+                        "llm_model": self.llm_config.model_name,
+                        "llm_usage": llm_response.usage
+                    })
+                    
+                    processing_metadata['processing_steps'].append('llm_generated')
+                    
+                except Exception as e:
+                    print(f"LLM生成响应失败: {e}")
+                    processing_metadata['llm_error'] = str(e)
             
             processing_metadata['processing_steps'].append('behavior_complete')
             
@@ -376,6 +463,70 @@ class MemoryCognitiveSystem:
             print(f"转换记忆片段失败: {e}")
             return None
     
+    async def _build_chat_messages(self, query: str, user_profile, context_profile, 
+                                 relevant_memories: List[MemoryEntry], 
+                                 semantic_result, adapted_output) -> List[ChatMessage]:
+        """构建LLM对话消息"""
+        messages = []
+        
+        # 系统消息：角色设定和认知指导
+        system_prompt = self._build_system_prompt(user_profile, context_profile)
+        messages.append(create_chat_message("system", system_prompt))
+        
+        # 如果有相关记忆，添加记忆上下文
+        if relevant_memories:
+            memory_context = self._build_memory_context(relevant_memories)
+            messages.append(create_chat_message("system", f"相关记忆信息:\n{memory_context}"))
+        
+        # 如果有语义增强结果，添加增强信息
+        if semantic_result and hasattr(semantic_result, 'enhanced_fragments'):
+            enhanced_context = self._build_enhanced_context(semantic_result)
+            messages.append(create_chat_message("system", f"语义增强信息:\n{enhanced_context}"))
+        
+        # 用户查询
+        messages.append(create_chat_message("user", query))
+        
+        return messages
+    
+    def _build_system_prompt(self, user_profile, context_profile) -> str:
+        """构建系统提示"""
+        prompt_parts = [
+            "你是一个智能的记忆-认知协同系统助手。",
+            f"用户认知特征: 思维模式={user_profile.cognitive.thinking_mode.value}, 认知复杂度={user_profile.cognitive.cognitive_complexity}",
+            f"任务特征: 类型={context_profile.task_characteristics.task_type.value}, 开放性={context_profile.task_characteristics.openness_level}",
+            "请基于用户的认知特征和任务需求，提供个性化的回答。"
+        ]
+        
+        # 根据不同系统配置添加特定指导
+        if 'educational' in str(self.config.get('system_type', '')):
+            prompt_parts.append("请采用教育导向的解释方式，注重循序渐进和概念建构。")
+        elif 'research' in str(self.config.get('system_type', '')):
+            prompt_parts.append("请提供深度分析和跨领域关联，支持学术研究需求。")
+        
+        return "\n".join(prompt_parts)
+    
+    def _build_memory_context(self, memories: List[MemoryEntry]) -> str:
+        """构建记忆上下文"""
+        memory_texts = []
+        for i, memory in enumerate(memories[:5], 1):  # 只取前5个最相关的记忆
+            memory_texts.append(f"{i}. [{memory.memory_type.value}] {memory.content[:200]}...")
+        
+        return "\n".join(memory_texts)
+    
+    def _build_enhanced_context(self, semantic_result) -> str:
+        """构建语义增强上下文"""
+        if not hasattr(semantic_result, 'enhanced_fragments'):
+            return ""
+        
+        enhanced_texts = []
+        for i, fragment in enumerate(semantic_result.enhanced_fragments[:3], 1):
+            if hasattr(fragment, 'content'):
+                enhanced_texts.append(f"{i}. {fragment.content[:150]}...")
+            else:
+                enhanced_texts.append(f"{i}. {str(fragment)[:150]}...")
+        
+        return "\n".join(enhanced_texts)
+    
     def get_system_status(self) -> Dict[str, Any]:
         """获取系统状态"""
         status = {
@@ -392,6 +543,22 @@ class MemoryCognitiveSystem:
         else:
             status['memory_system'] = None
             status['memory_initialized'] = False
+        
+        # 添加LLM状态
+        if self.llm_provider:
+            status['llm_provider'] = self.llm_provider.get_model_info()
+            status['llm_initialized'] = self._llm_initialized
+        else:
+            status['llm_provider'] = None
+            status['llm_initialized'] = False
+        
+        # 添加嵌入模型状态
+        if self.embedding_provider:
+            status['embedding_provider'] = self.embedding_provider.get_model_info()
+            status['embedding_initialized'] = self._embedding_initialized
+        else:
+            status['embedding_provider'] = None
+            status['embedding_initialized'] = False
         
         return status
     
@@ -431,7 +598,9 @@ class SystemFactory:
     """系统工厂类 - 用于创建和配置系统实例"""
     
     @staticmethod
-    def create_default_system(memory_config: Optional[MemorySystemConfig] = None) -> MemoryCognitiveSystem:
+    def create_default_system(memory_config: Optional[MemorySystemConfig] = None,
+                            llm_config: Optional[ModelConfig] = None,
+                            embedding_config: Optional[ModelConfig] = None) -> MemoryCognitiveSystem:
         """创建默认配置的系统"""
         default_config = {
             'memory_activation': {
@@ -449,7 +618,7 @@ class SystemFactory:
             }
         }
         
-        return MemoryCognitiveSystem(default_config, memory_config)
+        return MemoryCognitiveSystem(default_config, memory_config, llm_config, embedding_config)
     
     @staticmethod
     def create_system_from_config(config_path: str) -> MemoryCognitiveSystem:
@@ -458,7 +627,9 @@ class SystemFactory:
         return SystemFactory.create_default_system()
     
     @staticmethod
-    def create_educational_system(memory_config: Optional[MemorySystemConfig] = None) -> MemoryCognitiveSystem:
+    def create_educational_system(memory_config: Optional[MemorySystemConfig] = None,
+                                llm_config: Optional[ModelConfig] = None,
+                                embedding_config: Optional[ModelConfig] = None) -> MemoryCognitiveSystem:
         """创建教育场景特化的系统"""
         educational_config = {
             'memory_activation': {
@@ -480,10 +651,12 @@ class SystemFactory:
             }
         }
         
-        return MemoryCognitiveSystem(educational_config, memory_config)
+        return MemoryCognitiveSystem(educational_config, memory_config, llm_config, embedding_config)
     
     @staticmethod
-    def create_research_system(memory_config: Optional[MemorySystemConfig] = None) -> MemoryCognitiveSystem:
+    def create_research_system(memory_config: Optional[MemorySystemConfig] = None,
+                             llm_config: Optional[ModelConfig] = None,
+                             embedding_config: Optional[ModelConfig] = None) -> MemoryCognitiveSystem:
         """创建研究场景特化的系统"""
         research_config = {
             'memory_activation': {
@@ -505,4 +678,4 @@ class SystemFactory:
             }
         }
         
-        return MemoryCognitiveSystem(research_config, memory_config)
+        return MemoryCognitiveSystem(research_config, memory_config, llm_config, embedding_config)

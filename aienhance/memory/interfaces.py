@@ -74,6 +74,7 @@ class MemorySystemConfig:
     """记忆系统配置"""
     system_type: str  # "mirix", "mem0", "graphiti", etc.
     api_key: Optional[str] = None
+    api_base: Optional[str] = None  # 添加api_base字段
     config_path: Optional[str] = None
     database_url: Optional[str] = None
     embedding_model: Optional[str] = None
