@@ -59,6 +59,7 @@ class SystemResponse:
     analogy_reasoning: Dict[str, Any]
     adaptation_info: AdaptedContent
     processing_metadata: Dict[str, Any]
+    collaboration_result: Optional[Dict[str, Any]] = None
 
 
 class MemoryCognitiveSystem:
@@ -91,7 +92,7 @@ class MemoryCognitiveSystem:
         self._initialize_behavior_layer()
         self._initialize_memory_layer()
         self._initialize_llm_layer()
-        # self._initialize_collaboration_layer()  # TODO: 实现协作层
+        self._initialize_collaboration_layer()
         
         # 系统状态
         self.is_initialized = True
@@ -154,6 +155,28 @@ class MemoryCognitiveSystem:
         else:
             self.embedding_provider = None
             self._embedding_initialized = False
+    
+    def _initialize_collaboration_layer(self):
+        """初始化协作层"""
+        from ..collaboration import CollaborativeCoordinator
+        
+        # 协作层需要LLM支持，先确保LLM已配置
+        if self.llm_provider:
+            try:
+                self.collaborative_coordinator = CollaborativeCoordinator(
+                    llm_provider=self.llm_provider,
+                    memory_system=self.memory_system
+                )
+                self._collaboration_initialized = True
+                print("协作层初始化成功")
+            except Exception as e:
+                print(f"协作层初始化失败: {e}")
+                self.collaborative_coordinator = None
+                self._collaboration_initialized = False
+        else:
+            print("协作层需要LLM支持，跳过初始化")
+            self.collaborative_coordinator = None
+            self._collaboration_initialized = False
     
     async def process_query(self, query: str, user_id: str, context: Optional[Dict[str, Any]] = None) -> SystemResponse:
         """
@@ -310,10 +333,44 @@ class MemoryCognitiveSystem:
             
             processing_metadata['processing_steps'].append('behavior_complete')
             
-            # ==================== 协作层处理 (TODO) ====================
-            # 4.1 辩证视角生成
-            # 4.2 认知挑战适应
-            # 4.3 交互式思维可视化
+            # ==================== 协作层处理 ====================
+            collaboration_result = None
+            if self._collaboration_initialized and self.collaborative_coordinator:
+                try:
+                    from ..collaboration.interfaces import CollaborationContext
+                    
+                    # 构建协作上下文
+                    collaboration_context = CollaborationContext(
+                        user_id=user_id,
+                        session_id=context.get('session_id', f'session_{user_id}'),
+                        interaction_history=[],
+                        user_cognitive_profile=None,
+                        collaboration_preferences=context.get('collaboration_preferences', {}),
+                        current_task_context=context
+                    )
+                    
+                    # 编排协作过程
+                    collaboration_result = await self.collaborative_coordinator.orchestrate_collaboration(
+                        query, collaboration_context
+                    )
+                    processing_metadata['processing_steps'].append('collaboration_complete')
+                    
+                    # 如果协作层产生了新的洞察，可以影响最终内容
+                    if collaboration_result and not collaboration_result.get('error'):
+                        # 将协作洞察添加到处理元数据
+                        processing_metadata['collaboration_insights'] = collaboration_result.get('collaboration_insights')
+                        processing_metadata['perspectives_generated'] = len(
+                            collaboration_result.get('perspectives', {}).get('perspectives', [])
+                        )
+                        processing_metadata['challenges_generated'] = len(
+                            collaboration_result.get('challenges', {}).get('challenges', [])
+                        )
+                        
+                except Exception as e:
+                    print(f"协作层处理失败: {e}")
+                    processing_metadata['collaboration_error'] = str(e)
+            else:
+                processing_metadata['processing_steps'].append('collaboration_skipped')
             
             # ==================== 响应构建 ====================
             response = SystemResponse(
@@ -324,7 +381,8 @@ class MemoryCognitiveSystem:
                 semantic_enhancement=semantic_result,
                 analogy_reasoning=analogy_result,
                 adaptation_info=adapted_output,
-                processing_metadata=processing_metadata
+                processing_metadata=processing_metadata,
+                collaboration_result=collaboration_result
             )
             
             # ==================== 记忆保存 ====================

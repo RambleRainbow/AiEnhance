@@ -1,0 +1,215 @@
+version: '3.8'
+
+services:
+  # PostgreSQL数据库 - MIRIX记忆存储后端
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: aienhance-postgres
+    environment:
+      POSTGRES_DB: mirix_memory
+      POSTGRES_USER: mirix
+      POSTGRES_PASSWORD: mirix_password
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mirix -d mirix_memory"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis - 缓存和会话存储
+  redis:
+    image: redis:7-alpine
+    container_name: aienhance-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Ollama服务 - 本地LLM提供商
+  ollama:
+    image: ollama/ollama:latest
+    container_name: aienhance-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_ORIGINS=*
+      - OLLAMA_HOST=0.0.0.0
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # MIRIX后端服务
+  mirix-backend:
+    build:
+      context: .
+      dockerfile: docker/mirix/Dockerfile
+    container_name: aienhance-mirix
+    ports:
+      - "8000:8000"
+    environment:
+      # 数据库配置
+      - DATABASE_URL=postgresql://mirix:mirix_password@postgres:5432/mirix_memory
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=mirix_memory
+      - POSTGRES_USER=mirix
+      - POSTGRES_PASSWORD=mirix_password
+      
+      # Redis配置
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      
+      # LLM配置
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - DEFAULT_LLM_PROVIDER=ollama
+      - DEFAULT_LLM_MODEL=llama3.2:1b
+      
+      # API配置
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - LOG_LEVEL=info
+      
+      # MIRIX特定配置
+      - MIRIX_DATA_DIR=/data/mirix
+      - MIRIX_CONFIG_PATH=/app/config/mirix.yml
+      - ENABLE_SCREEN_CAPTURE=false  # 容器中禁用屏幕捕获
+      - ENABLE_AUDIO_CAPTURE=false   # 容器中禁用音频捕获
+    volumes:
+      - mirix_data:/data/mirix
+      - ./config:/app/config
+      - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # AiEnhance主应用
+  aienhance:
+    build:
+      context: .
+      dockerfile: docker/aienhance/Dockerfile
+    container_name: aienhance-app
+    ports:
+      - "8080:8080"
+    environment:
+      # 服务发现
+      - MIRIX_API_URL=http://mirix-backend:8000
+      - OLLAMA_API_URL=http://ollama:11434
+      - REDIS_URL=redis://redis:6379/1
+      
+      # AiEnhance配置
+      - AIENHANCE_ENV=docker
+      - LOG_LEVEL=info
+      - API_HOST=0.0.0.0
+      - API_PORT=8080
+      
+      # 默认系统配置
+      - DEFAULT_SYSTEM_TYPE=educational
+      - DEFAULT_MEMORY_SYSTEM=mirix
+      - DEFAULT_LLM_PROVIDER=ollama
+      - DEFAULT_LLM_MODEL=llama3.2:1b
+    volumes:
+      - ./config:/app/config
+      - ./logs:/app/logs
+      - aienhance_data:/app/data
+    depends_on:
+      mirix-backend:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # 可选：pgAdmin - 数据库管理界面
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: aienhance-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@aienhance.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    profiles:
+      - management
+    restart: unless-stopped
+
+  # 可选：Redis Commander - Redis管理界面
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: aienhance-redis-commander
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    profiles:
+      - management
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  ollama_data:
+    driver: local
+  mirix_data:
+    driver: local
+  aienhance_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  default:
+    name: aienhance-network
+    driver: bridge

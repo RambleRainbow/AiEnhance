@@ -1,0 +1,31 @@
+# MIRIX后端额外依赖
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+httpx==0.25.2
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
+redis==5.0.1
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# 数据库和向量支持
+pgvector==0.2.4
+pg8000==1.30.3
+
+# API和Web框架增强
+python-multipart==0.0.6
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# 监控和日志
+opentelemetry-api==1.21.0
+opentelemetry-sdk==1.21.0
+opentelemetry-exporter-otlp==1.21.0
+opentelemetry-instrumentation-fastapi==0.42b0
+opentelemetry-instrumentation-requests==0.42b0
+
+# 实用工具
+python-dotenv==1.0.0
+structlog==23.2.0
+rich==13.7.0
+typer==0.9.0
