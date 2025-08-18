@@ -58,26 +58,35 @@ create_directories() {
     log_success "目录创建完成"
 }
 
-# 拉取Ollama模型
-pull_ollama_models() {
-    log_info "正在拉取Ollama模型..."
+# 检查本地Ollama服务
+check_ollama_service() {
+    log_info "检查本地Ollama服务..."
     
-    # 启动Ollama服务
-    docker compose up -d ollama
+    if ! curl -s http://localhost:11434/api/tags > /dev/null 2>&1; then
+        log_error "本地Ollama服务未运行！"
+        log_info "请先启动Ollama服务："
+        log_info "  macOS: brew install ollama && ollama serve"
+        log_info "  Linux: curl -fsSL https://ollama.ai/install.sh | sh && ollama serve"
+        log_info "然后安装推荐模型："
+        log_info "  ollama pull qwen3:8b"
+        log_info "  ollama pull bge-m3"
+        exit 1
+    fi
     
-    # 等待Ollama服务启动
-    log_info "等待Ollama服务启动..."
-    sleep 30
+    log_success "本地Ollama服务运行正常"
     
-    # 拉取默认模型
-    log_info "拉取llama3.2:1b模型..."
-    docker exec aienhance-ollama ollama pull llama3.2:1b
+    # 检查推荐模型
+    if ollama list | grep -q "qwen3:8b"; then
+        log_success "发现qwen3:8b模型"
+    else
+        log_warning "未发现qwen3:8b模型，建议运行: ollama pull qwen3:8b"
+    fi
     
-    # 拉取嵌入模型
-    log_info "拉取mxbai-embed-large嵌入模型..."
-    docker exec aienhance-ollama ollama pull mxbai-embed-large
-    
-    log_success "Ollama模型拉取完成"
+    if ollama list | grep -q "bge-m3"; then
+        log_success "发现bge-m3嵌入模型"
+    else
+        log_warning "未发现bge-m3嵌入模型，建议运行: ollama pull bge-m3"
+    fi
 }
 
 # 主启动函数
@@ -90,15 +99,16 @@ main() {
     check_docker
     check_env
     create_directories
+    check_ollama_service
     
     # 解析命令行参数
-    PULL_MODELS=true
+    CHECK_MODELS=true
     INCLUDE_MANAGEMENT=false
     
     while [[ $# -gt 0 ]]; do
         case $1 in
-            --no-models)
-                PULL_MODELS=false
+            --no-check-models)
+                CHECK_MODELS=false
                 shift
                 ;;
             --with-management)
@@ -108,7 +118,7 @@ main() {
             --help)
                 echo "使用方法: $0 [选项]"
                 echo "选项:"
-                echo "  --no-models        跳过Ollama模型下载"
+                echo "  --no-check-models  跳过Ollama模型检查"
                 echo "  --with-management  启动管理界面(pgAdmin, Redis Commander)"
                 echo "  --help            显示此帮助信息"
                 exit 0
@@ -136,13 +146,7 @@ main() {
     log_info "等待数据库启动..."
     sleep 10
     
-    # 启动Ollama（如果需要拉取模型）
-    if $PULL_MODELS; then
-        pull_ollama_models
-    else
-        log_info "启动Ollama服务..."
-        docker compose up -d ollama
-    fi
+    # 注意：Ollama现在使用本地服务，不需要Docker启动
     
     # 启动MIRIX后端
     log_info "启动MIRIX后端服务..."
@@ -179,7 +183,7 @@ main() {
     echo "=========================================="
     echo "🎯 AiEnhance主应用: http://localhost:8080"
     echo "📚 API文档: http://localhost:8080/docs"
-    echo "🤖 Ollama API: http://localhost:11434"
+    echo "🤖 Ollama API (本地): http://localhost:11434"
     
     if $INCLUDE_MANAGEMENT; then
         echo "🗄️  pgAdmin: http://localhost:5050"

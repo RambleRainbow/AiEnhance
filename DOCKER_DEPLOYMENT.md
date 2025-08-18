@@ -22,7 +22,28 @@
 ### 软件要求
 - **Docker**: 20.10+
 - **Docker Compose**: 2.0+
+- **Ollama**: 最新版本（本地运行）
 - **操作系统**: Linux、macOS、Windows（带WSL2）
+
+### Ollama 安装和配置
+
+```bash
+# macOS 安装
+brew install ollama
+
+# Linux 安装
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# Windows 安装
+# 下载 https://ollama.ai/download/windows
+
+# 启动 Ollama 服务
+ollama serve
+
+# 安装推荐模型
+ollama pull qwen3:8b    # 中文大语言模型
+ollama pull bge-m3        # 多语言嵌入模型
+```
 
 ## 🚀 快速开始
 
@@ -69,7 +90,7 @@ curl http://localhost:8080/health
 | `POSTGRES_USER` | `mirix` | 数据库用户名 |
 | `POSTGRES_PASSWORD` | `mirix_password` | 数据库密码 |
 | `DEFAULT_LLM_PROVIDER` | `ollama` | 默认LLM提供商 |
-| `DEFAULT_LLM_MODEL` | `llama3.2:1b` | 默认LLM模型 |
+| `DEFAULT_LLM_MODEL` | `qwen3:8b` | 默认LLM模型 |
 | `OPENAI_API_KEY` | - | OpenAI API密钥（可选） |
 | `ANTHROPIC_API_KEY` | - | Anthropic API密钥（可选） |
 
@@ -187,7 +208,7 @@ docker-compose restart
 **A**: 可以预先下载模型或使用代理
 ```bash
 # 手动下载模型
-docker exec aienhance-ollama ollama pull llama3.2:1b
+docker exec aienhance-ollama ollama pull qwen3:8b
 
 # 或跳过自动下载
 ./docker-start.sh --no-models
@@ -197,7 +218,7 @@ docker exec aienhance-ollama ollama pull llama3.2:1b
 **A**: 调整模型大小或增加系统内存
 ```bash
 # 使用更小的模型
-export DEFAULT_LLM_MODEL="llama3.2:1b"
+export DEFAULT_LLM_MODEL="qwen3:8b"
 
 # 或减少服务数量（在docker-compose.yml中注释不需要的服务）
 ```

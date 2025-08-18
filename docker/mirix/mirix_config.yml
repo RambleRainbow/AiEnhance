@@ -84,7 +84,7 @@ llm:
   providers:
     ollama:
       api_url: "${OLLAMA_BASE_URL:-http://ollama:11434}"
-      default_model: "${DEFAULT_LLM_MODEL:-llama3.2:1b}"
+      default_model: "${DEFAULT_LLM_MODEL:-qwen3:8b}"
       timeout: 60
       max_retries: 3
     openai:
@@ -105,7 +105,7 @@ embedding:
   providers:
     ollama:
       api_url: "${OLLAMA_BASE_URL:-http://ollama:11434}"
-      model: "mxbai-embed-large"
+      model: "bge-m3"
     openai:
       api_key: "${OPENAI_API_KEY:-}"
       model: "text-embedding-ada-002"

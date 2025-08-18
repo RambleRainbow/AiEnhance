@@ -205,7 +205,7 @@ async def test_end_to_end():
                 "config": {
                     "memory_api_base": "http://localhost:8000",
                     "llm_api_base": "http://localhost:11434",
-                    "llm_model_name": "llama3.2:1b"
+                    "llm_model_name": "qwen3:8b"
                 }
             }
             

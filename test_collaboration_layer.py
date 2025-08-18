@@ -36,7 +36,7 @@ async def test_dialectical_perspective():
         # 创建LLM提供商（使用ollama作为测试）
         llm_config = ModelConfig(
             provider="ollama",
-            model_name="llama3.2:1b",
+            model_name="qwen3:8b",
             model_type=ModelType.CHAT,
             api_base="http://localhost:11434",
             temperature=0.7
@@ -109,7 +109,7 @@ async def test_cognitive_challenge():
         # 创建LLM提供商
         llm_config = ModelConfig(
             provider="ollama",
-            model_name="llama3.2:1b",
+            model_name="qwen3:8b",
             model_type=ModelType.CHAT,
             api_base="http://localhost:11434",
             temperature=0.7
@@ -190,7 +190,7 @@ async def test_collaborative_coordinator():
         # 创建LLM提供商
         llm_config = ModelConfig(
             provider="ollama",
-            model_name="llama3.2:1b", 
+            model_name="qwen3:8b", 
             model_type=ModelType.CHAT,
             api_base="http://localhost:11434",
             temperature=0.7

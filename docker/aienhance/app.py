@@ -86,7 +86,7 @@ async def lifespan(app: FastAPI):
             llm_provider=os.getenv("DEFAULT_LLM_PROVIDER", "ollama"),
             memory_api_base=os.getenv("MIRIX_API_URL", "http://mirix-backend:8000"),
             llm_api_base=os.getenv("OLLAMA_API_URL", "http://ollama:11434"),
-            llm_model_name=os.getenv("DEFAULT_LLM_MODEL", "llama3.2:1b")
+            llm_model_name=os.getenv("DEFAULT_LLM_MODEL", "qwen3:8b")
         )
         
         logger.info("AiEnhance application initialized successfully")
@@ -149,7 +149,7 @@ def get_system(system_type: str = "default"):
             llm_provider=os.getenv("DEFAULT_LLM_PROVIDER", "ollama"),
             memory_api_base=os.getenv("MIRIX_API_URL", "http://mirix-backend:8000"),
             llm_api_base=os.getenv("OLLAMA_API_URL", "http://ollama:11434"),
-            llm_model_name=os.getenv("DEFAULT_LLM_MODEL", "llama3.2:1b")
+            llm_model_name=os.getenv("DEFAULT_LLM_MODEL", "qwen3:8b")
         )
         systems_cache[system_type] = system
         return system

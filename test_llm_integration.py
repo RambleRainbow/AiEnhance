@@ -31,7 +31,7 @@ async def test_ollama_llm_integration():
         # 创建Ollama LLM配置
         llm_config = create_model_config(
             provider="ollama",
-            model_name="llama3.2:1b",  # 使用较小的模型进行测试
+            model_name="qwen3:8b",  # 使用较小的模型进行测试
             api_base="http://localhost:11434",
             temperature=0.7,
             max_tokens=500
@@ -41,7 +41,7 @@ async def test_ollama_llm_integration():
         system = create_system(
             system_type="default",
             llm_provider="ollama",
-            llm_model_name="llama3.2:1b",
+            llm_model_name="qwen3:8b",
             llm_api_base="http://localhost:11434",
             llm_temperature=0.7,
             llm_max_tokens=500
@@ -98,7 +98,7 @@ async def test_memory_llm_integration():
         
         llm_config = create_model_config(
             provider="ollama",
-            model_name="llama3.2:1b",
+            model_name="qwen3:8b",
             api_base="http://localhost:11434",
             temperature=0.7,
             max_tokens=300
@@ -111,7 +111,7 @@ async def test_memory_llm_integration():
             llm_provider="ollama",
             memory_api_key="test-key",
             memory_api_base="http://localhost:8000",
-            llm_model_name="llama3.2:1b",
+            llm_model_name="qwen3:8b",
             llm_api_base="http://localhost:11434",
             llm_temperature=0.7,
             llm_max_tokens=300
@@ -184,7 +184,7 @@ async def test_different_llm_providers():
         {
             "name": "Ollama",
             "provider": "ollama",
-            "model_name": "llama3.2:1b",
+            "model_name": "qwen3:8b",
             "api_base": "http://localhost:11434"
         },
         # 注释掉需要API密钥的提供商，避免测试失败
@@ -260,7 +260,7 @@ async def test_streaming_functionality():
         system = create_system(
             system_type="default",
             llm_provider="ollama",
-            llm_model_name="llama3.2:1b",
+            llm_model_name="qwen3:8b",
             llm_api_base="http://localhost:11434"
         )
         
@@ -315,7 +315,7 @@ async def test_system_performance():
         system = create_system(
             system_type="default",
             llm_provider="ollama",
-            llm_model_name="llama3.2:1b",
+            llm_model_name="qwen3:8b",
             llm_api_base="http://localhost:11434",
             llm_temperature=0.5,
             llm_max_tokens=100  # 限制token数量以提高速度

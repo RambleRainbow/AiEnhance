@@ -31,7 +31,7 @@ async def demo_system_creation():
     ollama_system = create_system(
         system_type="educational",
         llm_provider="ollama",
-        llm_model_name="llama3.2:1b",
+        llm_model_name="qwen3:8b",
         llm_api_base="http://localhost:11434",
         llm_temperature=0.7,
         llm_max_tokens=300
@@ -50,11 +50,11 @@ async def demo_system_creation():
         memory_api_base="http://localhost:8000",
         # LLM配置
         llm_provider="ollama",
-        llm_model_name="llama3.2:1b",
+        llm_model_name="qwen3:8b",
         llm_temperature=0.8,
         # 嵌入模型配置
         embedding_provider="ollama",
-        embedding_model_name="mxbai-embed-large"
+        embedding_model_name="bge-m3"
     )
     status = full_system.get_system_status()
     print(f"   ✅ 完整系统创建成功")
@@ -75,7 +75,7 @@ async def demo_provider_switching():
             "name": "Ollama本地部署",
             "config": {
                 "llm_provider": "ollama",
-                "llm_model_name": "llama3.2:1b",
+                "llm_model_name": "qwen3:8b",
                 "llm_api_base": "http://localhost:11434"
             }
         },
@@ -124,7 +124,7 @@ async def demo_cognitive_processing():
     system = create_system(
         system_type="educational",
         llm_provider="ollama",
-        llm_model_name="llama3.2:1b",
+        llm_model_name="qwen3:8b",
         llm_temperature=0.7
     )
     
@@ -179,7 +179,7 @@ async def demo_configuration_flexibility():
             "config": {
                 "system_type": "educational",
                 "llm_provider": "ollama",
-                "llm_model_name": "llama3.2:1b",
+                "llm_model_name": "qwen3:8b",
                 "llm_temperature": 0.3,
                 "llm_max_tokens": 500
             }
@@ -189,7 +189,7 @@ async def demo_configuration_flexibility():
             "config": {
                 "system_type": "research", 
                 "llm_provider": "ollama",
-                "llm_model_name": "llama3.2:1b",
+                "llm_model_name": "qwen3:8b",
                 "llm_temperature": 0.9,
                 "llm_max_tokens": 800
             }
@@ -199,9 +199,9 @@ async def demo_configuration_flexibility():
             "config": {
                 "system_type": "default",
                 "llm_provider": "ollama",
-                "llm_model_name": "llama3.2:1b",
+                "llm_model_name": "qwen3:8b",
                 "embedding_provider": "ollama",
-                "embedding_model_name": "mxbai-embed-large",
+                "embedding_model_name": "bge-m3",
                 "memory_system_type": "mirix",
                 "memory_api_key": "demo-key"
             }

@@ -45,7 +45,7 @@ response = await system.llm_provider.chat(messages)
 # Ollama配置
 system = create_system(
     llm_provider="ollama",
-    llm_model_name="llama3.2:1b"
+    llm_model_name="qwen3:8b"
 )
 
 # OpenAI配置
@@ -90,7 +90,7 @@ LLMProviderFactory.register_provider("new_provider", NewLLMAdapter)
 system = create_system(
     system_type="educational",
     llm_provider="ollama",
-    llm_model_name="llama3.2:1b",
+    llm_model_name="qwen3:8b",
     llm_api_base="http://localhost:11434",
     llm_temperature=0.7,
     llm_max_tokens=500
