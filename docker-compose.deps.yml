@@ -1,8 +1,8 @@
-# AiEnhance 开发模式 - 外部依赖服务
-# 适合开发、调试、测试阶段使用
-# 主应用在本地运行: uv run python main.py
-
 version: '3.8'
+
+# AiEnhance 外部依赖服务配置
+# 用于开发阶段 - 只启动数据库、缓存等外部依赖
+# 主应用在本地运行，便于开发、调试、测试
 
 services:
   # PostgreSQL数据库 - MIRIX记忆存储后端
@@ -79,8 +79,8 @@ services:
       # MIRIX特定配置
       - MIRIX_DATA_DIR=/data/mirix
       - MIRIX_CONFIG_PATH=/app/config/mirix.yml
-      - ENABLE_SCREEN_CAPTURE=false
-      - ENABLE_AUDIO_CAPTURE=false
+      - ENABLE_SCREEN_CAPTURE=false  # 容器中禁用屏幕捕获
+      - ENABLE_AUDIO_CAPTURE=false   # 容器中禁用音频捕获
     volumes:
       - mirix_data:/data/mirix
       - ./config:/app/config
@@ -97,6 +97,38 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # 可选：pgAdmin - 数据库管理界面
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: aienhance-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@aienhance.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    profiles:
+      - management
+    restart: unless-stopped
+
+  # 可选：Redis Commander - Redis管理界面
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: aienhance-redis-commander
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    profiles:
+      - management
+    restart: unless-stopped
+
 volumes:
   postgres_data:
     driver: local
@@ -104,45 +136,23 @@ volumes:
     driver: local
   mirix_data:
     driver: local
+  pgadmin_data:
+    driver: local
 
 networks:
   default:
-    name: aienhance-network
+    name: aienhance-deps-network
     driver: bridge
 
-# ========================
-# 开发模式使用说明
-# ========================
+# 使用说明:
+# 开发模式启动外部依赖:
+#   docker compose -f docker-compose.deps.yml up -d
 #
-# 1. 启动外部依赖服务:
-#    docker compose up -d
+# 包含管理界面:
+#   docker compose -f docker-compose.deps.yml --profile management up -d
 #
-# 2. 确保本地Ollama运行:
-#    ollama serve
-#    ollama pull qwen3:8b
-#    ollama pull bge-m3
+# 停止服务:
+#   docker compose -f docker-compose.deps.yml down
 #
-# 3. 本地运行主应用:
-#    uv run python main.py
-#
-# 4. 测试协作功能:
-#    uv run python test_collaboration_layer.py
-#
-# ========================
-# 生产部署
-# ========================
-#
-# 使用完整应用栈:
-#    docker compose -f docker-compose.full.yml up -d
-#
-# ========================
-# 管理界面 (可选)
-# ========================
-#
-# 启动数据库管理界面:
-#    docker run -d --name pgadmin \
-#      -e PGADMIN_DEFAULT_EMAIL=admin@local \
-#      -e PGADMIN_DEFAULT_PASSWORD=admin \
-#      -p 5050:80 \
-#      --network aienhance-network \
-#      dpage/pgadmin4
+# 清理数据:
+#   docker compose -f docker-compose.deps.yml down -v

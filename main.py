@@ -3,10 +3,11 @@ AiEnhance 主程序入口
 演示记忆-认知协同系统的基本使用方法
 """
 
+import asyncio
 import aienhance
 
 
-def demo_basic_usage():
+async def demo_basic_usage():
     """演示基本用法"""
     print("🧠 AiEnhance - 记忆-认知协同系统演示")
     print("=" * 50)
@@ -22,7 +23,7 @@ def demo_basic_usage():
     # 模拟用户查询
     print("\n2. 处理用户查询...")
     try:
-        response = system.process_query(
+        response = await system.process_query(
             query="什么是人工智能的记忆机制？",
             user_id="demo_user_001",
             context={"session_id": "demo_session"}
@@ -54,7 +55,7 @@ def demo_basic_usage():
     print("\n✅ 演示完成！")
 
 
-def demo_different_systems():
+async def demo_different_systems():
     """演示不同类型的系统"""
     print("\n" + "=" * 50)
     print("🎓 不同系统类型演示")
@@ -72,7 +73,7 @@ def demo_different_systems():
         print(f"\n🔹 {system_type.upper()} 系统:")
         
         try:
-            response = system.process_query(
+            response = await system.process_query(
                 query=query,
                 user_id=f"user_{system_type}",
                 context={"system_type": system_type}
@@ -86,7 +87,7 @@ def demo_different_systems():
             print(f"   处理出错: {e}")
 
 
-def interactive_mode():
+async def interactive_mode():
     """交互模式"""
     print("\n" + "=" * 50)
     print("💬 交互模式 (输入 'quit' 退出)")
@@ -106,7 +107,7 @@ def interactive_mode():
             if not query:
                 continue
                 
-            response = system.process_query(query, user_id)
+            response = await system.process_query(query, user_id)
             
             print(f"\n🤖 系统回答:")
             print(f"{'-' * 40}")
@@ -126,21 +127,21 @@ def interactive_mode():
             print(f"\n❌ 处理错误: {e}")
 
 
-def main():
+async def main():
     """主函数"""
     print(f"🚀 AiEnhance v{aienhance.__version__} - 记忆-认知协同系统")
     
     try:
         # 基本演示
-        demo_basic_usage()
+        await demo_basic_usage()
         
         # 不同系统类型演示
-        demo_different_systems()
+        await demo_different_systems()
         
         # 询问是否进入交互模式
         choice = input("\n是否进入交互模式？(y/n): ").strip().lower()
         if choice in ['y', 'yes', '是']:
-            interactive_mode()
+            await interactive_mode()
             
     except KeyboardInterrupt:
         print("\n\n👋 程序已退出")
@@ -149,4 +150,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

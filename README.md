@@ -64,24 +64,44 @@ ollama serve
 # 3. 安装推荐模型
 ./setup-ollama.sh
 
-# 4. 启动系统
-./docker-start.sh
+# 4. 启动外部依赖服务 (开发模式)
+./start-dev.sh
+
+# 5. 本地运行主应用
+uv run python main.py
 ```
 
 ### 开发模式
 
 ```bash
-# 安装依赖
+# 1. 启动外部依赖服务
+./start-dev.sh
+
+# 2. 安装Python依赖
 uv sync
 
-# 代码检查
-uv run ruff check .
+# 3. 本地运行主应用
+uv run python main.py
 
-# 代码格式化
+# 4. 测试协作功能
+uv run python test_collaboration_layer.py
+
+# 5. 代码检查和格式化
+uv run ruff check .
 uv run ruff format .
 
-# 运行本地测试
-uv run python main.py
+# 6. 停止外部依赖服务
+docker compose down
+```
+
+### 生产部署
+
+```bash
+# 完整应用栈部署
+./docker-start.sh
+
+# 或手动部署
+docker compose -f docker-compose.full.yml up -d
 ```
 
 ## 推荐模型

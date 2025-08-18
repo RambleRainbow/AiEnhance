@@ -1,7 +1,3 @@
-# AiEnhance 开发模式 - 外部依赖服务
-# 适合开发、调试、测试阶段使用
-# 主应用在本地运行: uv run python main.py
-
 version: '3.8'
 
 services:
@@ -42,6 +38,12 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # 注意：Ollama服务已移至本地运行
+  # 请确保本地Ollama服务在 http://localhost:11434 运行
+  # 推荐模型：
+  #   LLM: qwen3:8b
+  #   嵌入: bge-m3
+
   # MIRIX后端服务
   mirix-backend:
     build:
@@ -64,7 +66,7 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       
-      # LLM配置 - 指向本地Ollama服务
+      # LLM配置
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
       - DEFAULT_LLM_PROVIDER=ollama
       - DEFAULT_LLM_MODEL=qwen3:8b
@@ -79,8 +81,8 @@ services:
       # MIRIX特定配置
       - MIRIX_DATA_DIR=/data/mirix
       - MIRIX_CONFIG_PATH=/app/config/mirix.yml
-      - ENABLE_SCREEN_CAPTURE=false
-      - ENABLE_AUDIO_CAPTURE=false
+      - ENABLE_SCREEN_CAPTURE=false  # 容器中禁用屏幕捕获
+      - ENABLE_AUDIO_CAPTURE=false   # 容器中禁用音频捕获
     volumes:
       - mirix_data:/data/mirix
       - ./config:/app/config
@@ -97,6 +99,83 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # AiEnhance主应用
+  aienhance:
+    build:
+      context: .
+      dockerfile: docker/aienhance/Dockerfile
+    container_name: aienhance-app
+    ports:
+      - "8080:8080"
+    environment:
+      # 服务发现
+      - MIRIX_API_URL=http://mirix-backend:8000
+      - OLLAMA_API_URL=http://host.docker.internal:11434
+      - REDIS_URL=redis://redis:6379/1
+      
+      # AiEnhance配置
+      - AIENHANCE_ENV=docker
+      - LOG_LEVEL=info
+      - API_HOST=0.0.0.0
+      - API_PORT=8080
+      
+      # 默认系统配置
+      - DEFAULT_SYSTEM_TYPE=educational
+      - DEFAULT_MEMORY_SYSTEM=mirix
+      - DEFAULT_LLM_PROVIDER=ollama
+      - DEFAULT_LLM_MODEL=qwen3:8b
+      - DEFAULT_EMBEDDING_PROVIDER=ollama
+      - DEFAULT_EMBEDDING_MODEL=bge-m3
+    volumes:
+      - ./config:/app/config
+      - ./logs:/app/logs
+      - aienhance_data:/app/data
+    depends_on:
+      mirix-backend:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # 可选：pgAdmin - 数据库管理界面
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: aienhance-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@aienhance.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    profiles:
+      - management
+    restart: unless-stopped
+
+  # 可选：Redis Commander - Redis管理界面
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: aienhance-redis-commander
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    profiles:
+      - management
+    restart: unless-stopped
+
 volumes:
   postgres_data:
     driver: local
@@ -104,45 +183,12 @@ volumes:
     driver: local
   mirix_data:
     driver: local
+  aienhance_data:
+    driver: local
+  pgadmin_data:
+    driver: local
 
 networks:
   default:
     name: aienhance-network
     driver: bridge
-
-# ========================
-# 开发模式使用说明
-# ========================
-#
-# 1. 启动外部依赖服务:
-#    docker compose up -d
-#
-# 2. 确保本地Ollama运行:
-#    ollama serve
-#    ollama pull qwen3:8b
-#    ollama pull bge-m3
-#
-# 3. 本地运行主应用:
-#    uv run python main.py
-#
-# 4. 测试协作功能:
-#    uv run python test_collaboration_layer.py
-#
-# ========================
-# 生产部署
-# ========================
-#
-# 使用完整应用栈:
-#    docker compose -f docker-compose.full.yml up -d
-#
-# ========================
-# 管理界面 (可选)
-# ========================
-#
-# 启动数据库管理界面:
-#    docker run -d --name pgadmin \
-#      -e PGADMIN_DEFAULT_EMAIL=admin@local \
-#      -e PGADMIN_DEFAULT_PASSWORD=admin \
-#      -p 5050:80 \
-#      --network aienhance-network \
-#      dpage/pgadmin4
