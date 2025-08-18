@@ -650,6 +650,34 @@ class MemoryCognitiveSystem:
                 'updated_at': profile.updated_at
             }
         return None
+    
+    async def cleanup(self):
+        """清理系统资源"""
+        try:
+            # 清理LLM提供商连接
+            if self.llm_provider and hasattr(self.llm_provider, 'session'):
+                if self.llm_provider.session:
+                    await self.llm_provider.session.close()
+            
+            # 清理嵌入提供商连接
+            if self.embedding_provider and hasattr(self.embedding_provider, 'session'):
+                if self.embedding_provider.session:
+                    await self.embedding_provider.session.close()
+            
+            # 清理记忆系统连接
+            if self.memory_system and hasattr(self.memory_system, 'cleanup'):
+                await self.memory_system.cleanup()
+                
+        except Exception as e:
+            print(f"清理系统资源时出错: {e}")
+    
+    async def __aenter__(self):
+        """异步上下文管理器入口"""
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """异步上下文管理器出口"""
+        await self.cleanup()
 
 
 class SystemFactory:

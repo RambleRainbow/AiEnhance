@@ -52,6 +52,7 @@ class AdaptedContent:
     granularity: ConceptGranularity
     cognitive_load: float
     adaptation_confidence: float
+    metadata: Optional[Dict[str, Any]] = None
 
 
 class AdaptiveOutputModule(ABC):
