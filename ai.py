@@ -4,6 +4,7 @@ AiEnhance 命令行工具
 简单的命令行界面，快速体验记忆-认知协同系统
 """
 
+import aienhance
 import asyncio
 import sys
 import argparse
@@ -12,15 +13,13 @@ from pathlib import Path
 # 添加项目路径
 sys.path.insert(0, str(Path(__file__).parent))
 
-import aienhance
-
 
 class AiEnhanceCliTool:
     """AiEnhance命令行工具"""
-    
+
     def __init__(self):
         self.system = None
-        
+
     async def check_ollama(self):
         """检查Ollama服务状态"""
         try:
@@ -32,28 +31,47 @@ class AiEnhanceCliTool:
                 return False
         except:
             return False
-    
-    async def initialize_system(self, system_type="educational", temperature=0.7):
+
+    async def initialize_system(self, system_type="educational", temperature=0.7, use_memory=True):
         """初始化系统"""
         try:
-            self.system = aienhance.create_system(
-                system_type=system_type,
-                llm_provider="ollama",
-                llm_model_name="qwen3:8b",
-                llm_temperature=temperature,
-                llm_max_tokens=800
-            )
+            if use_memory:
+                # 完整系统配置，包含记忆和嵌入功能
+                self.system = aienhance.create_system(
+                    system_type=system_type,
+                    memory_system_type="mirix",
+                    llm_provider="ollama",
+                    embedding_provider="ollama",
+                    llm_model_name="qwen3:8b",
+                    llm_temperature=temperature,
+                    llm_max_tokens=800,
+                    embedding_model_name="bge-m3:latest"
+                )
+            else:
+                # 简化配置，仅使用LLM功能
+                print("⚠️  简化模式：仅启用LLM功能，不包含记忆系统")
+                self.system = aienhance.create_system(
+                    system_type=system_type,
+                    llm_provider="ollama",
+                    llm_model_name="qwen3:8b",
+                    llm_temperature=temperature,
+                    llm_max_tokens=800
+                )
             return True
         except Exception as e:
             print(f"❌ 系统初始化失败: {e}")
+            # 如果完整模式失败，尝试简化模式
+            if use_memory:
+                print("🔄 尝试简化模式...")
+                return await self.initialize_system(system_type, temperature, use_memory=False)
             return False
-    
+
     async def single_query(self, query, system_type="educational", temperature=0.7, show_details=False):
         """单次查询"""
         print("🔧 初始化系统...")
         if not await self.initialize_system(system_type, temperature):
             return
-            
+
         print("🤔 处理查询中...")
         try:
             # 使用异步上下文管理器确保资源清理
@@ -63,7 +81,7 @@ class AiEnhanceCliTool:
                     user_id="cli_user",
                     context={"source": "cli"}
                 )
-                
+
                 print("\n" + "="*50)
                 print("🤖 AI回答:")
                 print("="*50)
@@ -71,17 +89,18 @@ class AiEnhanceCliTool:
                     print(response.content)
                 else:
                     print("(无内容生成 - 请检查Ollama服务)")
-                
+
                 if show_details:
                     print("\n" + "="*50)
                     print("📊 详细信息:")
                     print("="*50)
-                    
+
                     # 处理步骤
                     if hasattr(response, 'processing_metadata'):
-                        steps = response.processing_metadata.get('processing_steps', [])
+                        steps = response.processing_metadata.get(
+                            'processing_steps', [])
                         print(f"🔄 处理步骤: {' → '.join(steps)}")
-                    
+
                     # 用户画像
                     if hasattr(response, 'user_profile'):
                         profile = response.user_profile.cognitive
@@ -89,7 +108,7 @@ class AiEnhanceCliTool:
                         print(f"   思维模式: {profile.thinking_mode.value}")
                         print(f"   认知复杂度: {profile.cognitive_complexity:.2f}")
                         print(f"   抽象水平: {profile.abstraction_level:.2f}")
-                    
+
                     # 适配信息
                     if hasattr(response, 'adaptation_info'):
                         adapt = response.adaptation_info
@@ -97,17 +116,18 @@ class AiEnhanceCliTool:
                         print(f"   输出密度: {adapt.density_level.value}")
                         print(f"   结构类型: {adapt.structure_type.value}")
                         print(f"   认知负荷: {adapt.cognitive_load:.2f}")
-                    
+
                     # 系统状态
                     status = self.system.get_system_status()
                     print(f"🔍 系统状态:")
                     print(f"   系统类型: {system_type}")
-                    print(f"   LLM配置: {status.get('llm_provider', {}).get('provider', 'None')}")
+                    print(
+                        f"   LLM配置: {status.get('llm_provider', {}).get('provider', 'None')}")
                     print(f"   响应长度: {len(response.content)}字符")
-            
+
         except Exception as e:
             print(f"❌ 查询处理失败: {e}")
-    
+
     async def interactive_mode(self, system_type="educational", temperature=0.7):
         """交互模式"""
         print("🚀 AiEnhance 交互模式")
@@ -118,20 +138,20 @@ class AiEnhanceCliTool:
         print("  • 输入 'clear' 清屏")
         print("  • 输入 'status' 查看系统状态")
         print("="*50)
-        
+
         # 初始化系统
         print("🔧 初始化系统...")
         if not await self.initialize_system(system_type, temperature):
             return
         print(f"✅ 系统初始化成功 (类型: {system_type}, 温度: {temperature})")
-        
+
         session_count = 0
-        
+
         while True:
             try:
                 # 获取用户输入
                 user_input = input(f"\n[{session_count}] 👤 您: ").strip()
-                
+
                 # 处理特殊命令
                 if user_input.lower() in ['quit', 'exit', '退出', 'q']:
                     print("👋 再见！感谢使用AiEnhance")
@@ -146,7 +166,7 @@ class AiEnhanceCliTool:
                     continue
                 elif not user_input:
                     continue
-                
+
                 # 处理查询
                 print("🤔 思考中...")
                 response = await self.system.process_query(
@@ -154,32 +174,33 @@ class AiEnhanceCliTool:
                     user_id="interactive_user",
                     context={"session": session_count}
                 )
-                
+
                 # 显示响应
                 print(f"🤖 AI: ", end="")
                 if response.content:
                     print(response.content)
-                    
+
                     # 显示简要信息
                     if hasattr(response, 'adaptation_info'):
                         adapt = response.adaptation_info
-                        print(f"    ⚙️ [{adapt.density_level.value}密度, 负荷{adapt.cognitive_load:.1f}]")
+                        print(
+                            f"    ⚙️ [{adapt.density_level.value}密度, 负荷{adapt.cognitive_load:.1f}]")
                 else:
                     print("(无法生成响应)")
-                
+
                 session_count += 1
-                
+
             except KeyboardInterrupt:
                 print("\n\n👋 程序已退出")
                 break
             except Exception as e:
                 print(f"❌ 处理错误: {e}")
-    
+
     async def demo_mode(self):
         """演示模式"""
         print("🎮 AiEnhance 演示模式")
         print("="*50)
-        
+
         # 演示查询
         demo_queries = [
             ("基础问答", "你好，请介绍一下自己"),
@@ -187,45 +208,46 @@ class AiEnhanceCliTool:
             ("创意思维", "设计一个智能家居系统的基本方案"),
             ("问题分析", "分析一下远程工作的利弊")
         ]
-        
+
         # 初始化系统
         print("🔧 初始化演示系统...")
         if not await self.initialize_system("educational", 0.7):
             return
         print("✅ 系统就绪\n")
-        
+
         for i, (category, query) in enumerate(demo_queries, 1):
             print(f"{i}️⃣ {category}演示")
             print(f"👤 用户: {query}")
             print("🤔 AI思考中...")
-            
+
             try:
                 response = await self.system.process_query(
                     query=query,
                     user_id="demo_user",
                     context={"demo_type": category}
                 )
-                
+
                 if response.content:
                     print(f"🤖 AI: {response.content}")
-                    
+
                     # 显示处理信息
                     if hasattr(response, 'adaptation_info'):
                         adapt = response.adaptation_info
-                        print(f"📊 适配信息: {adapt.density_level.value}密度, 认知负荷{adapt.cognitive_load:.2f}")
+                        print(
+                            f"📊 适配信息: {adapt.density_level.value}密度, 认知负荷{adapt.cognitive_load:.2f}")
                 else:
                     print("🤖 AI: (无响应生成)")
-                
+
                 print("-" * 50)
-                
+
                 # 短暂停顿
                 if i < len(demo_queries):
                     await asyncio.sleep(1)
-                    
+
             except Exception as e:
                 print(f"❌ 演示失败: {e}")
                 print("-" * 50)
-        
+
         print("🎉 演示完成！")
 
 
@@ -243,24 +265,25 @@ async def main():
   python ai.py "创意写作" --temp 0.9 --details       # 高创造性 + 详细信息
         """
     )
-    
+
     # 位置参数
     parser.add_argument('query', nargs='?', help='要处理的查询问题')
-    
+
     # 可选参数
-    parser.add_argument('-i', '--interactive', action='store_true', help='启动交互模式')
+    parser.add_argument('-i', '--interactive',
+                        action='store_true', help='启动交互模式')
     parser.add_argument('-d', '--demo', action='store_true', help='运行演示模式')
-    parser.add_argument('--type', choices=['default', 'educational', 'research'], 
-                       default='educational', help='系统类型 (默认: educational)')
-    parser.add_argument('--temp', type=float, default=0.7, 
-                       help='温度参数 0.0-1.0 (默认: 0.7)')
+    parser.add_argument('--type', choices=['default', 'educational', 'research'],
+                        default='educational', help='系统类型 (默认: educational)')
+    parser.add_argument('--temp', type=float, default=0.7,
+                        help='温度参数 0.0-1.0 (默认: 0.7)')
     parser.add_argument('--details', action='store_true', help='显示详细的处理信息')
-    
+
     args = parser.parse_args()
-    
+
     # 创建工具实例
     tool = AiEnhanceCliTool()
-    
+
     # 检查Ollama服务
     print("🔍 检查Ollama服务状态...")
     if not await tool.check_ollama():
@@ -270,7 +293,7 @@ async def main():
         print("   2. 模型已安装: ollama pull qwen3:8b")
         return
     print("✅ Ollama服务正常")
-    
+
     # 根据参数选择模式
     if args.interactive:
         await tool.interactive_mode(args.type, args.temp)
