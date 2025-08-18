@@ -381,6 +381,9 @@ class ContextualIntegrator(SemanticEnhancementModule):
         groups = self._group_similar_fragments(fragments)
         
         for group in groups:
+            # 跳过空分组
+            if not group:
+                continue
             # 整合同组内的片段
             integrated_fragment = self._merge_fragment_group(group)
             integrated_fragments.append(integrated_fragment)
@@ -425,9 +428,16 @@ class ContextualIntegrator(SemanticEnhancementModule):
     
     # Helper methods (TODO: implement)
     def _group_similar_fragments(self, fragments: List[MemoryFragment]) -> List[List[MemoryFragment]]:
+        # 处理空输入的情况
+        if not fragments:
+            return []
         return [fragments]  # Simplified: all in one group
     
     def _merge_fragment_group(self, group: List[MemoryFragment]) -> MemoryFragment:
+        # 处理空分组的情况
+        if not group:
+            raise ValueError("Cannot merge empty fragment group")
+        
         if len(group) == 1:
             return group[0]
         
