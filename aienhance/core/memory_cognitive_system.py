@@ -5,6 +5,10 @@
 
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
+import asyncio
+import logging
+
+logger = logging.getLogger(__name__)
 
 from ..perception import (
     DynamicUserModeler, 
@@ -453,6 +457,289 @@ class MemoryCognitiveSystem:
             processing_metadata['error'] = str(e)
             processing_metadata['processing_steps'].append('error')
             raise RuntimeError(f"System processing failed: {e}")
+    
+    async def process_query_stream(self, query: str, user_id: str, 
+                                 context: Optional[Dict[str, Any]] = None, 
+                                 yield_steps: bool = True):
+        """
+        流式处理用户查询 - 提供实时处理反馈
+        
+        Args:
+            query: 用户查询
+            user_id: 用户ID
+            context: 额外上下文信息
+            yield_steps: 是否输出处理步骤
+            
+        Yields:
+            str: 处理步骤信息或AI生成的内容块
+        """
+        if not self.is_initialized:
+            raise RuntimeError("System not initialized")
+        
+        context = context or {}
+        processing_metadata = {
+            'query': query,
+            'user_id': user_id,
+            'timestamp': self._get_timestamp(),
+            'processing_steps': []
+        }
+        
+        try:
+            # ==================== 系统初始化 ====================
+            if yield_steps:
+                yield "🔧 初始化系统组件..."
+            
+            # 初始化记忆系统
+            if self.memory_system and not self._memory_initialized:
+                await self.memory_system.initialize()
+                self._memory_initialized = True
+                processing_metadata['processing_steps'].append('memory_initialized')
+            
+            # 初始化LLM
+            if self.llm_provider and not self._llm_initialized:
+                await self.llm_provider.initialize()
+                self._llm_initialized = True
+                processing_metadata['processing_steps'].append('llm_initialized')
+            
+            # 初始化嵌入模型
+            if self.embedding_provider and not self._embedding_initialized:
+                await self.embedding_provider.initialize()
+                self._embedding_initialized = True
+                processing_metadata['processing_steps'].append('embedding_initialized')
+            
+            # ==================== 感知层处理 ====================
+            if yield_steps:
+                yield "🧠 感知层：分析用户查询和上下文..."
+            
+            processing_metadata['processing_steps'].append('perception_start')
+            
+            # 用户建模
+            user_profile = self.user_modeler.get_user_profile(user_id)
+            if not user_profile:
+                initial_data = self._extract_initial_user_data(query, context)
+                
+                # 从记忆系统获取用户历史数据
+                if self.memory_system:
+                    user_context = create_user_context(user_id)
+                    user_memories = await self.memory_system.get_user_memories(user_context, limit=50)
+                    initial_data['memory_context'] = user_memories.memories
+                
+                user_profile = self.user_modeler.create_user_profile(user_id, initial_data)
+            
+            # 情境分析
+            enhanced_context = {**context, 'user_profile': user_profile}
+            context_profile = self.context_analyzer.analyze_context(query, enhanced_context)
+            
+            processing_metadata['processing_steps'].append('perception_complete')
+            
+            # ==================== 认知层处理 ====================
+            if yield_steps:
+                yield "💾 认知层：检索和处理相关记忆..."
+            
+            processing_metadata['processing_steps'].append('cognition_start')
+            
+            # 记忆检索
+            relevant_memories = []
+            if self.memory_system:
+                user_context = create_user_context(user_id, context.get('session_id'))
+                memory_query = MemoryQuery(
+                    query=query,
+                    user_context=user_context,
+                    limit=20,
+                    similarity_threshold=0.6
+                )
+                memory_result = await self.memory_system.search_memories(memory_query)
+                relevant_memories = memory_result.memories
+                processing_metadata['processing_steps'].append('memory_retrieved')
+            
+            # 多层次记忆激活
+            cognitive_context = {
+                'user_profile': user_profile,
+                'context_profile': context_profile,
+                'external_memories': relevant_memories,
+                **enhanced_context
+            }
+            activation_results = self.memory_activator.activate_comprehensive_memories(query, cognitive_context)
+            
+            # 语义补充
+            all_fragments = []
+            for result in activation_results:
+                all_fragments.extend(result.fragments)
+            
+            # 添加外部记忆作为片段
+            for memory in relevant_memories:
+                fragment = self._convert_memory_to_fragment(memory)
+                if fragment:
+                    all_fragments.append(fragment)
+            
+            semantic_result = self.semantic_enhancer.enhance_comprehensive_semantics(
+                all_fragments, cognitive_context
+            )
+            
+            # 类比推理
+            analogy_result = self.analogy_reasoner.comprehensive_analogy_reasoning(query, cognitive_context)
+            
+            processing_metadata['processing_steps'].append('cognition_complete')
+            
+            # ==================== 行为层处理 ====================
+            if yield_steps:
+                yield "⚙️ 行为层：个性化适配和内容生成..."
+            
+            processing_metadata['processing_steps'].append('behavior_start')
+            
+            # 个性化适配
+            adapted_output = self.adaptive_output.comprehensive_adaptation(
+                semantic_result.enhanced_fragments,
+                user_profile,
+                cognitive_context
+            )
+            
+            # LLM流式生成响应
+            if self.llm_provider and self._llm_initialized:
+                try:
+                    if yield_steps:
+                        yield "🤖 生成层：开始AI内容生成..."
+                    
+                    # 构建对话消息
+                    messages = await self._build_chat_messages(
+                        query, user_profile, context_profile, 
+                        relevant_memories, semantic_result, adapted_output
+                    )
+                    
+                    # 流式调用LLM生成响应
+                    full_response = ""
+                    async for chunk in self.llm_provider.chat_stream(messages):
+                        full_response += chunk
+                        yield chunk  # 实时输出内容块
+                    
+                    # 更新适配输出
+                    adapted_output.content = full_response
+                    adapted_output.metadata = adapted_output.metadata or {}
+                    adapted_output.metadata.update({
+                        "llm_generated": True,
+                        "llm_model": self.llm_config.model_name,
+                        "streaming": True
+                    })
+                    
+                    processing_metadata['processing_steps'].append('llm_streamed')
+                    
+                except Exception as e:
+                    if yield_steps:
+                        yield f"\n❌ LLM生成失败: {e}\n"
+                    processing_metadata['llm_error'] = str(e)
+            else:
+                # 回退到适配内容
+                yield adapted_output.content
+            
+            processing_metadata['processing_steps'].append('behavior_complete')
+            
+            # ==================== 后续处理 ====================
+            if yield_steps:
+                yield "\n🎯 处理完成，保存记忆和更新用户画像..."
+            
+            # 异步保存记忆（不阻塞流式输出）
+            if self.memory_system:
+                asyncio.create_task(self._async_save_memories(
+                    query, adapted_output.content, user_id, context, 
+                    processing_metadata, user_profile, context_profile, 
+                    semantic_result, relevant_memories
+                ))
+            
+            # 异步更新用户画像
+            asyncio.create_task(self._async_update_user_profile(
+                user_id, query, adapted_output, processing_metadata
+            ))
+            
+        except Exception as e:
+            processing_metadata['error'] = str(e)
+            processing_metadata['processing_steps'].append('error')
+            if yield_steps:
+                yield f"\n❌ 系统处理失败: {e}\n"
+    
+    async def _async_save_memories(self, query: str, response_content: str, 
+                                 user_id: str, context: Dict[str, Any],
+                                 processing_metadata: Dict[str, Any],
+                                 user_profile, context_profile, 
+                                 semantic_result, relevant_memories):
+        """异步保存记忆，不阻塞主流程"""
+        try:
+            user_context = create_user_context(user_id, context.get('session_id'))
+            
+            # 保存用户查询
+            query_memory = create_memory_entry(
+                content=f"用户查询: {query}",
+                memory_type=MemoryType.EPISODIC,
+                user_context=user_context,
+                metadata={
+                    "type": "user_query",
+                    "context_profile": context_profile.to_dict() if context_profile and hasattr(context_profile, 'to_dict') else {},
+                    "processing_metadata": processing_metadata
+                }
+            )
+            await self.memory_system.add_memory(query_memory)
+            
+            # 保存系统响应
+            response_memory = create_memory_entry(
+                content=f"系统响应: {response_content}",
+                memory_type=MemoryType.EPISODIC,
+                user_context=user_context,
+                metadata={
+                    "type": "system_response",
+                    "streaming": True,
+                    "activated_memories_count": len(relevant_memories)
+                }
+            )
+            await self.memory_system.add_memory(response_memory)
+            
+            # 保存重要的语义增强结果
+            if semantic_result and hasattr(semantic_result, 'enhanced_fragments'):
+                for fragment in semantic_result.enhanced_fragments[:3]:  # 只保存前3个重要片段
+                    semantic_memory = create_memory_entry(
+                        content=f"语义增强: {fragment.content if hasattr(fragment, 'content') else str(fragment)}",
+                        memory_type=MemoryType.SEMANTIC,
+                        user_context=user_context,
+                        metadata={
+                            "type": "semantic_enhancement",
+                            "query": query,
+                            "confidence": getattr(fragment, 'confidence', 0.8)
+                        }
+                    )
+                    await self.memory_system.add_memory(semantic_memory)
+            
+        except Exception as e:
+            logger.error(f"异步保存记忆失败: {e}")
+    
+    async def _async_update_user_profile(self, user_id: str, query: str, 
+                                       adapted_output, processing_metadata: Dict[str, Any]):
+        """异步更新用户画像，不阻塞主流程"""
+        try:
+            interaction_data = {
+                'query': query,
+                'response_quality': self._assess_response_quality_from_output(adapted_output),
+                'cognitive_load': adapted_output.cognitive_load,
+                'processing_time': self._calculate_processing_time(processing_metadata),
+                'streaming': True
+            }
+            
+            self.user_modeler.update_user_profile(user_id, interaction_data)
+            
+        except Exception as e:
+            logger.error(f"异步更新用户画像失败: {e}")
+    
+    def _assess_response_quality_from_output(self, adapted_output) -> float:
+        """从适配输出评估响应质量"""
+        try:
+            # 基于内容长度、适配置信度等评估
+            content_length = len(adapted_output.content) if adapted_output.content else 0
+            adaptation_confidence = adapted_output.adaptation_confidence
+            
+            # 简单的质量评估算法
+            length_score = min(1.0, content_length / 500)  # 500字符为满分
+            quality_score = (length_score * 0.6 + adaptation_confidence * 0.4)
+            
+            return max(0.1, min(1.0, quality_score))
+        except:
+            return 0.7  # 默认质量分数
     
     def _extract_initial_user_data(self, query: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """从查询和上下文中提取初始用户数据"""

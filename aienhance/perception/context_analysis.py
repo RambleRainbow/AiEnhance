@@ -47,6 +47,16 @@ class TaskCharacteristics:
     structure_requirement: float  # 结构化需求 (0-1)
     creativity_requirement: float  # 创造性需求 (0-1)
     cross_domain_level: float  # 跨领域程度 (0-1)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """转换为可JSON序列化的字典"""
+        return {
+            "task_type": self.task_type.value if self.task_type else None,
+            "openness_level": self.openness_level,
+            "structure_requirement": self.structure_requirement,
+            "creativity_requirement": self.creativity_requirement,
+            "cross_domain_level": self.cross_domain_level
+        }
 
 
 @dataclass
@@ -58,6 +68,17 @@ class ContextualElements:
     purpose_type: PurposeType
     urgency_level: float  # 时效性要求 (0-1)
     complexity_level: float  # 复杂度 (0-1)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """转换为可JSON序列化的字典"""
+        return {
+            "time_dimension": self.time_dimension.value if self.time_dimension else None,
+            "domain_scope": self.domain_scope,
+            "abstraction_level": self.abstraction_level.value if self.abstraction_level else None,
+            "purpose_type": self.purpose_type.value if self.purpose_type else None,
+            "urgency_level": self.urgency_level,
+            "complexity_level": self.complexity_level
+        }
 
 
 @dataclass
@@ -67,6 +88,15 @@ class CognitiveNeeds:
     thinking_framework: List[str]  # 思维框架需求
     creativity_stimulation: List[str]  # 创意激发需求
     support_priority: float  # 支持优先级 (0-1)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """转换为可JSON序列化的字典"""
+        return {
+            "knowledge_supplement": self.knowledge_supplement,
+            "thinking_framework": self.thinking_framework,
+            "creativity_stimulation": self.creativity_stimulation,
+            "support_priority": self.support_priority
+        }
 
 
 @dataclass
@@ -76,6 +106,15 @@ class ContextProfile:
     contextual_elements: ContextualElements
     cognitive_needs: CognitiveNeeds
     confidence_score: float  # 分析置信度 (0-1)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """转换为可JSON序列化的字典"""
+        return {
+            "task_characteristics": self.task_characteristics.to_dict() if self.task_characteristics else None,
+            "contextual_elements": self.contextual_elements.to_dict() if self.contextual_elements else None,
+            "cognitive_needs": self.cognitive_needs.to_dict() if self.cognitive_needs else None,
+            "confidence_score": self.confidence_score
+        }
 
 
 class ContextAnalysisModule(ABC):
