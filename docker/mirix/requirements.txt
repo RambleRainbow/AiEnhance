@@ -11,6 +11,7 @@ pydantic-settings==2.1.0
 # 数据库和向量支持
 pgvector==0.2.4
 pg8000==1.30.3
+asyncpg==0.29.0
 
 # API和Web框架增强
 python-multipart==0.0.6

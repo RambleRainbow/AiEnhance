@@ -16,6 +16,8 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     libffi-dev \
     ffmpeg \
+    postgresql-client \
+    redis-tools \
     && rm -rf /var/lib/apt/lists/*
 
 # 创建必要的目录
@@ -27,7 +29,8 @@ RUN pip install --no-cache-dir git+https://github.com/Mirix-AI/MIRIX.git
 # 复制配置文件
 COPY docker/mirix/requirements.txt /app/
 COPY docker/mirix/mirix_config.yml /app/config/mirix.yml
-COPY docker/mirix/start.sh /app/
+COPY docker/mirix/start_simple.sh /app/start.sh
+COPY docker/mirix/wait_for_services.py /app/
 
 # 安装额外依赖
 RUN pip install --no-cache-dir -r requirements.txt
