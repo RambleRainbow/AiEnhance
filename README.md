@@ -15,10 +15,11 @@
 - **协作层** - 人机认知协作
 
 ### 🧠 核心能力
-- **多元化记忆** - 支持多种记忆系统（MIRIX、Mem0、Graphiti）
+- **多元化记忆** - 支持多种记忆系统（MIRIX SDK、Mem0、Graphiti）
+- **简化部署** - MIRIX SDK集成，无需复杂Docker配置  
 - **灵活LLM** - 多LLM提供商支持（Ollama、OpenAI、Anthropic）
 - **认知协作** - 辩证视角、认知挑战、用户建模
-- **容器化部署** - 完整的Docker部署方案
+- **即装即用** - pip install即可开始使用
 
 ## 设计理念
 

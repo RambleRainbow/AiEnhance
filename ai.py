@@ -39,7 +39,7 @@ class AiEnhanceCliTool:
                 # 完整系统配置，包含记忆和嵌入功能
                 self.system = aienhance.create_system(
                     system_type=system_type,
-                    memory_system_type="mirix",
+                    memory_system_type="mirix_sdk",  # 使用新的MIRIX SDK适配器
                     llm_provider="ollama",
                     embedding_provider="ollama",
                     llm_model_name="qwen3:8b",

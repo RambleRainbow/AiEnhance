@@ -13,6 +13,7 @@ dependencies = [
     "pydantic>=2.0.0",
     "python-dotenv>=1.0.0",
     "loguru>=0.7.0",
+    "mirix>=0.1.0",  # MIRIX Python SDK for memory system
 ]
 
 [dependency-groups]
