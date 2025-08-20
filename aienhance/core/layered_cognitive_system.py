@@ -68,6 +68,16 @@ class LayeredCognitiveSystem(ICognitiveLayers):
         try:
             logger.info("Initializing Layered Cognitive System...")
             
+            # 0. 初始化记忆系统（如果存在）
+            if self.memory_system:
+                logger.info("Initializing Memory System...")
+                memory_success = await self.memory_system.initialize()
+                if memory_success:
+                    logger.info("✅ Memory System initialized successfully")
+                else:
+                    logger.warning("⚠️ Memory System initialization failed, continuing without memory")
+                    self.memory_system = None
+            
             # 1. 初始化感知层
             logger.info("Initializing Perception Layer...")
             self.perception_layer = PerceptionLayer(
