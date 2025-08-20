@@ -8,7 +8,23 @@ __version__ = "0.1.0"
 from .core import (
     MemoryCognitiveSystem,
     SystemFactory,
-    SystemResponse
+    SystemResponse,
+    # 新的分层架构
+    LayeredCognitiveSystem,
+    LayeredSystemFactory,
+    PerceptionLayer,
+    CognitionLayer,
+    BehaviorLayer,
+    CollaborationLayer,
+    IPerceptionLayer,
+    ICognitionLayer,
+    IBehaviorLayer,
+    ICollaborationLayer,
+    ICognitiveLayers,
+    UserProfile,
+    ContextProfile,
+    InformationFlow,
+    ProcessingStatus
 )
 from .enhanced_system_factory import (
     create_enhanced_system,
@@ -16,7 +32,12 @@ from .enhanced_system_factory import (
     create_ollama_mirix_system,
     create_openai_mirix_system,
     create_preset_system,
-    get_system_info
+    get_system_info,
+    # 新的分层架构工厂函数
+    create_layered_system,
+    create_educational_layered_system,
+    create_research_layered_system,
+    get_layered_system_info
 )
 from .memory import (
     MemorySystemFactory,
@@ -36,26 +57,58 @@ from .llm import (
 
 # 便捷接口
 __all__ = [
+    # 传统架构
     'MemoryCognitiveSystem',
     'SystemFactory',
     'SystemResponse',
+    
+    # 新的分层架构
+    'LayeredCognitiveSystem',
+    'LayeredSystemFactory',
+    'PerceptionLayer',
+    'CognitionLayer',
+    'BehaviorLayer',
+    'CollaborationLayer',
+    'IPerceptionLayer',
+    'ICognitionLayer',
+    'IBehaviorLayer',
+    'ICollaborationLayer',
+    'ICognitiveLayers',
+    'UserProfile',
+    'ContextProfile',
+    'InformationFlow',
+    'ProcessingStatus',
+    
+    # 记忆系统
     'MemorySystemFactory',
     'MemorySystemConfig',
     'MemoryType',
     'create_user_context',
     'create_memory_entry',
+    
+    # LLM系统
     'LLMProviderFactory',
     'EmbeddingProviderFactory',
     'ModelConfig',
     'MessageRole',
     'create_model_config',
     'create_chat_message',
+    
+    # 工厂函数
     'create_enhanced_system',
     'create_mirix_unified_system',
     'create_ollama_mirix_system',
     'create_openai_mirix_system',
     'create_preset_system',
+    'create_layered_system',
+    'create_educational_layered_system',
+    'create_research_layered_system',
     'get_system_info',
+    'get_layered_system_info',
+    
+    # 便捷函数
+    'create_system',
+    'create_memory_system',
     '__version__'
 ]
 
