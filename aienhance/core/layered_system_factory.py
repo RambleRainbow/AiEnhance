@@ -33,16 +33,7 @@ class LayeredSystemFactory:
             LayeredCognitiveSystem: 分层认知系统实例
         """
         try:
-            # 创建记忆系统
-            memory_system = None
-            if memory_config:
-                try:
-                    memory_system = MemorySystemFactory.create_memory_system(memory_config)
-                    logger.info("Memory system created successfully")
-                except Exception as e:
-                    logger.warning(f"Failed to create memory system: {e}")
-            
-            # 创建LLM提供商
+            # 创建LLM提供商（先创建，用于记忆系统）
             llm_provider = None
             if llm_config:
                 try:
@@ -50,6 +41,15 @@ class LayeredSystemFactory:
                     logger.info("LLM provider created successfully")
                 except Exception as e:
                     logger.warning(f"Failed to create LLM provider: {e}")
+            
+            # 创建记忆系统（传递LLM提供商）
+            memory_system = None
+            if memory_config:
+                try:
+                    memory_system = MemorySystemFactory.create_memory_system(memory_config, llm_provider)
+                    logger.info("Memory system created successfully")
+                except Exception as e:
+                    logger.warning(f"Failed to create memory system: {e}")
             
             # 创建分层认知系统
             system = LayeredCognitiveSystem(

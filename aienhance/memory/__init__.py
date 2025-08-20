@@ -17,7 +17,8 @@ from .interfaces import (
 )
 
 from .adapters import (
-    MirixAdapter,
+    MirixUnifiedAdapter,
+    MirixLLMBridge,
     Mem0Adapter, 
     GraphitiAdapter
 )
@@ -36,7 +37,8 @@ __all__ = [
     'create_memory_entry',
     
     # Adapters
-    'MirixAdapter',
+    'MirixUnifiedAdapter',
+    'MirixLLMBridge',
     'Mem0Adapter',
     'GraphitiAdapter'
 ]

@@ -275,12 +275,13 @@ class MemorySystemFactory:
         cls._adapters[system_type] = adapter_class
     
     @classmethod
-    def create_memory_system(cls, config: MemorySystemConfig) -> MemorySystem:
+    def create_memory_system(cls, config: MemorySystemConfig, llm_provider=None) -> MemorySystem:
         """
         创建记忆系统实例
         
         Args:
             config: 系统配置
+            llm_provider: 可选的LLM提供商（用于统一模式）
             
         Returns:
             MemorySystem: 记忆系统实例
@@ -291,7 +292,12 @@ class MemorySystemFactory:
             raise ValueError(f"不支持的记忆系统类型: {system_type}")
         
         adapter_class = cls._adapters[system_type]
-        return adapter_class(config)
+        
+        # 检查是否为MIRIX统一适配器，如果是则传递LLM提供商
+        if system_type == "mirix_unified" and llm_provider is not None:
+            return adapter_class(config, llm_provider)
+        else:
+            return adapter_class(config)
     
     @classmethod
     def get_supported_systems(cls) -> List[str]:
