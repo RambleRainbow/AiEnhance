@@ -10,6 +10,14 @@ from .core import (
     SystemFactory,
     SystemResponse
 )
+from .enhanced_system_factory import (
+    create_enhanced_system,
+    create_mirix_unified_system,
+    create_ollama_mirix_system,
+    create_openai_mirix_system,
+    create_preset_system,
+    get_system_info
+)
 from .memory import (
     MemorySystemFactory,
     MemorySystemConfig,
@@ -42,6 +50,12 @@ __all__ = [
     'MessageRole',
     'create_model_config',
     'create_chat_message',
+    'create_enhanced_system',
+    'create_mirix_unified_system',
+    'create_ollama_mirix_system',
+    'create_openai_mirix_system',
+    'create_preset_system',
+    'get_system_info',
     '__version__'
 ]
 
