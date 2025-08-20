@@ -35,54 +35,124 @@ class AiEnhanceStreamingCliTool:
             return False
 
     async def initialize_system(self, system_type="educational", temperature=0.7, use_memory=True):
-        """初始化系统"""
+        """初始化分层认知系统"""
         try:
             if use_memory:
-                # 完整系统配置，包含记忆和嵌入功能
-                self.system = aienhance.create_system(
-                    system_type=system_type,
-                    memory_system_type="mirix",
-                    llm_provider="ollama",
-                    embedding_provider="ollama",
-                    llm_model_name="qwen3:8b",
-                    llm_temperature=temperature,
-                    llm_max_tokens=800,
-                    embedding_model_name="bge-m3:latest"
-                )
+                # 使用新的分层认知系统，包含完整功能
+                print(f"🧠 正在初始化分层认知系统 (类型: {system_type})...")
+                if system_type == "educational":
+                    self.system = aienhance.create_educational_layered_system(
+                        model_name="qwen3:8b",
+                        llm_temperature=temperature,
+                        llm_max_tokens=800
+                    )
+                elif system_type == "research":
+                    self.system = aienhance.create_research_layered_system(
+                        model_name="qwen3:8b",
+                        llm_temperature=temperature,
+                        llm_max_tokens=800
+                    )
+                else:
+                    # 使用通用分层系统
+                    self.system = aienhance.create_layered_system(
+                        system_type=system_type,
+                        memory_system_type="mirix_unified",
+                        llm_provider="ollama",
+                        llm_model_name="qwen3:8b",
+                        llm_temperature=temperature,
+                        llm_max_tokens=800
+                    )
             else:
                 # 简化配置，仅使用LLM功能
                 print("⚠️  简化模式：仅启用LLM功能，不包含记忆系统")
-                self.system = aienhance.create_system(
-                    system_type=system_type,
+                # 创建轻量级分层系统（不使用记忆）
+                self.system = aienhance.create_layered_system(
+                    system_type="lightweight",
                     llm_provider="ollama",
                     llm_model_name="qwen3:8b",
                     llm_temperature=temperature,
                     llm_max_tokens=800
                 )
-            return True
+            
+            # 初始化分层系统
+            success = await self.system.initialize_layers()
+            if success:
+                print("✅ 分层认知系统初始化完成")
+                print("   📋 感知层: 用户建模与上下文分析")
+                print("   🧠 认知层: 记忆激活与语义增强")
+                print("   🎯 行为层: 内容适配与生成")
+                if system_type != "lightweight":
+                    print("   🤝 协作层: 多元观点与认知挑战")
+                return True
+            else:
+                print("❌ 分层系统初始化失败")
+                return False
         except Exception as e:
-            print(f"❌ 系统初始化失败: {e}")
+            print(f"❌ 分层系统初始化失败: {e}")
             # 如果完整模式失败，尝试简化模式
             if use_memory:
-                print("🔄 尝试简化模式...")
+                print("🔄 尝试轻量级模式...")
                 return await self.initialize_system(system_type, temperature, use_memory=False)
             return False
 
     async def stream_query_processing(self, query: str, user_id: str, context: dict) -> AsyncIterator[str]:
-        """流式处理查询，使用系统的原生流式方法"""
+        """流式处理查询，使用分层系统的处理方法"""
         
         try:
-            # 直接使用系统的流式处理方法
-            async for chunk in self.system.process_query_stream(
-                query=query,
-                user_id=user_id,
-                context=context,
-                yield_steps=True
-            ):
-                yield chunk
+            # 检查是否有流式处理方法
+            if hasattr(self.system, 'process_stream'):
+                # 使用系统的流式处理方法
+                async for chunk in self.system.process_stream(
+                    query=query,
+                    user_id=user_id,
+                    context=context,
+                    yield_steps=True
+                ):
+                    yield chunk
+            else:
+                # 使用标准处理方法，模拟流式输出
+                yield "📋 感知层处理中...\n"
+                
+                yield "🧠 认知层激活记忆...\n"
+                yield "🎯 行为层适配内容...\n"
+                
+                # 处理查询
+                result = await self.system.process_through_layers(
+                    query=query,
+                    user_id=user_id,
+                    context=context
+                )
+                
+                if result and hasattr(result, 'final_output'):
+                    # 获取最终输出内容
+                    content = result.final_output
+                    
+                    # 模拟流式输出，按句子分割
+                    import re
+                    sentences = re.split(r'[。！？\n]', content)
+                    for sentence in sentences:
+                        if sentence.strip():
+                            yield sentence.strip() + "。"
+                            await asyncio.sleep(0.08)  # 模拟流式延迟
+                    
+                    yield "\n"
+                    
+                    # 如果有协作层信息
+                    if hasattr(result, 'collaboration_output') and result.collaboration_output:
+                        collab_out = result.collaboration_output
+                        if hasattr(collab_out, 'enhanced_content') and collab_out.enhanced_content:
+                            yield "\n🤝 协作增强:\n"
+                            enhanced_sentences = re.split(r'[。！？\n]', collab_out.enhanced_content)
+                            for sentence in enhanced_sentences[:3]:  # 限制协作内容长度
+                                if sentence.strip():
+                                    yield sentence.strip() + "。"
+                                    await asyncio.sleep(0.05)
+                            yield "\n"
+                else:
+                    yield "抱歉，系统处理出现问题。请检查配置或稍后重试。\n"
                 
         except Exception as e:
-            yield f"❌ 系统流式处理失败: {e}\n"
+            yield f"❌ 分层系统处理失败: {e}\n"
 
 
     async def single_query_stream(self, query, system_type="educational", temperature=0.7, show_progress=True):
@@ -95,15 +165,15 @@ class AiEnhanceStreamingCliTool:
             print("🚀 开始流式处理...\n")
         
         try:
-            # 使用异步上下文管理器确保资源清理
-            async with self.system:
-                # 流式处理查询
-                async for chunk in self.stream_query_processing(
-                    query=query,
-                    user_id="cli_user",
-                    context={"source": "cli_streaming"}
-                ):
-                    print(chunk, end='', flush=True)
+            # 流式处理查询
+            async for chunk in self.stream_query_processing(
+                query=query,
+                user_id="cli_user",
+                context={"source": "cli_streaming"}
+            ):
+                print(chunk, end='', flush=True)
+                
+            # 资源将在系统退出时自动清理
                 
         except Exception as e:
             print(f"\n❌ 查询处理失败: {e}")
@@ -240,8 +310,9 @@ async def main():
     parser.add_argument('-i', '--interactive',
                         action='store_true', help='启动流式交互模式')
     parser.add_argument('-d', '--demo', action='store_true', help='运行流式演示模式')
-    parser.add_argument('--type', choices=['default', 'educational', 'research'],
-                        default='educational', help='系统类型 (默认: educational)')
+    parser.add_argument('--type', 
+                        choices=['educational', 'research', 'creative', 'lightweight'],
+                        default='educational', help='分层系统类型 (默认: educational)')
     parser.add_argument('--temp', type=float, default=0.7,
                         help='温度参数 0.0-1.0 (默认: 0.7)')
     parser.add_argument('--no-progress', action='store_true', help='不显示处理进度')

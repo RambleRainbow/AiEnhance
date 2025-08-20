@@ -391,6 +391,84 @@ def create_research_layered_system(
     )
 
 
+def create_creative_layered_system(
+    model_name: str = "qwen3:8b",
+    ollama_base: str = "http://localhost:11434",
+    system_type: str = "creative",
+    **kwargs
+) -> LayeredCognitiveSystem:
+    """
+    创建创意场景的分层认知系统
+    
+    Args:
+        model_name: 模型名称
+        ollama_base: Ollama服务地址
+        system_type: 系统类型
+        **kwargs: 其他参数
+        
+    Returns:
+        LayeredCognitiveSystem: 创意特化的分层认知系统
+    """
+    
+    return LayeredSystemFactory.create_creative_layered_system(
+        memory_config=MemorySystemConfig(system_type="mirix_unified"),
+        llm_config=ModelConfig(
+            provider="ollama",
+            model_name=model_name,
+            api_base=ollama_base,
+            temperature=kwargs.get('llm_temperature', 0.9),
+            max_tokens=kwargs.get('llm_max_tokens', 1000)
+        )
+    )
+
+
+def create_lightweight_layered_system(
+    model_name: str = "qwen3:8b",
+    ollama_base: str = "http://localhost:11434",
+    **kwargs
+) -> LayeredCognitiveSystem:
+    """
+    创建轻量级分层认知系统
+    
+    Args:
+        model_name: 模型名称
+        ollama_base: Ollama服务地址
+        **kwargs: 其他参数
+        
+    Returns:
+        LayeredCognitiveSystem: 轻量级分层认知系统
+    """
+    
+    return LayeredSystemFactory.create_lightweight_layered_system(
+        llm_config=ModelConfig(
+            provider="ollama",
+            model_name=model_name,
+            api_base=ollama_base,
+            temperature=kwargs.get('llm_temperature', 0.7),
+            max_tokens=kwargs.get('llm_max_tokens', 600)
+        )
+    )
+
+
+def get_layered_system_info() -> Dict[str, Any]:
+    """
+    获取分层系统信息
+    
+    Returns:
+        Dict: 分层系统信息
+    """
+    return {
+        "available_system_types": LayeredSystemFactory.get_available_system_types(),
+        "system_descriptions": {
+            system_type: LayeredSystemFactory.get_system_type_info(system_type)
+            for system_type in LayeredSystemFactory.get_available_system_types()
+        },
+        "version": "2.0.0",
+        "architecture": "Layered Cognitive System",
+        "layers": ["perception", "cognition", "behavior", "collaboration"]
+    }
+
+
 def get_system_info() -> Dict[str, Any]:
     """
     获取系统信息

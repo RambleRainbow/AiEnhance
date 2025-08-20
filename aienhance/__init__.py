@@ -37,6 +37,8 @@ from .enhanced_system_factory import (
     create_layered_system,
     create_educational_layered_system,
     create_research_layered_system,
+    create_creative_layered_system,
+    create_lightweight_layered_system,
     get_layered_system_info
 )
 from .memory import (
@@ -103,6 +105,8 @@ __all__ = [
     'create_layered_system',
     'create_educational_layered_system',
     'create_research_layered_system',
+    'create_creative_layered_system',
+    'create_lightweight_layered_system',
     'get_system_info',
     'get_layered_system_info',
     
