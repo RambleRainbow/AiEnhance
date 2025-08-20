@@ -105,8 +105,7 @@ class AiEnhanceStreamingCliTool:
                 async for chunk in self.system.process_stream(
                     query=query,
                     user_id=user_id,
-                    context=context,
-                    yield_steps=True
+                    context=context
                 ):
                     yield chunk
             else:
