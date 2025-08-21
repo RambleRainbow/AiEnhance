@@ -689,25 +689,33 @@ def create_gradio_interface():
         def process_query_handler(query: str, use_stream: bool):
             """根据用户选择使用流式或传统处理"""
             if use_stream:
-                # 流式处理 - 返回生成器的完整结果
-                full_response = ""
-                for chunk in sync_process_query_stream(query):
-                    full_response += chunk
-
-                # 简化的层级状态
-                simple_status = {"状态": "✅ 流式处理完成"}
-                status_json = json.dumps(simple_status, ensure_ascii=False, indent=2)
-
-                return (
-                    full_response,
-                    status_json,  # perception
-                    status_json,  # cognition
-                    status_json,  # behavior
-                    status_json,  # collaboration
-                    "✅ 流式处理完成"
-                )
+                # 流式处理 - 先获取详细的层级输出
+                try:
+                    # 使用详细的层级处理获取完整信息
+                    final_response, layer_outputs = safe_asyncio_run(
+                        visualizer.process_query_with_layers(query)
+                    )
+                    
+                    # 格式化各层输出
+                    perception_json = json.dumps(layer_outputs.get("perception", {"状态": "未处理"}), ensure_ascii=False, indent=2)
+                    cognition_json = json.dumps(layer_outputs.get("cognition", {"状态": "未处理"}), ensure_ascii=False, indent=2)
+                    behavior_json = json.dumps(layer_outputs.get("behavior", {"状态": "未处理"}), ensure_ascii=False, indent=2)
+                    collaboration_json = json.dumps(layer_outputs.get("collaboration", {"状态": "未处理"}), ensure_ascii=False, indent=2)
+                    
+                    return (
+                        final_response,
+                        perception_json,
+                        cognition_json, 
+                        behavior_json,
+                        collaboration_json,
+                        "✅ 分层处理完成 - 显示详细信息"
+                    )
+                except Exception as e:
+                    error_msg = f"❌ 处理失败: {str(e)}"
+                    error_json = json.dumps({"错误": str(e)}, ensure_ascii=False, indent=2)
+                    return (error_msg, error_json, error_json, error_json, error_json, error_msg)
             else:
-                # 传统处理
+                # 传统处理 - 同样使用详细输出
                 return sync_process_query(query)
 
         process_btn.click(
