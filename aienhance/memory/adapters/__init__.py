@@ -3,14 +3,14 @@
 为不同的记忆系统提供统一的接口适配
 """
 
-from .mirix_unified_adapter import MirixUnifiedAdapter
-from .mirix_llm_bridge import MirixLLMBridge
-from .mem0_adapter import Mem0Adapter
 from .graphiti_adapter import GraphitiAdapter
+from .mem0_adapter import Mem0Adapter
+from .mirix_llm_bridge import MirixLLMBridge
+from .mirix_unified_adapter import MirixUnifiedAdapter
 
 __all__ = [
     'MirixUnifiedAdapter',
     'MirixLLMBridge',
-    'Mem0Adapter', 
+    'Mem0Adapter',
     'GraphitiAdapter'
 ]

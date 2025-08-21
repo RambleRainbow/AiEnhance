@@ -5,11 +5,13 @@
 """
 
 import asyncio
+
 import aienhance
+
 
 async def main():
     print("🔍 测试修复后的参数配置...")
-    
+
     try:
         # 测试简化版本（无记忆系统）
         print("📝 创建简化系统（仅LLM）...")
@@ -21,7 +23,7 @@ async def main():
             llm_max_tokens=800
         )
         print("✅ 简化系统创建成功")
-        
+
         # 测试查询
         print("🤔 测试查询处理...")
         async with system:
@@ -30,13 +32,13 @@ async def main():
                 user_id="test_user",
                 context={"source": "test"}
             )
-            
+
             print("\n" + "="*50)
             print("🤖 AI回答:")
             print("="*50)
             print(response.content)
             print("\n✅ 测试成功！参数修复已生效")
-            
+
     except Exception as e:
         print(f"❌ 测试失败: {e}")
         import traceback

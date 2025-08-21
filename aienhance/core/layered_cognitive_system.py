@@ -4,30 +4,42 @@
 """
 
 import asyncio
-from datetime import datetime
-from typing import Dict, List, Optional, Any, AsyncIterator
 import logging
+from collections.abc import AsyncIterator
+from datetime import datetime
+from typing import Any
 
+from ..llm.interfaces import LLMProvider
+from ..memory.interfaces import (
+    MemoryQuery,
+    MemorySystem,
+    MemoryType,
+    create_user_context,
+)
+from .behavior_layer import BehaviorLayer
+from .cognition_layer import CognitionLayer
+from .collaboration_layer import CollaborationLayer
 from .layer_interfaces import (
-    ICognitiveLayers, SystemResponse, InformationFlow, ProcessingStatus,
-    PerceptionInput, CognitionInput, BehaviorInput, CollaborationInput
+    BehaviorInput,
+    CognitionInput,
+    CollaborationInput,
+    ICognitiveLayers,
+    InformationFlow,
+    PerceptionInput,
+    ProcessingStatus,
+    SystemResponse,
 )
 from .perception_layer import PerceptionLayer
-from .cognition_layer import CognitionLayer
-from .behavior_layer import BehaviorLayer
-from .collaboration_layer import CollaborationLayer
-from ..memory.interfaces import MemorySystem, MemoryQuery, create_user_context, MemoryType
-from ..llm.interfaces import LLMProvider
 
 logger = logging.getLogger(__name__)
 
 
 class LayeredCognitiveSystem(ICognitiveLayers):
     """分层认知系统主类"""
-    
-    def __init__(self, config: Optional[Dict[str, Any]] = None,
-                 memory_system: Optional[MemorySystem] = None,
-                 llm_provider: Optional[LLMProvider] = None):
+
+    def __init__(self, config: dict[str, Any] | None = None,
+                 memory_system: MemorySystem | None = None,
+                 llm_provider: LLMProvider | None = None):
         """
         初始化分层认知系统
         
@@ -39,21 +51,21 @@ class LayeredCognitiveSystem(ICognitiveLayers):
         self.config = config or {}
         self.memory_system = memory_system
         self.llm_provider = llm_provider
-        
+
         # 核心层对象
-        self.perception_layer: Optional[PerceptionLayer] = None
-        self.cognition_layer: Optional[CognitionLayer] = None
-        self.behavior_layer: Optional[BehaviorLayer] = None
-        self.collaboration_layer: Optional[CollaborationLayer] = None
-        
+        self.perception_layer: PerceptionLayer | None = None
+        self.cognition_layer: CognitionLayer | None = None
+        self.behavior_layer: BehaviorLayer | None = None
+        self.collaboration_layer: CollaborationLayer | None = None
+
         # 系统状态
         self.is_initialized = False
         self.layers_initialized = {}
-        
+
         # 信息流记录
-        self.information_flows: List[InformationFlow] = []
+        self.information_flows: list[InformationFlow] = []
         self.max_flow_history = 1000  # 最大信息流历史记录数
-        
+
         # 性能统计
         self.processing_statistics = {
             'total_queries': 0,
@@ -62,12 +74,12 @@ class LayeredCognitiveSystem(ICognitiveLayers):
             'average_processing_time': 0.0,
             'layer_performance': {}
         }
-        
+
     async def initialize_layers(self) -> bool:
         """初始化所有层"""
         try:
             logger.info("Initializing Layered Cognitive System...")
-            
+
             # 0. 初始化记忆系统（如果存在）
             if self.memory_system:
                 logger.info("Initializing Memory System...")
@@ -77,7 +89,7 @@ class LayeredCognitiveSystem(ICognitiveLayers):
                 else:
                     logger.warning("⚠️ Memory System initialization failed, continuing without memory")
                     self.memory_system = None
-            
+
             # 1. 初始化感知层
             logger.info("Initializing Perception Layer...")
             self.perception_layer = PerceptionLayer(
@@ -86,13 +98,13 @@ class LayeredCognitiveSystem(ICognitiveLayers):
             )
             perception_success = await self.perception_layer.initialize()
             self.layers_initialized['perception'] = perception_success
-            
+
             if perception_success:
                 logger.info("✅ Perception Layer initialized successfully")
             else:
                 logger.error("❌ Perception Layer initialization failed")
                 return False
-            
+
             # 2. 初始化认知层
             logger.info("Initializing Cognition Layer...")
             self.cognition_layer = CognitionLayer(
@@ -100,13 +112,13 @@ class LayeredCognitiveSystem(ICognitiveLayers):
             )
             cognition_success = await self.cognition_layer.initialize()
             self.layers_initialized['cognition'] = cognition_success
-            
+
             if cognition_success:
                 logger.info("✅ Cognition Layer initialized successfully")
             else:
                 logger.error("❌ Cognition Layer initialization failed")
                 return False
-            
+
             # 3. 初始化行为层
             logger.info("Initializing Behavior Layer...")
             self.behavior_layer = BehaviorLayer(
@@ -115,13 +127,13 @@ class LayeredCognitiveSystem(ICognitiveLayers):
             )
             behavior_success = await self.behavior_layer.initialize()
             self.layers_initialized['behavior'] = behavior_success
-            
+
             if behavior_success:
                 logger.info("✅ Behavior Layer initialized successfully")
             else:
                 logger.error("❌ Behavior Layer initialization failed")
                 return False
-            
+
             # 4. 初始化协作层（可选）
             if self.config.get('enable_collaboration', True) and self.llm_provider:
                 logger.info("Initializing Collaboration Layer...")
@@ -132,7 +144,7 @@ class LayeredCognitiveSystem(ICognitiveLayers):
                 )
                 collaboration_success = await self.collaboration_layer.initialize()
                 self.layers_initialized['collaboration'] = collaboration_success
-                
+
                 if collaboration_success:
                     logger.info("✅ Collaboration Layer initialized successfully")
                 else:
@@ -140,18 +152,18 @@ class LayeredCognitiveSystem(ICognitiveLayers):
             else:
                 logger.info("⏭️ Collaboration Layer disabled or LLM not available")
                 self.layers_initialized['collaboration'] = False
-            
+
             self.is_initialized = True
             logger.info("🎉 Layered Cognitive System initialization completed successfully")
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to initialize Layered Cognitive System: {e}")
             self.is_initialized = False
             return False
-    
-    async def process_through_layers(self, query: str, user_id: str, 
-                                   context: Dict[str, Any]) -> SystemResponse:
+
+    async def process_through_layers(self, query: str, user_id: str,
+                                   context: dict[str, Any]) -> SystemResponse:
         """
         通过各层处理用户查询
         
@@ -165,7 +177,7 @@ class LayeredCognitiveSystem(ICognitiveLayers):
         """
         if not self.is_initialized:
             raise RuntimeError("Layered Cognitive System not initialized")
-        
+
         start_time = datetime.now()
         processing_metadata = {
             'query': query,
@@ -175,45 +187,45 @@ class LayeredCognitiveSystem(ICognitiveLayers):
             'layer_timings': {},
             'information_flows': []
         }
-        
+
         try:
             logger.info(f"🚀 Starting layered processing for user: {user_id}")
             self.processing_statistics['total_queries'] += 1
-            
+
             # ==================== 感知层处理 ====================
             layer_start = datetime.now()
             processing_metadata['processing_steps'].append('perception_start')
-            
+
             perception_input = PerceptionInput(
                 query=query,
                 user_id=user_id,
                 context=context,
                 historical_data=await self._get_user_historical_data(user_id)
             )
-            
+
             self._record_information_flow('system', 'perception', perception_input, 'input')
-            
+
             perception_output = await self.perception_layer.process(perception_input)
-            
+
             self._record_information_flow('perception', 'system', perception_output, 'output')
-            
+
             layer_end = datetime.now()
             perception_time = (layer_end - layer_start).total_seconds()
             processing_metadata['layer_timings']['perception'] = perception_time
             processing_metadata['processing_steps'].append('perception_complete')
-            
+
             if perception_output.status != ProcessingStatus.COMPLETED:
                 raise RuntimeError(f"Perception layer failed: {perception_output.error_message}")
-            
+
             logger.info(f"✅ Perception layer completed in {perception_time:.3f}s")
-            
+
             # ==================== 认知层处理 ====================
             layer_start = datetime.now()
             processing_metadata['processing_steps'].append('cognition_start')
-            
+
             # 获取外部记忆
             external_memories = await self._retrieve_external_memories(query, user_id, context)
-            
+
             cognition_input = CognitionInput(
                 query=query,
                 user_profile=perception_output.user_profile,
@@ -221,27 +233,27 @@ class LayeredCognitiveSystem(ICognitiveLayers):
                 external_memories=external_memories,
                 perception_insights=perception_output.perception_insights
             )
-            
+
             self._record_information_flow('perception', 'cognition', cognition_input, 'input')
-            
+
             cognition_output = await self.cognition_layer.process(cognition_input)
-            
+
             self._record_information_flow('cognition', 'system', cognition_output, 'output')
-            
+
             layer_end = datetime.now()
             cognition_time = (layer_end - layer_start).total_seconds()
             processing_metadata['layer_timings']['cognition'] = cognition_time
             processing_metadata['processing_steps'].append('cognition_complete')
-            
+
             if cognition_output.status != ProcessingStatus.COMPLETED:
                 raise RuntimeError(f"Cognition layer failed: {cognition_output.error_message}")
-            
+
             logger.info(f"✅ Cognition layer completed in {cognition_time:.3f}s")
-            
+
             # ==================== 行为层处理 ====================
             layer_start = datetime.now()
             processing_metadata['processing_steps'].append('behavior_start')
-            
+
             behavior_input = BehaviorInput(
                 query=query,
                 user_profile=perception_output.user_profile,
@@ -249,29 +261,29 @@ class LayeredCognitiveSystem(ICognitiveLayers):
                 cognition_output=cognition_output,
                 generation_requirements=context.get('generation_requirements', {})
             )
-            
+
             self._record_information_flow('cognition', 'behavior', behavior_input, 'input')
-            
+
             behavior_output = await self.behavior_layer.process(behavior_input)
-            
+
             self._record_information_flow('behavior', 'system', behavior_output, 'output')
-            
+
             layer_end = datetime.now()
             behavior_time = (layer_end - layer_start).total_seconds()
             processing_metadata['layer_timings']['behavior'] = behavior_time
             processing_metadata['processing_steps'].append('behavior_complete')
-            
+
             if behavior_output.status != ProcessingStatus.COMPLETED:
                 raise RuntimeError(f"Behavior layer failed: {behavior_output.error_message}")
-            
+
             logger.info(f"✅ Behavior layer completed in {behavior_time:.3f}s")
-            
+
             # ==================== 协作层处理（可选）====================
             collaboration_output = None
             if self.collaboration_layer and self.layers_initialized.get('collaboration', False):
                 layer_start = datetime.now()
                 processing_metadata['processing_steps'].append('collaboration_start')
-                
+
                 collaboration_input = CollaborationInput(
                     query=query,
                     user_profile=perception_output.user_profile,
@@ -279,31 +291,31 @@ class LayeredCognitiveSystem(ICognitiveLayers):
                     behavior_output=behavior_output,
                     collaboration_context=context.get('collaboration_context', {})
                 )
-                
+
                 self._record_information_flow('behavior', 'collaboration', collaboration_input, 'input')
-                
+
                 try:
                     collaboration_output = await self.collaboration_layer.process(collaboration_input)
-                    
+
                     self._record_information_flow('collaboration', 'system', collaboration_output, 'output')
-                    
+
                     layer_end = datetime.now()
                     collaboration_time = (layer_end - layer_start).total_seconds()
                     processing_metadata['layer_timings']['collaboration'] = collaboration_time
                     processing_metadata['processing_steps'].append('collaboration_complete')
-                    
+
                     logger.info(f"✅ Collaboration layer completed in {collaboration_time:.3f}s")
-                    
+
                 except Exception as e:
                     logger.warning(f"⚠️ Collaboration layer failed, continuing without collaboration: {e}")
                     processing_metadata['collaboration_error'] = str(e)
                     processing_metadata['processing_steps'].append('collaboration_failed')
             else:
                 processing_metadata['processing_steps'].append('collaboration_skipped')
-            
+
             # ==================== 后处理和记忆保存 ====================
             processing_metadata['processing_steps'].append('postprocessing_start')
-            
+
             # 保存处理结果到记忆系统
             if self.memory_system:
                 try:
@@ -315,7 +327,7 @@ class LayeredCognitiveSystem(ICognitiveLayers):
                 except Exception as e:
                     logger.warning(f"Failed to save processing results: {e}")
                     processing_metadata['memory_save_error'] = str(e)
-            
+
             # 更新用户画像
             try:
                 interaction_data = self._extract_interaction_data(
@@ -326,25 +338,25 @@ class LayeredCognitiveSystem(ICognitiveLayers):
             except Exception as e:
                 logger.warning(f"Failed to update user profile: {e}")
                 processing_metadata['profile_update_error'] = str(e)
-            
+
             # 计算总处理时间
             end_time = datetime.now()
             total_processing_time = (end_time - start_time).total_seconds()
             processing_metadata['total_processing_time'] = total_processing_time
             processing_metadata['processing_steps'].append('completed')
-            
+
             # 更新统计信息
             self._update_processing_statistics(total_processing_time, processing_metadata, True)
-            
+
             # 构建最终响应
             final_content = behavior_output.adapted_content.content
-            
+
             # 如果协作层产生了增强内容，使用它
-            if (collaboration_output and 
-                collaboration_output.enhanced_content and 
+            if (collaboration_output and
+                collaboration_output.enhanced_content and
                 collaboration_output.status == ProcessingStatus.COMPLETED):
                 final_content = collaboration_output.enhanced_content
-            
+
             response = SystemResponse(
                 content=final_content,
                 perception_output=perception_output,
@@ -353,29 +365,29 @@ class LayeredCognitiveSystem(ICognitiveLayers):
                 collaboration_output=collaboration_output,
                 processing_metadata=processing_metadata
             )
-            
+
             logger.info(f"🎉 Layered processing completed successfully in {total_processing_time:.3f}s")
             self.processing_statistics['successful_queries'] += 1
-            
+
             return response
-            
+
         except Exception as e:
             end_time = datetime.now()
             total_processing_time = (end_time - start_time).total_seconds()
-            
+
             logger.error(f"❌ Layered processing failed: {e}")
             processing_metadata['error'] = str(e)
             processing_metadata['total_processing_time'] = total_processing_time
             processing_metadata['processing_steps'].append('error')
-            
+
             # 更新统计信息
             self._update_processing_statistics(total_processing_time, processing_metadata, False)
             self.processing_statistics['failed_queries'] += 1
-            
+
             raise RuntimeError(f"Layered processing failed: {e}")
-    
-    async def process_stream(self, query: str, user_id: str, 
-                           context: Dict[str, Any]) -> AsyncIterator[str]:
+
+    async def process_stream(self, query: str, user_id: str,
+                           context: dict[str, Any]) -> AsyncIterator[str]:
         """
         流式处理用户查询
         
@@ -389,33 +401,33 @@ class LayeredCognitiveSystem(ICognitiveLayers):
         """
         if not self.is_initialized:
             raise RuntimeError("Layered Cognitive System not initialized")
-        
+
         try:
             yield "🚀 开始分层认知处理...\n"
-            
+
             # ==================== 感知层处理 ====================
             yield "🧠 感知层：分析用户查询和上下文...\n"
-            
+
             perception_input = PerceptionInput(
                 query=query,
                 user_id=user_id,
                 context=context,
                 historical_data=await self._get_user_historical_data(user_id)
             )
-            
+
             perception_output = await self.perception_layer.process(perception_input)
-            
+
             if perception_output.status == ProcessingStatus.COMPLETED:
                 yield "✅ 感知层处理完成\n"
             else:
                 yield f"❌ 感知层处理失败: {perception_output.error_message}\n"
                 return
-            
+
             # ==================== 认知层处理 ====================
             yield "💾 认知层：激活记忆和推理分析...\n"
-            
+
             external_memories = await self._retrieve_external_memories(query, user_id, context)
-            
+
             cognition_input = CognitionInput(
                 query=query,
                 user_profile=perception_output.user_profile,
@@ -423,18 +435,18 @@ class LayeredCognitiveSystem(ICognitiveLayers):
                 external_memories=external_memories,
                 perception_insights=perception_output.perception_insights
             )
-            
+
             cognition_output = await self.cognition_layer.process(cognition_input)
-            
+
             if cognition_output.status == ProcessingStatus.COMPLETED:
                 yield "✅ 认知层处理完成\n"
             else:
                 yield f"❌ 认知层处理失败: {cognition_output.error_message}\n"
                 return
-            
+
             # ==================== 行为层处理 ====================
             yield "⚙️ 行为层：生成个性化响应...\n"
-            
+
             behavior_input = BehaviorInput(
                 query=query,
                 user_profile=perception_output.user_profile,
@@ -442,33 +454,33 @@ class LayeredCognitiveSystem(ICognitiveLayers):
                 cognition_output=cognition_output,
                 generation_requirements=context.get('generation_requirements', {})
             )
-            
+
             # 检查是否支持流式生成
-            if (self.behavior_layer.llm_initialized and 
+            if (self.behavior_layer.llm_initialized and
                 hasattr(self.behavior_layer.llm_provider, 'chat_stream')):
-                
+
                 yield "🤖 开始AI内容生成...\n"
-                
+
                 # 流式生成内容
                 async for chunk in self.behavior_layer.generate_response_stream(behavior_input):
                     yield chunk
-                
+
                 yield "\n✅ 行为层处理完成\n"
             else:
                 # 非流式处理
                 behavior_output = await self.behavior_layer.process(behavior_input)
-                
+
                 if behavior_output.status == ProcessingStatus.COMPLETED:
                     yield behavior_output.adapted_content.content
                     yield "\n✅ 行为层处理完成\n"
                 else:
                     yield f"❌ 行为层处理失败: {behavior_output.error_message}\n"
                     return
-            
+
             # ==================== 协作层处理（可选）====================
             if self.collaboration_layer and self.layers_initialized.get('collaboration', False):
                 yield "🤝 协作层：生成多元观点和认知挑战...\n"
-                
+
                 # 协作层通常不支持流式处理，快速完成
                 try:
                     collaboration_input = CollaborationInput(
@@ -478,12 +490,12 @@ class LayeredCognitiveSystem(ICognitiveLayers):
                         behavior_output=behavior_output,
                         collaboration_context=context.get('collaboration_context', {})
                     )
-                    
+
                     collaboration_output = await self.collaboration_layer.process(collaboration_input)
-                    
+
                     if collaboration_output.status == ProcessingStatus.COMPLETED:
                         yield "✅ 协作层处理完成\n"
-                        
+
                         # 如果有增强内容，输出差异部分
                         if collaboration_output.enhanced_content:
                             original_content = behavior_output.adapted_content.content
@@ -494,42 +506,42 @@ class LayeredCognitiveSystem(ICognitiveLayers):
                                     yield enhanced_part
                     else:
                         yield f"⚠️ 协作层处理失败，继续处理: {collaboration_output.error_message}\n"
-                        
+
                 except Exception as e:
                     yield f"⚠️ 协作层处理异常，继续处理: {e}\n"
-            
+
             yield "\n🎯 分层认知处理完成！\n"
-            
+
             # 异步保存结果（不阻塞流式输出）
             asyncio.create_task(self._async_save_stream_results(
                 query, user_id, context, perception_output, cognition_output
             ))
-            
+
         except Exception as e:
             yield f"\n❌ 处理失败: {e}\n"
-    
-    async def _get_user_historical_data(self, user_id: str) -> Optional[List[Any]]:
+
+    async def _get_user_historical_data(self, user_id: str) -> list[Any] | None:
         """获取用户历史数据"""
         try:
             if not self.memory_system:
                 return None
-            
+
             user_context = create_user_context(user_id)
             user_memories = await self.memory_system.get_user_memories(user_context, limit=20)
-            
+
             return user_memories.memories
-            
+
         except Exception as e:
             logger.warning(f"Failed to get user historical data: {e}")
             return None
-    
-    async def _retrieve_external_memories(self, query: str, user_id: str, 
-                                        context: Dict[str, Any]) -> List[Any]:
+
+    async def _retrieve_external_memories(self, query: str, user_id: str,
+                                        context: dict[str, Any]) -> list[Any]:
         """检索外部记忆"""
         try:
             if not self.memory_system:
                 return []
-            
+
             user_context = create_user_context(user_id, context.get('session_id'))
             memory_query = MemoryQuery(
                 query=query,
@@ -537,15 +549,15 @@ class LayeredCognitiveSystem(ICognitiveLayers):
                 limit=20,
                 similarity_threshold=0.6
             )
-            
+
             memory_result = await self.memory_system.search_memories(memory_query)
             return memory_result.memories
-            
+
         except Exception as e:
             logger.warning(f"Failed to retrieve external memories: {e}")
             return []
-    
-    def _record_information_flow(self, from_layer: str, to_layer: str, 
+
+    def _record_information_flow(self, from_layer: str, to_layer: str,
                                 data: Any, flow_type: str):
         """记录层间信息流"""
         try:
@@ -556,29 +568,29 @@ class LayeredCognitiveSystem(ICognitiveLayers):
                 flow_type=flow_type,
                 timestamp=datetime.now().isoformat()
             )
-            
+
             self.information_flows.append(flow)
-            
+
             # 限制信息流历史记录数量
             if len(self.information_flows) > self.max_flow_history:
                 self.information_flows = self.information_flows[-self.max_flow_history:]
-                
+
         except Exception as e:
             logger.warning(f"Failed to record information flow: {e}")
-    
-    async def _save_processing_results(self, query: str, user_id: str, context: Dict[str, Any],
-                                     perception_output, cognition_output, 
+
+    async def _save_processing_results(self, query: str, user_id: str, context: dict[str, Any],
+                                     perception_output, cognition_output,
                                      behavior_output, collaboration_output):
         """保存处理结果到记忆系统"""
         try:
             if not self.memory_system:
                 return
-            
+
             user_context = create_user_context(user_id, context.get('session_id'))
-            
+
             # 保存用户查询
             from ..memory.interfaces import create_memory_entry
-            
+
             query_memory = create_memory_entry(
                 content=f"用户查询: {query}",
                 memory_type=MemoryType.EPISODIC,
@@ -591,7 +603,7 @@ class LayeredCognitiveSystem(ICognitiveLayers):
                 }
             )
             await self.memory_system.add_memory(query_memory)
-            
+
             # 保存系统响应
             response_memory = create_memory_entry(
                 content=f"系统响应: {behavior_output.adapted_content.content}",
@@ -606,7 +618,7 @@ class LayeredCognitiveSystem(ICognitiveLayers):
                 }
             )
             await self.memory_system.add_memory(response_memory)
-            
+
             # 保存重要的认知洞察
             if hasattr(cognition_output, 'cognitive_insights'):
                 insights = cognition_output.cognitive_insights
@@ -623,23 +635,23 @@ class LayeredCognitiveSystem(ICognitiveLayers):
                             }
                         )
                         await self.memory_system.add_memory(gap_memory)
-            
+
         except Exception as e:
             logger.error(f"Failed to save processing results: {e}")
-    
-    async def _async_save_stream_results(self, query: str, user_id: str, context: Dict[str, Any],
+
+    async def _async_save_stream_results(self, query: str, user_id: str, context: dict[str, Any],
                                        perception_output, cognition_output):
         """异步保存流式处理结果"""
         try:
             await self._save_processing_results(
-                query, user_id, context, perception_output, cognition_output, 
+                query, user_id, context, perception_output, cognition_output,
                 None, None  # 流式处理时可能没有完整的behavior和collaboration输出
             )
         except Exception as e:
             logger.error(f"Failed to save stream results: {e}")
-    
-    def _extract_interaction_data(self, query: str, behavior_output, 
-                                processing_metadata: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _extract_interaction_data(self, query: str, behavior_output,
+                                processing_metadata: dict[str, Any]) -> dict[str, Any]:
         """提取交互数据用于更新用户画像"""
         return {
             'query': query,
@@ -649,9 +661,9 @@ class LayeredCognitiveSystem(ICognitiveLayers):
             'adaptation_strategy': behavior_output.adapted_content.adaptation_strategy,
             'personalization_level': behavior_output.adapted_content.personalization_level
         }
-    
-    def _update_processing_statistics(self, processing_time: float, 
-                                    metadata: Dict[str, Any], success: bool):
+
+    def _update_processing_statistics(self, processing_time: float,
+                                    metadata: dict[str, Any], success: bool):
         """更新处理统计信息"""
         try:
             # 更新平均处理时间
@@ -659,7 +671,7 @@ class LayeredCognitiveSystem(ICognitiveLayers):
             current_avg = self.processing_statistics['average_processing_time']
             new_avg = (current_avg * (total_queries - 1) + processing_time) / total_queries
             self.processing_statistics['average_processing_time'] = new_avg
-            
+
             # 更新层级性能统计
             layer_timings = metadata.get('layer_timings', {})
             for layer, timing in layer_timings.items():
@@ -669,16 +681,16 @@ class LayeredCognitiveSystem(ICognitiveLayers):
                         'call_count': 0,
                         'average_time': 0.0
                     }
-                
+
                 layer_stats = self.processing_statistics['layer_performance'][layer]
                 layer_stats['total_time'] += timing
                 layer_stats['call_count'] += 1
                 layer_stats['average_time'] = layer_stats['total_time'] / layer_stats['call_count']
-                
+
         except Exception as e:
             logger.warning(f"Failed to update processing statistics: {e}")
-    
-    def get_layer_status(self, layer_name: str) -> Dict[str, Any]:
+
+    def get_layer_status(self, layer_name: str) -> dict[str, Any]:
         """获取指定层的状态"""
         layer_map = {
             'perception': self.perception_layer,
@@ -686,7 +698,7 @@ class LayeredCognitiveSystem(ICognitiveLayers):
             'behavior': self.behavior_layer,
             'collaboration': self.collaboration_layer
         }
-        
+
         layer = layer_map.get(layer_name)
         if layer and hasattr(layer, 'get_status'):
             return layer.get_status()
@@ -696,12 +708,12 @@ class LayeredCognitiveSystem(ICognitiveLayers):
                 'exists': layer is not None,
                 'initialized': self.layers_initialized.get(layer_name, False)
             }
-    
-    def get_information_flows(self) -> List[InformationFlow]:
+
+    def get_information_flows(self) -> list[InformationFlow]:
         """获取信息流记录"""
         return self.information_flows.copy()
-    
-    def get_system_status(self) -> Dict[str, Any]:
+
+    def get_system_status(self) -> dict[str, Any]:
         """获取系统整体状态"""
         return {
             'system_initialized': self.is_initialized,
@@ -719,52 +731,52 @@ class LayeredCognitiveSystem(ICognitiveLayers):
                 'llm_provider': self.llm_provider is not None
             }
         }
-    
+
     async def cleanup_all_layers(self) -> None:
         """清理所有层资源"""
         try:
             logger.info("Cleaning up all layers...")
-            
+
             # 清理各个层
             cleanup_tasks = []
-            
+
             if self.perception_layer:
                 cleanup_tasks.append(self.perception_layer.cleanup())
-            
+
             if self.cognition_layer:
                 cleanup_tasks.append(self.cognition_layer.cleanup())
-            
+
             if self.behavior_layer:
                 cleanup_tasks.append(self.behavior_layer.cleanup())
-            
+
             if self.collaboration_layer:
                 cleanup_tasks.append(self.collaboration_layer.cleanup())
-            
+
             # 并行清理
             if cleanup_tasks:
                 await asyncio.gather(*cleanup_tasks, return_exceptions=True)
-            
+
             # 清理系统状态
             self.information_flows.clear()
             self.is_initialized = False
             self.layers_initialized.clear()
-            
+
             logger.info("All layers cleanup completed")
-            
+
         except Exception as e:
             logger.error(f"Failed to cleanup all layers: {e}")
-    
+
     async def __aenter__(self):
         """异步上下文管理器入口"""
         if not self.is_initialized:
             await self.initialize_layers()
         return self
-    
+
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """异步上下文管理器出口"""
         await self.cleanup_all_layers()
-    
-    def get_system_info(self) -> Dict[str, Any]:
+
+    def get_system_info(self) -> dict[str, Any]:
         """获取系统信息"""
         info = {
             "system_type": "layered_cognitive",
@@ -811,12 +823,12 @@ class LayeredCognitiveSystem(ICognitiveLayers):
                 "collaboration_support": self.collaboration_layer is not None
             }
         }
-        
+
         # 添加记忆系统详细信息
         if self.memory_system and hasattr(self.memory_system, 'get_system_info'):
             try:
                 info["components"]["memory_system"]["details"] = self.memory_system.get_system_info()
             except Exception as e:
                 info["components"]["memory_system"]["error"] = str(e)
-        
+
         return info

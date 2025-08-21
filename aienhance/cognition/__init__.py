@@ -3,41 +3,39 @@
 包含多层次记忆激活、语义补充、类比推理等核心认知功能
 """
 
-from .memory_activation import (
-    MemoryFragment,
-    ActivationResult,
-    MultiLevelMemoryActivator,
-    SurfaceActivator,
-    DeepActivator,
-    MetaActivator,
-    ActivationLevel,
-    RelationType
-)
-
-from .semantic_enhancement import (
-    ConceptGap,
-    SemanticBridge,
-    IntegrationResult,
-    IntegratedSemanticEnhancer,
-    ConceptGapIdentifier,
-    SemanticBridgeBuilder,
-    ContextualIntegrator,
-    GapType,
-    BridgingStrategy,
-    IntegrationLevel
-)
-
 from .analogy_reasoning import (
     AnalogyMapping,
-    ThinkingFramework,
-    CreativeAssociation,
-    IntegratedAnalogyReasoner,
     AnalogyRetriever,
-    ThinkingFrameworkMatcher,
+    AssociationType,
+    CreativeAssociation,
     CreativeAssociationGenerator,
-    SimilarityType,
     FrameworkType,
-    AssociationType
+    IntegratedAnalogyReasoner,
+    SimilarityType,
+    ThinkingFramework,
+    ThinkingFrameworkMatcher,
+)
+from .memory_activation import (
+    ActivationLevel,
+    ActivationResult,
+    DeepActivator,
+    MemoryFragment,
+    MetaActivator,
+    MultiLevelMemoryActivator,
+    RelationType,
+    SurfaceActivator,
+)
+from .semantic_enhancement import (
+    BridgingStrategy,
+    ConceptGap,
+    ConceptGapIdentifier,
+    ContextualIntegrator,
+    GapType,
+    IntegratedSemanticEnhancer,
+    IntegrationLevel,
+    IntegrationResult,
+    SemanticBridge,
+    SemanticBridgeBuilder,
 )
 
 __all__ = [
@@ -50,7 +48,7 @@ __all__ = [
     'MetaActivator',
     'ActivationLevel',
     'RelationType',
-    
+
     # Semantic Enhancement
     'ConceptGap',
     'SemanticBridge',
@@ -62,7 +60,7 @@ __all__ = [
     'GapType',
     'BridgingStrategy',
     'IntegrationLevel',
-    
+
     # Analogy Reasoning
     'AnalogyMapping',
     'ThinkingFramework',

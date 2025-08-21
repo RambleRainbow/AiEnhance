@@ -3,11 +3,11 @@
 基于MIRIX、Mem0、Graphiti等系统的共同模式设计
 """
 
+import datetime
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Any, Union
 from enum import Enum
-import datetime
+from typing import Any
 
 
 class MemoryType(Enum):
@@ -24,9 +24,9 @@ class MemoryType(Enum):
 class UserContext:
     """用户上下文信息"""
     user_id: str
-    session_id: Optional[str] = None
-    agent_id: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = None
+    session_id: str | None = None
+    agent_id: str | None = None
+    metadata: dict[str, Any] | None = None
 
 
 @dataclass
@@ -37,14 +37,14 @@ class MemoryEntry:
     user_context: UserContext
     timestamp: datetime.datetime
     confidence: float = 1.0
-    embedding: Optional[List[float]] = None
-    metadata: Optional[Dict[str, Any]] = None
-    relationships: Optional[Dict[str, Any]] = None  # For graph-based systems like Graphiti
-    
+    embedding: list[float] | None = None
+    metadata: dict[str, Any] | None = None
+    relationships: dict[str, Any] | None = None  # For graph-based systems like Graphiti
+
     # 可选的多模态数据
-    image_data: Optional[bytes] = None
-    audio_data: Optional[bytes] = None
-    file_path: Optional[str] = None
+    image_data: bytes | None = None
+    audio_data: bytes | None = None
+    file_path: str | None = None
 
 
 @dataclass
@@ -52,33 +52,33 @@ class MemoryQuery:
     """记忆查询参数"""
     query: str
     user_context: UserContext
-    memory_types: Optional[List[MemoryType]] = None
+    memory_types: list[MemoryType] | None = None
     limit: int = 10
     similarity_threshold: float = 0.7
-    time_range: Optional[tuple[datetime.datetime, datetime.datetime]] = None
-    metadata_filters: Optional[Dict[str, Any]] = None
+    time_range: tuple[datetime.datetime, datetime.datetime] | None = None
+    metadata_filters: dict[str, Any] | None = None
     include_relationships: bool = False  # For graph-based queries
 
 
 @dataclass
 class MemoryResult:
     """记忆查询结果"""
-    memories: List[MemoryEntry]
+    memories: list[MemoryEntry]
     total_count: int
     query_time: float
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 
 @dataclass
 class MemorySystemConfig:
     """记忆系统配置"""
     system_type: str  # "mirix", "mem0", "graphiti", etc.
-    api_key: Optional[str] = None
-    api_base: Optional[str] = None  # 添加api_base字段
-    config_path: Optional[str] = None
-    database_url: Optional[str] = None
-    embedding_model: Optional[str] = None
-    custom_config: Optional[Dict[str, Any]] = None
+    api_key: str | None = None
+    api_base: str | None = None  # 添加api_base字段
+    config_path: str | None = None
+    database_url: str | None = None
+    embedding_model: str | None = None
+    custom_config: dict[str, Any] | None = None
 
 
 class MemorySystem(ABC):
@@ -88,16 +88,16 @@ class MemorySystem(ABC):
     定义所有记忆系统必须实现的核心接口，确保系统间的可替换性
     参考MIRIX、Mem0、Graphiti等系统的共同模式设计
     """
-    
+
     def __init__(self, config: MemorySystemConfig):
         self.config = config
         self.is_initialized = False
-    
+
     @abstractmethod
     async def initialize(self) -> bool:
         """初始化记忆系统"""
         pass
-    
+
     @abstractmethod
     async def add_memory(self, memory: MemoryEntry) -> str:
         """
@@ -110,7 +110,7 @@ class MemorySystem(ABC):
             str: 记忆ID
         """
         pass
-    
+
     @abstractmethod
     async def search_memories(self, query: MemoryQuery) -> MemoryResult:
         """
@@ -123,9 +123,9 @@ class MemorySystem(ABC):
             MemoryResult: 搜索结果
         """
         pass
-    
+
     @abstractmethod
-    async def get_memory(self, memory_id: str, user_context: UserContext) -> Optional[MemoryEntry]:
+    async def get_memory(self, memory_id: str, user_context: UserContext) -> MemoryEntry | None:
         """
         获取特定记忆
         
@@ -137,7 +137,7 @@ class MemorySystem(ABC):
             Optional[MemoryEntry]: 记忆条目
         """
         pass
-    
+
     @abstractmethod
     async def update_memory(self, memory_id: str, memory: MemoryEntry) -> bool:
         """
@@ -151,7 +151,7 @@ class MemorySystem(ABC):
             bool: 更新成功
         """
         pass
-    
+
     @abstractmethod
     async def delete_memory(self, memory_id: str, user_context: UserContext) -> bool:
         """
@@ -165,10 +165,10 @@ class MemorySystem(ABC):
             bool: 删除成功
         """
         pass
-    
+
     @abstractmethod
-    async def get_user_memories(self, user_context: UserContext, 
-                              memory_types: Optional[List[MemoryType]] = None,
+    async def get_user_memories(self, user_context: UserContext,
+                              memory_types: list[MemoryType] | None = None,
                               limit: int = 100) -> MemoryResult:
         """
         获取用户的所有记忆
@@ -182,7 +182,7 @@ class MemorySystem(ABC):
             MemoryResult: 用户记忆
         """
         pass
-    
+
     @abstractmethod
     async def clear_user_memories(self, user_context: UserContext) -> bool:
         """
@@ -195,10 +195,10 @@ class MemorySystem(ABC):
             bool: 清除成功
         """
         pass
-    
+
     # 可选的高级功能接口
-    
-    async def chat_with_memory(self, message: str, user_context: UserContext, 
+
+    async def chat_with_memory(self, message: str, user_context: UserContext,
                              save_interaction: bool = True) -> str:
         """
         基于记忆的对话接口 (类似Mem0的chat方法)
@@ -217,9 +217,9 @@ class MemorySystem(ABC):
             user_context=user_context,
             limit=5
         )
-        
+
         result = await self.search_memories(query)
-        
+
         if save_interaction:
             # 保存用户消息为记忆
             memory = MemoryEntry(
@@ -229,10 +229,10 @@ class MemorySystem(ABC):
                 timestamp=datetime.datetime.now()
             )
             await self.add_memory(memory)
-        
+
         return f"基于{len(result.memories)}条相关记忆的响应"
-    
-    async def get_memory_stats(self, user_context: UserContext) -> Dict[str, Any]:
+
+    async def get_memory_stats(self, user_context: UserContext) -> dict[str, Any]:
         """
         获取记忆统计信息
         
@@ -252,10 +252,10 @@ class MemorySystem(ABC):
             )
             result = await self.search_memories(query)
             stats[memory_type.value] = result.total_count
-        
+
         return stats
-    
-    def get_system_info(self) -> Dict[str, Any]:
+
+    def get_system_info(self) -> dict[str, Any]:
         """获取系统信息"""
         return {
             "system_type": self.config.system_type,
@@ -266,14 +266,14 @@ class MemorySystem(ABC):
 
 class MemorySystemFactory:
     """记忆系统工厂类"""
-    
+
     _adapters = {}
-    
+
     @classmethod
     def register_adapter(cls, system_type: str, adapter_class):
         """注册记忆系统适配器"""
         cls._adapters[system_type] = adapter_class
-    
+
     @classmethod
     def create_memory_system(cls, config: MemorySystemConfig, llm_provider=None) -> MemorySystem:
         """
@@ -287,27 +287,27 @@ class MemorySystemFactory:
             MemorySystem: 记忆系统实例
         """
         system_type = config.system_type.lower()
-        
+
         if system_type not in cls._adapters:
             raise ValueError(f"不支持的记忆系统类型: {system_type}")
-        
+
         adapter_class = cls._adapters[system_type]
-        
+
         # 检查是否为MIRIX统一适配器，如果是则传递LLM提供商
         if system_type == "mirix_unified" and llm_provider is not None:
             return adapter_class(config, llm_provider)
         else:
             return adapter_class(config)
-    
+
     @classmethod
-    def get_supported_systems(cls) -> List[str]:
+    def get_supported_systems(cls) -> list[str]:
         """获取支持的记忆系统类型"""
         return list(cls._adapters.keys())
 
 
 # 便捷函数
-def create_user_context(user_id: str, session_id: Optional[str] = None, 
-                       agent_id: Optional[str] = None, **kwargs) -> UserContext:
+def create_user_context(user_id: str, session_id: str | None = None,
+                       agent_id: str | None = None, **kwargs) -> UserContext:
     """创建用户上下文的便捷函数"""
     return UserContext(
         user_id=user_id,
@@ -317,7 +317,7 @@ def create_user_context(user_id: str, session_id: Optional[str] = None,
     )
 
 
-def create_memory_entry(content: str, memory_type: MemoryType, 
+def create_memory_entry(content: str, memory_type: MemoryType,
                        user_context: UserContext, **kwargs) -> MemoryEntry:
     """创建记忆条目的便捷函数"""
     return MemoryEntry(

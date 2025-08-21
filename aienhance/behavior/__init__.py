@@ -3,17 +3,17 @@
 """
 
 from .adaptive_output import (
-    IntegratedAdaptiveOutput,
     AdaptedContent,
+    ConceptGranularity,
     InformationDensity,
+    IntegratedAdaptiveOutput,
     OutputStructure,
-    ConceptGranularity
 )
 
 __all__ = [
     'IntegratedAdaptiveOutput',
     'AdaptedContent',
     'InformationDensity',
-    'OutputStructure', 
+    'OutputStructure',
     'ConceptGranularity'
 ]

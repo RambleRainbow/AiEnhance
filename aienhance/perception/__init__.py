@@ -3,42 +3,41 @@
 包含用户建模和情境分析等核心感知功能
 """
 
-from .user_modeling import (
-    UserProfile,
-    CognitiveProfile,
-    KnowledgeProfile,
-    InteractionProfile,
-    DynamicUserModeler,
-    CognitiveStyle,
-    ThinkingMode
-)
-
 from .context_analysis import (
-    ContextProfile,
-    TaskCharacteristics,
-    ContextualElements,
+    AbstractionLevel,
     CognitiveNeeds,
+    ContextProfile,
+    ContextualElements,
     IntegratedContextAnalyzer,
+    PurposeType,
+    TaskCharacteristics,
     TaskType,
     TimeDimension,
-    AbstractionLevel,
-    PurposeType
+)
+from .user_modeling import (
+    CognitiveProfile,
+    CognitiveStyle,
+    DynamicUserModeler,
+    InteractionProfile,
+    KnowledgeProfile,
+    ThinkingMode,
+    UserProfile,
 )
 
 __all__ = [
     # User Modeling
     'UserProfile',
-    'CognitiveProfile', 
+    'CognitiveProfile',
     'KnowledgeProfile',
     'InteractionProfile',
     'DynamicUserModeler',
     'CognitiveStyle',
     'ThinkingMode',
-    
+
     # Context Analysis
     'ContextProfile',
     'TaskCharacteristics',
-    'ContextualElements', 
+    'ContextualElements',
     'CognitiveNeeds',
     'IntegratedContextAnalyzer',
     'TaskType',

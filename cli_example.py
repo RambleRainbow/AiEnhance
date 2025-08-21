@@ -4,11 +4,12 @@ AiEnhance 命令行工具
 简单的命令行界面，快速体验记忆-认知协同系统
 """
 
-import aienhance
+import argparse
 import asyncio
 import sys
-import argparse
 from pathlib import Path
+
+import aienhance
 
 # 添加项目路径
 sys.path.insert(0, str(Path(__file__).parent))
@@ -18,7 +19,7 @@ class AiEnhanceCliTool:
     """AiEnhance命令行工具"""
 
     def __init__(self):
-        self.system = None
+        self.system = None  # type: Optional[aienhance.LayeredCognitiveSystem]
 
     async def check_ollama(self):
         """检查Ollama服务状态"""
@@ -36,26 +37,31 @@ class AiEnhanceCliTool:
         """初始化系统"""
         try:
             if use_memory:
-                # 完整系统配置，使用统一LLM模式
-                self.system = aienhance.create_ollama_mirix_system(
-                    model_name="qwen3:8b",
-                    ollama_base="http://localhost:11434",
-                    system_type=system_type,
-                    llm_temperature=temperature,
-                    llm_max_tokens=800,
-                    embedding_provider="ollama",
-                    embedding_model_name="bge-m3:latest"
-                )
-            else:
-                # 简化配置，仅使用LLM功能
-                print("⚠️  简化模式：仅启用LLM功能，不包含记忆系统")
-                self.system = aienhance.create_system(
+                # 使用新的分层认知系统，带记忆功能
+                self.system = aienhance.create_layered_system(
                     system_type=system_type,
                     llm_provider="ollama",
                     llm_model_name="qwen3:8b",
+                    llm_api_base="http://localhost:11434",
+                    llm_temperature=temperature,
+                    llm_max_tokens=800,
+                    embedding_provider="ollama",
+                    embedding_model_name="bge-m3:latest",
+                    memory_system_type="mirix_unified",
+                    use_unified_llm=True
+                )
+            else:
+                # 简化配置，仅使用LLM功能（轻量级系统）
+                print("⚠️  简化模式：使用轻量级系统，无记忆功能")
+                self.system = aienhance.create_lightweight_layered_system(
+                    model_name="qwen3:8b",
+                    ollama_base="http://localhost:11434",
                     llm_temperature=temperature,
                     llm_max_tokens=800
                 )
+
+            # 初始化分层系统
+            await self.system.initialize_layers()
             return True
         except Exception as e:
             print(f"❌ 系统初始化失败: {e}")
@@ -73,35 +79,34 @@ class AiEnhanceCliTool:
 
         print("🤔 处理查询中...")
         try:
-            # 使用异步上下文管理器确保资源清理
-            async with self.system:
-                # 默认使用流式处理
-                print("\n" + "="*50)
-                print("🤖 AI实时回答:")
-                print("="*50)
-                
-                content_parts = []
-                async for chunk in self.system.process_stream(
-                    query=query,
-                    user_id="cli_user",
-                    context={"source": "cli"}
-                ):
-                    print(chunk, end="", flush=True)
-                    # 收集内容用于详细信息显示
-                    if not chunk.startswith(("🚀", "🧠", "💾", "⚙️", "🤝", "✅", "❌", "⚠️", "🎯")):
-                        content_parts.append(chunk)
+            # 默认使用流式处理
+            print("\n" + "="*50)
+            print("🤖 AI实时回答:")
+            print("="*50)
 
-                if show_details:
-                    # 获取系统状态用于详细信息显示
-                    status = self.system.get_system_status()
-                    print("\n" + "="*50)
-                    print("📊 详细信息:")
-                    print("="*50)
-                    print(f"🔍 系统状态:")
-                    print(f"   系统类型: {system_type}")
-                    print(f"   LLM配置: {status.get('components', {}).get('llm_provider', {}).get('provider', 'None')}")
-                    print(f"   响应长度: {len(''.join(content_parts))}字符")
-                    print(f"   流式输出: ✅ 已启用")
+            content_parts = []
+            async for chunk in self.system.process_stream(
+                query=query,
+                user_id="cli_user",
+                context={"source": "cli"}
+            ):
+                print(chunk, end="", flush=True)
+                # 收集内容用于详细信息显示
+                if not chunk.startswith(("🚀", "🧠", "💾", "⚙️", "🤝", "✅", "❌", "⚠️", "🎯")):
+                    content_parts.append(chunk)
+
+            if show_details:
+                # 获取系统状态用于详细信息显示
+                status = self.system.get_system_status()
+                print("\n" + "="*50)
+                print("📊 详细信息:")
+                print("="*50)
+                print("🔍 系统状态:")
+                print(f"   系统类型: {system_type}")
+                print(
+                    f"   LLM配置: {status.get('components', {}).get('llm_provider', {}).get('provider', 'None')}")
+                print(f"   响应长度: {len(''.join(content_parts))}字符")
+                print("   流式输出: ✅ 已启用")
 
         except Exception as e:
             print(f"❌ 查询处理失败: {e}")
@@ -147,8 +152,8 @@ class AiEnhanceCliTool:
 
                 # 处理查询 - 使用流式输出
                 print("🤔 思考中...")
-                print(f"🤖 AI: ", end="", flush=True)
-                
+                print("🤖 AI: ", end="", flush=True)
+
                 content_parts = []
                 async for chunk in self.system.process_stream(
                     query=user_input,
@@ -159,11 +164,12 @@ class AiEnhanceCliTool:
                     if not chunk.startswith(("🚀", "🧠", "💾", "⚙️", "🤝", "✅", "❌", "⚠️", "🎯")):
                         print(chunk, end="", flush=True)
                         content_parts.append(chunk)
-                
+
                 if not content_parts:
                     print("(无法生成响应)")
                 else:
-                    print(f"\n    ⚙️ [流式输出, 长度{len(''.join(content_parts))}字符]")
+                    print(
+                        f"\n    ⚙️ [流式输出, 长度{len(''.join(content_parts))}字符]")
 
                 session_count += 1
 
@@ -198,8 +204,8 @@ class AiEnhanceCliTool:
             print("🤔 AI思考中...")
 
             try:
-                print(f"🤖 AI: ", end="", flush=True)
-                
+                print("🤖 AI: ", end="", flush=True)
+
                 content_parts = []
                 async for chunk in self.system.process_stream(
                     query=query,

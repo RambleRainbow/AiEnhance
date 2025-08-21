@@ -4,9 +4,9 @@ MIRIX SDK 迁移助手
 帮助用户从Docker/HTTP模式迁移到SDK模式
 """
 
+import os
 import subprocess
 import sys
-import os
 from pathlib import Path
 
 
@@ -52,7 +52,7 @@ def install_mirix():
     """安装MIRIX包"""
     print("🔧 安装MIRIX SDK...")
     try:
-        subprocess.run([sys.executable, "-m", "pip", "install", "mirix"], 
+        subprocess.run([sys.executable, "-m", "pip", "install", "mirix"],
                       check=True, capture_output=True, text=True)
         print("✅ MIRIX SDK安装成功")
         return True
@@ -72,7 +72,7 @@ OLLAMA_HOST=http://localhost:11434
 # 日志配置
 LOG_LEVEL=INFO
 """
-    
+
     env_path = Path(".env.example")
     if not env_path.exists():
         env_path.write_text(env_example_content)
@@ -107,21 +107,21 @@ def main():
     print("🚀 MIRIX SDK 迁移助手")
     print("=" * 50)
     print("正在检查迁移准备情况...\n")
-    
+
     # 检查依赖项
     checks = [
         ("Python版本 (>=3.8)", check_python_version, "请升级到Python 3.8+"),
         ("MIRIX包", check_mirix_package, "运行: pip install mirix"),
         ("Google API密钥", check_google_api_key, "设置环境变量: export GOOGLE_API_KEY='your-key'"),
     ]
-    
+
     all_passed = True
     for name, check_func, hint in checks:
         if not check_requirement(name, check_func, hint):
             all_passed = False
-    
+
     print()
-    
+
     # 如果MIRIX包未安装，尝试安装
     if not check_mirix_package():
         if input("是否现在安装MIRIX SDK? (y/N): ").lower() in ['y', 'yes']:
@@ -130,16 +130,16 @@ def main():
             else:
                 print("❌ 请手动安装: pip install mirix")
                 all_passed = False
-    
+
     # 创建配置文件示例
     create_env_example()
-    
+
     print()
-    
+
     if all_passed and check_mirix_package() and check_google_api_key():
         print("🎉 迁移准备完成！")
         print("你现在可以使用MIRIX SDK模式了。")
-        
+
         if input("\n是否运行测试验证? (y/N): ").lower() in ['y', 'yes']:
             print("\n运行测试...")
             try:
@@ -148,13 +148,13 @@ def main():
                 print("❌ 测试失败，请检查配置")
             except FileNotFoundError:
                 print("❌ 找不到测试文件，请确保在项目根目录")
-    
+
     else:
         print("⚠️ 迁移准备未完成")
         print("请根据上述提示完成缺失的配置。")
-    
+
     show_migration_steps()
-    
+
     print("\n📚 更多信息请参考:")
     print("   - MIRIX_SDK_SETUP.md")
     print("   - 官方文档: https://docs.mirix.io")

@@ -87,7 +87,6 @@ This is a **Layered Cognitive System** that implements memory-cognitive synergy 
 **Primary Entry Points:**
 - `enhanced_system_factory.py`: Main factory for creating systems
 - `create_layered_system()`: **Recommended** - Creates new layered architecture
-- `create_enhanced_system()`: Legacy architecture (still supported)
 
 **System Types:**
 - `educational`: Optimized for learning scenarios

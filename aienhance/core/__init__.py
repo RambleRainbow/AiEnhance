@@ -4,37 +4,30 @@
 """
 
 # 新的分层架构
+from .behavior_layer import BehaviorLayer
+from .cognition_layer import CognitionLayer
+from .collaboration_layer import CollaborationLayer
 from .layer_interfaces import (
-    IPerceptionLayer,
-    ICognitionLayer, 
+    ContextProfile,
     IBehaviorLayer,
-    ICollaborationLayer,
+    ICognitionLayer,
     ICognitiveLayers,
+    ICollaborationLayer,
+    InformationFlow,
+    IPerceptionLayer,
+    ProcessingStatus,
     SystemResponse,
     UserProfile,
-    ContextProfile,
-    InformationFlow,
-    ProcessingStatus
 )
-
-from .perception_layer import PerceptionLayer
-from .cognition_layer import CognitionLayer
-from .behavior_layer import BehaviorLayer
-from .collaboration_layer import CollaborationLayer
 from .layered_cognitive_system import LayeredCognitiveSystem
 from .layered_system_factory import LayeredSystemFactory
-
-# 向后兼容的旧架构
-from .memory_cognitive_system import (
-    MemoryCognitiveSystem,
-    SystemFactory
-)
+from .perception_layer import PerceptionLayer
 
 __all__ = [
-    # 新的分层架构接口
+    # 分层架构接口
     'IPerceptionLayer',
     'ICognitionLayer',
-    'IBehaviorLayer', 
+    'IBehaviorLayer',
     'ICollaborationLayer',
     'ICognitiveLayers',
     'SystemResponse',
@@ -42,15 +35,12 @@ __all__ = [
     'ContextProfile',
     'InformationFlow',
     'ProcessingStatus',
-    
-    # 新的分层架构实现
+
+    # 分层架构实现
     'PerceptionLayer',
     'CognitionLayer',
     'BehaviorLayer',
     'CollaborationLayer',
     'LayeredCognitiveSystem',
-    
-    # 向后兼容
-    'MemoryCognitiveSystem',
-    'SystemFactory'
+    'LayeredSystemFactory'
 ]

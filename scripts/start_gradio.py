@@ -4,11 +4,11 @@ AiEnhance Gradio界面启动脚本
 自动检查依赖并启动可视化界面
 """
 
-import sys
-import subprocess
 import importlib
 import logging
 import os
+import subprocess
+import sys
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -19,14 +19,14 @@ def check_and_install_package(package_name: str, import_name: str = None):
     """检查并安装缺失的包"""
     if import_name is None:
         import_name = package_name
-    
+
     try:
         importlib.import_module(import_name)
         logger.info(f"✅ {package_name} 已安装")
         return True
     except ImportError:
         logger.warning(f"⚠️ {package_name} 未安装，正在安装...")
-        
+
         # 检测是否在uv环境中
         if is_uv_environment():
             return install_with_uv(package_name)
@@ -86,17 +86,17 @@ def install_required_dependencies():
         ("asyncio", None),  # 内置模块
         ("json", None),     # 内置模块
     ]
-    
+
     logger.info("🔍 检查依赖包...")
-    
+
     all_installed = True
     for package, import_name in dependencies:
         if import_name is None:  # 内置模块
             continue
-            
+
         if not check_and_install_package(package, import_name):
             all_installed = False
-    
+
     return all_installed
 
 
@@ -121,17 +121,17 @@ def main():
     """主启动函数"""
     print("🚀 启动 AiEnhance Gradio 可视化界面...")
     print("=" * 60)
-    
+
     # 检查依赖
     logger.info("1️⃣ 检查Python依赖...")
     if not install_required_dependencies():
         logger.error("❌ 依赖安装失败，请手动安装缺失的包")
         sys.exit(1)
-    
+
     # 检查Ollama服务（可选）
     logger.info("2️⃣ 检查Ollama服务状态...")
     check_ollama_service()
-    
+
     # 启动Gradio界面
     logger.info("3️⃣ 启动Gradio界面...")
     try:

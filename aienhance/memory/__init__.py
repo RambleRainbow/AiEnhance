@@ -3,24 +3,18 @@
 提供统一的记忆系统接口，支持MIRIX、Mem0、Graphiti等不同实现
 """
 
+from .adapters import GraphitiAdapter, Mem0Adapter, MirixLLMBridge, MirixUnifiedAdapter
 from .interfaces import (
-    MemorySystem,
     MemoryEntry,
     MemoryQuery,
     MemoryResult,
-    UserContext,
-    MemoryType,
+    MemorySystem,
     MemorySystemConfig,
     MemorySystemFactory,
+    MemoryType,
+    UserContext,
+    create_memory_entry,
     create_user_context,
-    create_memory_entry
-)
-
-from .adapters import (
-    MirixUnifiedAdapter,
-    MirixLLMBridge,
-    Mem0Adapter, 
-    GraphitiAdapter
 )
 
 __all__ = [
@@ -35,7 +29,7 @@ __all__ = [
     'MemorySystemFactory',
     'create_user_context',
     'create_memory_entry',
-    
+
     # Adapters
     'MirixUnifiedAdapter',
     'MirixLLMBridge',

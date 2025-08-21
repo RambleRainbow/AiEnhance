@@ -3,17 +3,21 @@
 实现对立观点生成、多学科视角切换、交替论证等功能
 """
 
-import asyncio
-import re
-from typing import Dict, List, Optional, Any
 import logging
+import re
+from typing import Any
 
+from ..llm.interfaces import ChatMessage, LLMProvider, MessageRole
+from ..memory.interfaces import MemorySystem
 from .interfaces import (
-    PerspectiveGenerator, PerspectiveRequest, PerspectiveResult, 
-    Perspective, PerspectiveType, DisciplineCategory, CollaborationContext
+    CollaborationContext,
+    DisciplineCategory,
+    Perspective,
+    PerspectiveGenerator,
+    PerspectiveRequest,
+    PerspectiveResult,
+    PerspectiveType,
 )
-from ..llm.interfaces import LLMProvider, ChatMessage, MessageRole
-from ..memory.interfaces import MemorySystem, MemoryQuery, UserContext, MemoryType
 
 logger = logging.getLogger(__name__)
 
@@ -24,11 +28,11 @@ class DialecticalPerspectiveGenerator(PerspectiveGenerator):
     
     通过系统化地提供多元视角，培养用户的批判性思维和辩证分析能力
     """
-    
-    def __init__(self, llm_provider: LLMProvider, memory_system: Optional[MemorySystem] = None):
+
+    def __init__(self, llm_provider: LLMProvider, memory_system: MemorySystem | None = None):
         self.llm_provider = llm_provider
         self.memory_system = memory_system
-        
+
         # 学科视角库
         self.discipline_frameworks = {
             DisciplineCategory.MATHEMATICS: {
@@ -62,49 +66,49 @@ class DialecticalPerspectiveGenerator(PerspectiveGenerator):
                 "questions": ["本质是什么？", "价值在哪里？", "伦理问题有哪些？"]
             }
         }
-        
+
         # 对立观点生成策略
         self.opposition_strategies = [
             "direct_negation",      # 直接否定
-            "premise_challenge",    # 前提挑战  
+            "premise_challenge",    # 前提挑战
             "degree_adjustment",    # 程度调整
             "angle_shift",         # 角度转换
             "temporal_shift",      # 时间维度转换
             "context_expansion"    # 情境扩展
         ]
-    
-    async def generate_perspectives(self, request: PerspectiveRequest, 
+
+    async def generate_perspectives(self, request: PerspectiveRequest,
                                   context: CollaborationContext) -> PerspectiveResult:
         """生成多元视角"""
         try:
             perspectives = []
-            
+
             # 1. 分析用户内容和立场
             content_analysis = await self._analyze_content(request.content, request.user_position)
-            
+
             # 2. 生成不同类型的视角
             for perspective_type in (request.perspective_types or [PerspectiveType.OPPOSING, PerspectiveType.MULTI_DISCIPLINARY]):
                 if perspective_type == PerspectiveType.OPPOSING:
                     opposing_perspectives = await self._generate_opposing_views(request, content_analysis)
                     perspectives.extend(opposing_perspectives)
-                    
+
                 elif perspective_type == PerspectiveType.MULTI_DISCIPLINARY:
                     disciplinary_perspectives = await self._generate_disciplinary_views(request, content_analysis)
                     perspectives.extend(disciplinary_perspectives)
-                    
+
                 elif perspective_type == PerspectiveType.STAKEHOLDER:
                     stakeholder_perspectives = await self._generate_stakeholder_views(request, content_analysis)
                     perspectives.extend(stakeholder_perspectives)
-            
+
             # 3. 限制视角数量
             if len(perspectives) > request.max_perspectives:
                 perspectives = sorted(perspectives, key=lambda p: p.relevance_score, reverse=True)[:request.max_perspectives]
-            
+
             # 4. 生成综合分析和辩证关系
             synthesis = await self._synthesize_perspectives(perspectives)
             dialectical_tensions = await self._identify_dialectical_tensions(perspectives)
             integration_suggestions = await self._generate_integration_suggestions(perspectives)
-            
+
             return PerspectiveResult(
                 perspectives=perspectives,
                 synthesis=synthesis,
@@ -116,12 +120,12 @@ class DialecticalPerspectiveGenerator(PerspectiveGenerator):
                     "total_generated": len(perspectives)
                 }
             )
-            
+
         except Exception as e:
             logger.error(f"Failed to generate perspectives: {e}")
             raise
-    
-    async def _analyze_content(self, content: str, user_position: Optional[str] = None) -> Dict[str, Any]:
+
+    async def _analyze_content(self, content: str, user_position: str | None = None) -> dict[str, Any]:
         """分析内容和用户立场"""
         analysis_prompt = f"""
 请分析以下内容的核心观点、关键论据和潜在假设：
@@ -139,10 +143,10 @@ class DialecticalPerspectiveGenerator(PerspectiveGenerator):
 
 以JSON格式返回分析结果。
 """
-        
+
         messages = [ChatMessage(role=MessageRole.USER, content=analysis_prompt)]
         response = await self.llm_provider.chat(messages)
-        
+
         try:
             # 尝试解析JSON，如果失败则返回基本结构
             import json
@@ -155,12 +159,12 @@ class DialecticalPerspectiveGenerator(PerspectiveGenerator):
                 "domains": ["general"],
                 "argument_strength": "moderate"
             }
-    
-    async def _generate_opposing_views(self, request: PerspectiveRequest, 
-                                     content_analysis: Dict[str, Any]) -> List[Perspective]:
+
+    async def _generate_opposing_views(self, request: PerspectiveRequest,
+                                     content_analysis: dict[str, Any]) -> list[Perspective]:
         """生成对立观点"""
         opposing_perspectives = []
-        
+
         for strategy in self.opposition_strategies[:2]:  # 限制策略数量
             try:
                 perspective = await self._generate_opposing_view_by_strategy(
@@ -171,12 +175,12 @@ class DialecticalPerspectiveGenerator(PerspectiveGenerator):
             except Exception as e:
                 logger.warning(f"Failed to generate opposing view with strategy {strategy}: {e}")
                 continue
-        
+
         return opposing_perspectives
-    
-    async def _generate_opposing_view_by_strategy(self, content: str, 
-                                                content_analysis: Dict[str, Any], 
-                                                strategy: str) -> Optional[Perspective]:
+
+    async def _generate_opposing_view_by_strategy(self, content: str,
+                                                content_analysis: dict[str, Any],
+                                                strategy: str) -> Perspective | None:
         """使用特定策略生成对立观点"""
         strategy_prompts = {
             "direct_negation": f"""
@@ -225,26 +229,26 @@ class DialecticalPerspectiveGenerator(PerspectiveGenerator):
 以清晰的结构化格式回答。
 """
         }
-        
+
         prompt = strategy_prompts.get(strategy, strategy_prompts["direct_negation"])
-        
+
         messages = [ChatMessage(role=MessageRole.USER, content=prompt)]
         response = await self.llm_provider.chat(messages)
-        
+
         return self._parse_perspective_response(response.content, PerspectiveType.OPPOSING, strategy)
-    
+
     async def _generate_disciplinary_views(self, request: PerspectiveRequest,
-                                         content_analysis: Dict[str, Any]) -> List[Perspective]:
+                                         content_analysis: dict[str, Any]) -> list[Perspective]:
         """生成多学科视角"""
         disciplinary_perspectives = []
-        
+
         # 选择相关学科
         disciplines = request.disciplines or [
-            DisciplineCategory.PSYCHOLOGY, 
+            DisciplineCategory.PSYCHOLOGY,
             DisciplineCategory.ECONOMICS,
             DisciplineCategory.PHILOSOPHY
         ]
-        
+
         for discipline in disciplines[:2]:  # 限制学科数量
             try:
                 perspective = await self._generate_disciplinary_view(
@@ -255,15 +259,15 @@ class DialecticalPerspectiveGenerator(PerspectiveGenerator):
             except Exception as e:
                 logger.warning(f"Failed to generate {discipline.value} perspective: {e}")
                 continue
-        
+
         return disciplinary_perspectives
-    
+
     async def _generate_disciplinary_view(self, content: str,
-                                        content_analysis: Dict[str, Any],
-                                        discipline: DisciplineCategory) -> Optional[Perspective]:
+                                        content_analysis: dict[str, Any],
+                                        discipline: DisciplineCategory) -> Perspective | None:
         """生成特定学科视角"""
         framework = self.discipline_frameworks.get(discipline, {})
-        
+
         prompt = f"""
 请从{discipline.value}学科的角度分析以下内容：
 
@@ -281,27 +285,27 @@ class DialecticalPerspectiveGenerator(PerspectiveGenerator):
 
 以清晰的结构化格式回答。
 """
-        
+
         messages = [ChatMessage(role=MessageRole.USER, content=prompt)]
         response = await self.llm_provider.chat(messages)
-        
+
         perspective = self._parse_perspective_response(
-            response.content, 
+            response.content,
             PerspectiveType.MULTI_DISCIPLINARY,
             discipline.value
         )
-        
+
         if perspective:
             perspective.discipline = discipline
-            
+
         return perspective
-    
+
     async def _generate_stakeholder_views(self, request: PerspectiveRequest,
-                                        content_analysis: Dict[str, Any]) -> List[Perspective]:
+                                        content_analysis: dict[str, Any]) -> list[Perspective]:
         """生成利益相关者视角"""
         # 识别潜在利益相关者
         stakeholders = await self._identify_stakeholders(request.content)
-        
+
         stakeholder_perspectives = []
         for stakeholder in stakeholders[:2]:  # 限制数量
             try:
@@ -313,10 +317,10 @@ class DialecticalPerspectiveGenerator(PerspectiveGenerator):
             except Exception as e:
                 logger.warning(f"Failed to generate stakeholder view for {stakeholder}: {e}")
                 continue
-        
+
         return stakeholder_perspectives
-    
-    async def _identify_stakeholders(self, content: str) -> List[str]:
+
+    async def _identify_stakeholders(self, content: str) -> list[str]:
         """识别利益相关者"""
         prompt = f"""
 识别以下内容中涉及的主要利益相关者：
@@ -332,10 +336,10 @@ class DialecticalPerspectiveGenerator(PerspectiveGenerator):
 
 简洁列出即可。
 """
-        
+
         messages = [ChatMessage(role=MessageRole.USER, content=prompt)]
         response = await self.llm_provider.chat(messages)
-        
+
         # 简单解析利益相关者列表
         stakeholders = []
         for line in response.content.split('\n'):
@@ -345,10 +349,10 @@ class DialecticalPerspectiveGenerator(PerspectiveGenerator):
                 clean_line = re.sub(r'^[-*•]\s*', '', line)
                 if clean_line:
                     stakeholders.append(clean_line)
-        
+
         return stakeholders[:5]  # 最多5个
-    
-    async def _generate_stakeholder_view(self, content: str, stakeholder: str) -> Optional[Perspective]:
+
+    async def _generate_stakeholder_view(self, content: str, stakeholder: str) -> Perspective | None:
         """生成特定利益相关者视角"""
         prompt = f"""
 从{stakeholder}的角度分析以下内容：
@@ -363,35 +367,35 @@ class DialecticalPerspectiveGenerator(PerspectiveGenerator):
 
 以清晰的结构化格式回答。
 """
-        
+
         messages = [ChatMessage(role=MessageRole.USER, content=prompt)]
         response = await self.llm_provider.chat(messages)
-        
+
         perspective = self._parse_perspective_response(
             response.content,
-            PerspectiveType.STAKEHOLDER, 
+            PerspectiveType.STAKEHOLDER,
             stakeholder
         )
-        
+
         if perspective:
             perspective.stakeholder = stakeholder
-            
+
         return perspective
-    
-    def _parse_perspective_response(self, response: str, perspective_type: PerspectiveType, 
-                                  identifier: str) -> Optional[Perspective]:
+
+    def _parse_perspective_response(self, response: str, perspective_type: PerspectiveType,
+                                  identifier: str) -> Perspective | None:
         """解析视角生成响应"""
         try:
             # 简单的响应解析
             lines = [line.strip() for line in response.split('\n') if line.strip()]
-            
+
             title = f"{perspective_type.value.replace('_', ' ').title()} - {identifier}"
             description = lines[0] if lines else "No description available"
-            
+
             # 提取关键论据（寻找编号列表）
             key_arguments = []
             supporting_evidence = []
-            
+
             current_section = None
             for line in lines:
                 if any(keyword in line.lower() for keyword in ['论据', 'argument', '观点', 'view']):
@@ -406,11 +410,11 @@ class DialecticalPerspectiveGenerator(PerspectiveGenerator):
                         supporting_evidence.append(content)
                     else:
                         key_arguments.append(content)  # 默认作为论据
-            
+
             # 如果没有找到结构化内容，使用整个响应
             if not key_arguments:
                 key_arguments = [description]
-            
+
             return Perspective(
                 perspective_type=perspective_type,
                 title=title,
@@ -420,21 +424,21 @@ class DialecticalPerspectiveGenerator(PerspectiveGenerator):
                 confidence=0.8,
                 relevance_score=0.8
             )
-            
+
         except Exception as e:
             logger.error(f"Failed to parse perspective response: {e}")
             return None
-    
-    async def synthesize_perspectives(self, perspectives: List[Perspective]) -> str:
+
+    async def synthesize_perspectives(self, perspectives: list[Perspective]) -> str:
         """综合多个视角"""
         if not perspectives:
             return "没有可用的视角进行综合。"
-        
+
         perspective_summaries = []
         for i, p in enumerate(perspectives, 1):
             summary = f"{i}. {p.title}：{p.description}"
             perspective_summaries.append(summary)
-        
+
         prompt = f"""
 请综合以下多个视角，提供一个平衡且深入的分析：
 
@@ -449,48 +453,48 @@ class DialecticalPerspectiveGenerator(PerspectiveGenerator):
 
 保持客观和建设性。
 """
-        
+
         messages = [ChatMessage(role=MessageRole.USER, content=prompt)]
         response = await self.llm_provider.chat(messages)
         return response.content
-    
-    async def _synthesize_perspectives(self, perspectives: List[Perspective]) -> str:
+
+    async def _synthesize_perspectives(self, perspectives: list[Perspective]) -> str:
         """内部综合方法"""
         return await self.synthesize_perspectives(perspectives)
-    
-    async def _identify_dialectical_tensions(self, perspectives: List[Perspective]) -> List[str]:
+
+    async def _identify_dialectical_tensions(self, perspectives: list[Perspective]) -> list[str]:
         """识别辩证冲突点"""
         if len(perspectives) < 2:
             return []
-        
+
         tensions = []
         for i, p1 in enumerate(perspectives):
             for p2 in perspectives[i+1:]:
                 if p1.perspective_type != p2.perspective_type:
                     tension = f"{p1.title} vs {p2.title}: 在核心假设和价值取向上存在根本分歧"
                     tensions.append(tension)
-        
+
         return tensions[:3]  # 最多3个冲突点
-    
-    async def _generate_integration_suggestions(self, perspectives: List[Perspective]) -> List[str]:
+
+    async def _generate_integration_suggestions(self, perspectives: list[Perspective]) -> list[str]:
         """生成整合建议"""
         if not perspectives:
             return []
-        
+
         suggestions = [
             "寻找各视角的互补性，而非对立性",
             "在不同情境下采用不同视角的洞察",
             "构建包含多元观点的综合框架"
         ]
-        
+
         # 基于具体视角类型添加建议
         has_opposing = any(p.perspective_type == PerspectiveType.OPPOSING for p in perspectives)
         has_disciplinary = any(p.perspective_type == PerspectiveType.MULTI_DISCIPLINARY for p in perspectives)
-        
+
         if has_opposing:
             suggestions.append("将对立观点视为思考的起点，而非终点")
-        
+
         if has_disciplinary:
             suggestions.append("利用跨学科视角发现创新解决方案")
-        
+
         return suggestions
