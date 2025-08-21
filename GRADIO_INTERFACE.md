@@ -2,6 +2,30 @@
 
 分层认知系统的Web可视化界面，提供全面的系统监控、各层输出展示和MIRIX记忆系统集成。
 
+## 🚀 快速开始
+
+### 使用UV包管理器（推荐）
+
+```bash
+# 安装依赖
+uv sync
+
+# 启动Gradio界面
+uv run aienhance-gradio
+```
+
+### 使用传统方式
+
+```bash
+# 激活虚拟环境并安装依赖
+pip install -e .
+
+# 启动Gradio界面
+python gradio_interface.py
+```
+
+界面将在 `http://localhost:7860` 启动。
+
 ## ✨ 功能特性
 
 ### 🎛️ **系统配置**

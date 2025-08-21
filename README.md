@@ -38,125 +38,114 @@
 - **容器化**: Docker + Docker Compose
 - **AI框架**: Ollama (本地LLM)
 
-## 安装部署
+## 🚀 快速开始
 
 ### 环境要求
 
 - Python 3.12.9+
-- Docker & Docker Compose
+- UV包管理器（推荐）或pip
 - Ollama (本地LLM服务)
 
-### 快速开始
+### 安装
 
 ```bash
-# 1. 克隆仓库
+# 使用UV包管理器（推荐）
 git clone https://github.com/your-username/AiEnhance.git
 cd AiEnhance
-
-# 2. 安装Ollama并启动服务
-# macOS
-brew install ollama
-ollama serve
-
-# Linux
-curl -fsSL https://ollama.ai/install.sh | sh
-ollama serve
-
-# 3. 安装推荐模型
-./setup-ollama.sh
-
-# 4. 启动外部依赖服务 (开发模式)
-./start-dev.sh
-
-# 5. 本地运行主应用
-uv run python main.py
-```
-
-### 开发模式
-
-```bash
-# 1. 启动外部依赖服务
-./start-dev.sh
-
-# 2. 安装Python依赖
 uv sync
 
-# 3. 本地运行主应用
-uv run python main.py
-
-# 4. 测试协作功能
-uv run python test_collaboration_layer.py
-
-# 5. 代码检查和格式化
-uv run ruff check .
-uv run ruff format .
-
-# 6. 停止外部依赖服务
-docker compose down
+# 或使用传统pip方式
+pip install -e .
 ```
 
-### 生产部署
+### 运行示例
 
+#### 命令行界面
 ```bash
-# 完整应用栈部署
-./docker-start.sh
+# 使用UV
+uv run aienhance "什么是人工智能？"
+uv run aienhance -i  # 交互模式
 
-# 或手动部署
-docker compose -f docker-compose.full.yml up -d
+# 或使用传统方式
+python cli_example.py "什么是人工智能？"
 ```
 
-## 推荐模型
+#### Gradio Web界面
+```bash
+# 使用UV
+uv run aienhance-gradio
 
-### LLM模型
-- **qwen3:8b** - 通义千问3.0，8B参数，最新一代中文大语言模型
+# 或使用传统方式
+python gradio_interface.py
+```
 
-### 嵌入模型
-- **bge-m3** - 多语言、多功能、多粒度嵌入模型，支持中英文
+访问 `http://localhost:7860` 开始使用Web界面。
 
-### 安装模型
+### Ollama设置
+
+首次使用需要安装和配置Ollama：
 
 ```bash
-# 自动安装推荐模型
-./setup-ollama.sh
+# 安装Ollama
+# macOS
+brew install ollama
 
-# 手动安装
+# Linux  
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# 启动Ollama服务
+ollama serve
+
+# 安装推荐模型
 ollama pull qwen3:8b
-ollama pull bge-m3
+ollama pull bge-m3:latest
 ```
 
-## 项目结构
+## 📁 项目结构
 
 ```
 AiEnhance/
-├── aienhance/                 # 核心模块
-│   ├── perception/           # 感知层
-│   ├── cognition/            # 认知层
-│   ├── behavior/             # 行为层
-│   ├── collaboration/        # 协作层
-│   ├── memory/               # 记忆系统
-│   ├── llm/                  # LLM接口
-│   └── core/                 # 核心系统
-├── docker/                   # Docker配置
-├── docs/                     # 文档
-├── tests/                    # 测试
-├── docker-compose.yml        # 服务编排
-├── docker-start.sh          # 启动脚本
-├── setup-ollama.sh          # 模型安装脚本
-└── main.py                  # 主入口
+├── aienhance/              # 核心包
+│   ├── core/              # 核心系统
+│   ├── perception/        # 感知层
+│   ├── cognition/         # 认知层
+│   ├── behavior/          # 行为层
+│   ├── collaboration/     # 协作层
+│   ├── memory/            # 记忆系统适配器
+│   └── llm/               # LLM适配器
+├── cli_example.py         # 命令行示例
+├── gradio_interface.py    # Web界面
+├── tests/                 # 测试文件
+├── scripts/               # 辅助脚本
+├── docker/                # Docker配置
+└── docs/                  # 文档
+```
+
+## 开发
+
+### 代码质量检查
+```bash
+uv run ruff check .    # 代码检查
+uv run ruff format .   # 代码格式化
+```
+
+### 运行测试
+```bash
+uv run python -m pytest tests/
 ```
 
 ## 使用示例
 
-### 基本使用
+### Python API
 
 ```python
-from aienhance.core import MemoryCognitiveSystem
+import aienhance
 
-# 创建系统实例
-system = MemoryCognitiveSystem(
+# 创建系统
+system = aienhance.create_layered_system(
     system_type="educational",
-    memory_system_type="mirix",
-    llm_provider="ollama"
+    llm_provider="ollama",
+    llm_model_name="qwen3:8b"
 )
 
 # 处理查询
@@ -168,100 +157,15 @@ response = await system.process_query(
 print(response.content)
 ```
 
-### Docker部署
-
-```bash
-# 启动完整服务栈
-./docker-start.sh
-
-# 启动时包含管理界面
-./docker-start.sh --with-management
-
-# 查看服务状态
-docker compose ps
-```
-
-### 协作功能测试
-
-```bash
-# 测试协作层功能
-python test_collaboration_layer.py
-
-# 测试完整集成
-python test_docker_integration.py
-```
-
-## 核心功能
-
-### 🎭 辩证视角生成
-- 对立观点自动生成
-- 多学科视角切换（数学、物理、心理学、经济学、社会学、哲学）
-- 利益相关者分析
-
-### 🧠 认知挑战
-- **假设质疑** - 识别和挑战核心前提
-- **盲点检测** - 发现思维盲点
-- **复杂性扩展** - 系统性思维训练
-- **创意激发** - 突破思维定势
-
-### 🤝 智能协作
-- 用户认知建模
-- 协作策略自适应
-- 效果评估和优化
-
-### 🐳 企业级部署
-- Docker容器化
-- 微服务架构
-- 健康检查和监控
-- 一键部署脚本
-
 ## 文档
 
-详细的设计文档和使用指南：
-
+- [Gradio界面使用指南](GRADIO_INTERFACE.md)
 - [系统设计文档](docs/design/memory-cognitive-system-design.md)
-- [协作层实现总结](COLLABORATION_LAYER_SUMMARY.md)
-- [LLM集成指南](LLM_INTEGRATION_SUMMARY.md)
-- [Docker部署指南](DOCKER_DEPLOYMENT.md)
-
-## 开发路线
-
-项目按照以下阶段逐步开发：
-
-1. **第一阶段** - 基础框架 ✅
-2. **第二阶段** - 记忆系统集成 ✅
-3. **第三阶段** - LLM接口抽象 ✅
-4. **第四阶段** - 协作层实现 ✅
-5. **第五阶段** - 生产部署优化 🚧
-
-## 技术特色
-
-- **模块化设计** - 高度可扩展的架构
-- **多提供商支持** - 灵活的LLM和记忆系统选择
-- **认知科学驱动** - 基于认知科学理论的设计
-- **企业级** - 生产就绪的部署方案
 
 ## 贡献
 
 欢迎提交 Issue 和 Pull Request！
 
-### 开发流程
-
-1. Fork 项目
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启 Pull Request
-
 ## 许可证
 
 [MIT License](LICENSE)
-
-## 联系方式
-
-- 项目地址：https://github.com/your-username/AiEnhance
-- 问题反馈：[Issues](https://github.com/your-username/AiEnhance/issues)
-
----
-
-🎉 **恭喜！** 你已经成功设置了一个具备深度认知协作能力的AI系统！

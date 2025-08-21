@@ -25,7 +25,7 @@ from aienhance.enhanced_system_factory import (
 )
 from aienhance.memory.interfaces import create_user_context, MemoryQuery
 from aienhance.core.layered_cognitive_system import LayeredCognitiveSystem
-from mirix_frontend_integration import MirixFrontendIntegrator, create_memory_dashboard_data, search_memories_for_gradio
+# MIRIX前端集成功能已简化，移除复杂依赖
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -554,10 +554,24 @@ def create_gradio_interface():
             
             try:
                 if visualizer.system and visualizer.system.memory_system:
-                    summary, _ = search_memories_for_gradio(
-                        visualizer.system.memory_system, query
+                    # 简化的记忆搜索实现
+                    user_context = create_user_context("gradio_user", "search_session")
+                    search_query = MemoryQuery(
+                        query=query,
+                        limit=10,
+                        memory_types=None
                     )
-                    return summary
+                    results = asyncio.run(visualizer.system.memory_system.search_memories(
+                        user_context, search_query
+                    ))
+                    
+                    if results.memories:
+                        summary = f"找到 {len(results.memories)} 个相关记忆:\n\n"
+                        for i, memory in enumerate(results.memories[:5], 1):
+                            summary += f"{i}. {memory.content[:100]}...\n"
+                        return summary
+                    else:
+                        return "未找到相关记忆"
                 else:
                     return "记忆系统未初始化"
             except Exception as e:
@@ -573,25 +587,48 @@ def create_gradio_interface():
         def sync_generate_dashboard() -> Tuple[go.Figure, go.Figure, go.Figure, go.Figure]:
             try:
                 if visualizer.system and visualizer.system.memory_system:
-                    dashboard_data = create_memory_dashboard_data(visualizer.system.memory_system)
+                    # 简化的仪表板生成
+                    user_context = create_user_context("gradio_user", "dashboard_session")
+                    memories = asyncio.run(visualizer.system.memory_system.get_user_memories(
+                        user_context, limit=100
+                    ))
                     
-                    if "error" in dashboard_data:
-                        # 返回空图表
-                        empty_fig = go.Figure()
-                        empty_fig.add_annotation(
-                            text=dashboard_data["error"],
-                            xref="paper", yref="paper",
-                            x=0.5, y=0.5, showarrow=False
-                        )
-                        return empty_fig, empty_fig, empty_fig, empty_fig
+                    # 创建简单的统计图表
+                    # 记忆类型分布图
+                    type_counts = {}
+                    for memory in memories.memories:
+                        mem_type = memory.memory_type.value
+                        type_counts[mem_type] = type_counts.get(mem_type, 0) + 1
                     
-                    charts = dashboard_data["charts"]
-                    return (
-                        charts["type_chart"],
-                        charts["timeline_chart"],
-                        charts["confidence_chart"],
-                        charts["network_chart"]
+                    type_fig = go.Figure(data=[go.Pie(
+                        labels=list(type_counts.keys()),
+                        values=list(type_counts.values()),
+                        title="记忆类型分布"
+                    )])
+                    
+                    # 简单的时间线图
+                    timeline_fig = go.Figure()
+                    timeline_fig.add_trace(go.Scatter(
+                        x=list(range(len(memories.memories))),
+                        y=[1] * len(memories.memories),
+                        mode='markers',
+                        name='记忆创建时间线'
+                    ))
+                    timeline_fig.update_layout(title="记忆时间线")
+                    
+                    # 置信度分析
+                    confidences = [memory.confidence for memory in memories.memories if hasattr(memory, 'confidence')]
+                    conf_fig = go.Figure(data=[go.Histogram(x=confidences, title="置信度分布")])
+                    
+                    # 简单的网络图（占位）
+                    network_fig = go.Figure()
+                    network_fig.add_annotation(
+                        text="记忆关系网络图（开发中）",
+                        xref="paper", yref="paper",
+                        x=0.5, y=0.5, showarrow=False
                     )
+                    
+                    return type_fig, timeline_fig, conf_fig, network_fig
                 else:
                     empty_fig = go.Figure()
                     empty_fig.add_annotation(
