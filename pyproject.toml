@@ -13,7 +13,11 @@ dependencies = [
     "pydantic>=2.0.0",
     "python-dotenv>=1.0.0",
     "loguru>=0.7.0",
-    "mirix>=0.1.0",  # MIRIX Python SDK for memory system
+    "mirix>=0.1.0", # MIRIX Python SDK for memory system
+    "gradio>=3.36.1",
+    "plotly>=6.3.0",
+    "pandas>=2.3.1",
+    "requests>=2.32.5",
 ]
 
 [dependency-groups]

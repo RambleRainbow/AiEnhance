@@ -763,3 +763,60 @@ class LayeredCognitiveSystem(ICognitiveLayers):
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """异步上下文管理器出口"""
         await self.cleanup_all_layers()
+    
+    def get_system_info(self) -> Dict[str, Any]:
+        """获取系统信息"""
+        info = {
+            "system_type": "layered_cognitive",
+            "config": self.config,
+            "initialized": self.is_initialized,
+            "layers": {
+                "perception": {
+                    "initialized": self.layers_initialized.get('perception', False),
+                    "class": self.perception_layer.__class__.__name__ if self.perception_layer else None
+                },
+                "cognition": {
+                    "initialized": self.layers_initialized.get('cognition', False),
+                    "class": self.cognition_layer.__class__.__name__ if self.cognition_layer else None
+                },
+                "behavior": {
+                    "initialized": self.layers_initialized.get('behavior', False),
+                    "class": self.behavior_layer.__class__.__name__ if self.behavior_layer else None
+                },
+                "collaboration": {
+                    "initialized": self.layers_initialized.get('collaboration', False),
+                    "class": self.collaboration_layer.__class__.__name__ if self.collaboration_layer else None
+                }
+            },
+            "components": {
+                "memory_system": {
+                    "available": self.memory_system is not None,
+                    "type": self.memory_system.__class__.__name__ if self.memory_system else None,
+                    "initialized": getattr(self.memory_system, 'is_initialized', False) if self.memory_system else False
+                },
+                "llm_provider": {
+                    "available": self.llm_provider is not None,
+                    "type": self.llm_provider.__class__.__name__ if self.llm_provider else None,
+                    "provider": getattr(getattr(self.llm_provider, 'config', None), 'provider', None) if self.llm_provider else None,
+                    "model": getattr(getattr(self.llm_provider, 'config', None), 'model_name', None) if self.llm_provider else None
+                }
+            },
+            "information_flows": len(self.information_flows),
+            "features": {
+                "streaming": True,
+                "async_processing": True,
+                "layer_communication": True,
+                "memory_integration": self.memory_system is not None,
+                "llm_integration": self.llm_provider is not None,
+                "collaboration_support": self.collaboration_layer is not None
+            }
+        }
+        
+        # 添加记忆系统详细信息
+        if self.memory_system and hasattr(self.memory_system, 'get_system_info'):
+            try:
+                info["components"]["memory_system"]["details"] = self.memory_system.get_system_info()
+            except Exception as e:
+                info["components"]["memory_system"]["error"] = str(e)
+        
+        return info
