@@ -60,19 +60,19 @@ pip install -e .
 
 ### 运行示例
 
-#### 命令行界面
+#### 命令行界面（流式输出）
 ```bash
-# 使用UV
+# 使用UV - 默认流式输出，实时显示AI思考和回答过程
 uv run python cli_example.py "什么是人工智能？"
-uv run python cli_example.py -i  # 交互模式
+uv run python cli_example.py -i  # 交互模式，流式对话
 
 # 或使用传统方式
 python cli_example.py "什么是人工智能？"
 ```
 
-#### Gradio Web界面
+#### Gradio Web界面（支持流式输出）
 ```bash
-# 使用UV
+# 使用UV - Web界面支持流式输出开关
 uv run python gradio_interface.py
 
 # 或使用传统方式  

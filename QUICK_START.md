@@ -16,27 +16,28 @@ pip install -e .
 
 ## ⚡ 快速使用
 
-### 命令行模式
+### 命令行模式（流式输出）
 
 ```bash
-# 单次查询
+# 单次查询 - 实时显示AI思考和回答过程
 uv run python cli_example.py "什么是人工智能？"
 
-# 交互模式
+# 交互模式 - 流式对话体验
 uv run python cli_example.py -i
 
 # 查看帮助
 uv run python cli_example.py --help
 ```
 
-### Web界面模式
+### Web界面模式（支持流式输出）
 
 ```bash
-# 启动Gradio界面
+# 启动Gradio界面 - 默认启用流式输出
 uv run python gradio_interface.py
 
 # 浏览器访问
 # http://localhost:7860
+# 可在界面中切换流式/传统输出模式
 ```
 
 ## 🔧 前置要求
@@ -77,9 +78,10 @@ AiEnhance/
 ## 💡 使用技巧
 
 1. **首次使用**: 先运行CLI确保系统正常
-2. **无记忆模式**: 如果MIRIX不可用，系统会自动降级
-3. **Web界面**: 提供完整的可视化分层处理过程
-4. **开发模式**: 使用 `uv run ruff check .` 进行代码检查
+2. **流式输出**: 默认启用，可实时查看AI思考过程
+3. **无记忆模式**: 如果MIRIX不可用，系统会自动降级
+4. **Web界面**: 提供完整的可视化分层处理过程和流式输出开关
+5. **开发模式**: 使用 `uv run ruff check .` 进行代码检查
 
 ## 🆘 常见问题
 

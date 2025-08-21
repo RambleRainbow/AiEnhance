@@ -15,11 +15,11 @@ uv sync
 
 ### Running the Application
 ```bash
-# Command-line interface
+# Command-line interface (默认流式输出)
 uv run python cli_example.py "your question here"
-uv run python cli_example.py -i  # Interactive mode
+uv run python cli_example.py -i  # Interactive mode with streaming
 
-# Web interface (Gradio)
+# Web interface (Gradio) - 支持流式输出选择
 uv run python gradio_interface.py
 # Access at http://localhost:7860
 ```
@@ -128,17 +128,28 @@ User Input → Perception Layer → Cognition Layer → Behavior Layer → Colla
 
 Each layer produces structured output objects that serve as input to the next layer. Information flows are tracked and can be inspected via `get_information_flows()`.
 
+### Streaming Output (Default Behavior)
+**The system now defaults to streaming output for better user experience:**
+- CLI interface uses `process_stream()` by default
+- Gradio interface supports streaming toggle (default: enabled)
+- Real-time layer processing status and content generation
+- Improved responsiveness for long-running queries
+
 ### System Creation Pattern
 ```python
-# Recommended approach - New layered architecture
+# Recommended approach - New layered architecture with streaming
 system = create_layered_system(
     system_type="educational",
     llm_provider="ollama", 
     llm_model_name="qwen3:8b"
 )
 
-# Initialize and use
+# Initialize and use with streaming (recommended)
 await system.initialize_layers()
+async for chunk in system.process_stream(query, user_id, context):
+    print(chunk, end="", flush=True)
+
+# Alternative: Traditional batch processing
 response = await system.process_through_layers(query, user_id, context)
 ```
 

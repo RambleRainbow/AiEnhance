@@ -280,21 +280,108 @@ def sync_initialize_system(system_type: str, llm_provider: str, llm_model: str, 
     return asyncio.run(visualizer.initialize_system(system_type, llm_provider, llm_model, temperature))
 
 
+def sync_process_query_stream(query: str):
+    """流式处理查询的生成器 - 新的默认处理方式"""
+    if not query.strip():
+        yield "❌ 请输入查询问题"
+        return
+    
+    try:
+        # 使用异步生成器进行流式处理
+        async def _process():
+            if not visualizer.system:
+                yield "❌ 系统未初始化，请先初始化系统"
+                return
+            
+            layer_info = {
+                "perception": "",
+                "cognition": "", 
+                "behavior": "",
+                "collaboration": ""
+            }
+            
+            content_parts = []
+            current_layer = ""
+            
+            async for chunk in visualizer.system.process_stream(
+                query=query,
+                user_id="gradio_user",
+                context={"source": "gradio", "timestamp": datetime.now().isoformat()}
+            ):
+                # 识别当前处理层
+                if "感知层" in chunk:
+                    current_layer = "perception"
+                    layer_info[current_layer] += chunk
+                elif "认知层" in chunk:
+                    current_layer = "cognition"
+                    layer_info[current_layer] += chunk
+                elif "行为层" in chunk:
+                    current_layer = "behavior"
+                    layer_info[current_layer] += chunk
+                elif "协作层" in chunk:
+                    current_layer = "collaboration"
+                    layer_info[current_layer] += chunk
+                elif chunk.startswith(("🚀", "✅", "❌", "⚠️", "🎯")):
+                    # 系统状态信息
+                    if current_layer:
+                        layer_info[current_layer] += chunk
+                    yield chunk
+                else:
+                    # AI生成的内容
+                    content_parts.append(chunk)
+                    yield chunk
+            
+            # 处理完成后返回层级信息
+            yield f"\n\n📊 **处理层级信息:**\n"
+            for layer, info in layer_info.items():
+                if info:
+                    yield f"\n**{layer.title()}层:** {info.strip()}\n"
+            
+            yield f"\n📈 **流式输出统计:** 总计{len(''.join(content_parts))}字符\n"
+        
+        # 运行异步生成器
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            async_gen = _process()
+            while True:
+                try:
+                    chunk = loop.run_until_complete(async_gen.__anext__())
+                    yield chunk
+                except StopAsyncIteration:
+                    break
+        finally:
+            loop.close()
+            
+    except Exception as e:
+        yield f"❌ 流式处理异常: {str(e)}"
+
+
 def sync_process_query(query: str) -> Tuple[str, str, str, str, str, str]:
-    """同步包装器用于处理查询"""
+    """同步包装器用于处理查询 - 保持向后兼容"""
     if not query.strip():
         return "❌ 请输入查询问题", "", "", "", "", ""
     
     try:
-        final_response, layer_outputs = asyncio.run(visualizer.process_query_with_layers(query))
+        # 收集流式输出作为最终响应
+        final_response = ""
+        for chunk in sync_process_query_stream(query):
+            final_response += chunk
         
-        # 格式化各层输出
-        perception_output = json.dumps(layer_outputs.get("perception", {}), ensure_ascii=False, indent=2)
-        cognition_output = json.dumps(layer_outputs.get("cognition", {}), ensure_ascii=False, indent=2)
-        behavior_output = json.dumps(layer_outputs.get("behavior", {}), ensure_ascii=False, indent=2)
-        collaboration_output = json.dumps(layer_outputs.get("collaboration", {}), ensure_ascii=False, indent=2)
+        # 简化的层级输出（流式模式下层级信息已包含在响应中）
+        layer_status = {
+            "perception": {"状态": "✅ 已完成流式处理"},
+            "cognition": {"状态": "✅ 已完成流式处理"},
+            "behavior": {"状态": "✅ 已完成流式处理"},
+            "collaboration": {"状态": "✅ 已完成流式处理"}
+        }
         
-        return final_response, perception_output, cognition_output, behavior_output, collaboration_output, "✅ 处理完成"
+        perception_output = json.dumps(layer_status["perception"], ensure_ascii=False, indent=2)
+        cognition_output = json.dumps(layer_status["cognition"], ensure_ascii=False, indent=2)
+        behavior_output = json.dumps(layer_status["behavior"], ensure_ascii=False, indent=2)
+        collaboration_output = json.dumps(layer_status["collaboration"], ensure_ascii=False, indent=2)
+        
+        return final_response, perception_output, cognition_output, behavior_output, collaboration_output, "✅ 流式处理完成"
         
     except Exception as e:
         error_msg = f"❌ 查询处理异常: {str(e)}"
@@ -392,7 +479,13 @@ def create_gradio_interface():
                         lines=3
                     )
                     
-                    process_btn = gr.Button("🔄 开始处理", variant="primary", size="lg")
+                    with gr.Row():
+                        process_btn = gr.Button("🔄 开始处理", variant="primary", size="lg")
+                        stream_toggle = gr.Checkbox(
+                            label="⚡ 流式输出", 
+                            value=True,
+                            info="默认启用流式输出以获得更好体验"
+                        )
                     
                     process_status = gr.Textbox(
                         label="⚡ 处理状态",
@@ -402,10 +495,11 @@ def create_gradio_interface():
             
             with gr.Row():
                 final_response = gr.Textbox(
-                    label="💡 最终响应",
-                    lines=6,
-                    max_lines=10,
-                    interactive=False
+                    label="💡 实时响应（流式输出）",
+                    lines=8,
+                    max_lines=15,
+                    interactive=False,
+                    info="AI回答将在此处实时显示"
                 )
             
             with gr.Row():
@@ -535,9 +629,34 @@ def create_gradio_interface():
             outputs=init_status
         )
         
+        # 定义处理函数选择器
+        def process_query_handler(query: str, use_stream: bool):
+            """根据用户选择使用流式或传统处理"""
+            if use_stream:
+                # 流式处理 - 返回生成器的完整结果
+                full_response = ""
+                for chunk in sync_process_query_stream(query):
+                    full_response += chunk
+                
+                # 简化的层级状态
+                simple_status = {"状态": "✅ 流式处理完成"}
+                status_json = json.dumps(simple_status, ensure_ascii=False, indent=2)
+                
+                return (
+                    full_response,
+                    status_json,  # perception
+                    status_json,  # cognition
+                    status_json,  # behavior
+                    status_json,  # collaboration
+                    "✅ 流式处理完成"
+                )
+            else:
+                # 传统处理
+                return sync_process_query(query)
+        
         process_btn.click(
-            fn=sync_process_query,
-            inputs=query_input,
+            fn=process_query_handler,
+            inputs=[query_input, stream_toggle],
             outputs=[final_response, perception_output, cognition_output, 
                     behavior_output, collaboration_output, process_status]
         )

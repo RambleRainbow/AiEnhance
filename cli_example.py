@@ -66,7 +66,7 @@ class AiEnhanceCliTool:
             return False
 
     async def single_query(self, query, system_type="educational", temperature=0.7, show_details=False):
-        """单次查询"""
+        """单次查询 - 默认使用流式输出"""
         print("🔧 初始化系统...")
         if not await self.initialize_system(system_type, temperature):
             return
@@ -75,54 +75,33 @@ class AiEnhanceCliTool:
         try:
             # 使用异步上下文管理器确保资源清理
             async with self.system:
-                response = await self.system.process_query(
+                # 默认使用流式处理
+                print("\n" + "="*50)
+                print("🤖 AI实时回答:")
+                print("="*50)
+                
+                content_parts = []
+                async for chunk in self.system.process_stream(
                     query=query,
                     user_id="cli_user",
                     context={"source": "cli"}
-                )
-
-                print("\n" + "="*50)
-                print("🤖 AI回答:")
-                print("="*50)
-                if response.content:
-                    print(response.content)
-                else:
-                    print("(无内容生成 - 请检查Ollama服务)")
+                ):
+                    print(chunk, end="", flush=True)
+                    # 收集内容用于详细信息显示
+                    if not chunk.startswith(("🚀", "🧠", "💾", "⚙️", "🤝", "✅", "❌", "⚠️", "🎯")):
+                        content_parts.append(chunk)
 
                 if show_details:
+                    # 获取系统状态用于详细信息显示
+                    status = self.system.get_system_status()
                     print("\n" + "="*50)
                     print("📊 详细信息:")
                     print("="*50)
-
-                    # 处理步骤
-                    if hasattr(response, 'processing_metadata'):
-                        steps = response.processing_metadata.get(
-                            'processing_steps', [])
-                        print(f"🔄 处理步骤: {' → '.join(steps)}")
-
-                    # 用户画像
-                    if hasattr(response, 'user_profile'):
-                        profile = response.user_profile.cognitive
-                        print(f"👤 用户画像:")
-                        print(f"   思维模式: {profile.thinking_mode.value}")
-                        print(f"   认知复杂度: {profile.cognitive_complexity:.2f}")
-                        print(f"   抽象水平: {profile.abstraction_level:.2f}")
-
-                    # 适配信息
-                    if hasattr(response, 'adaptation_info'):
-                        adapt = response.adaptation_info
-                        print(f"⚙️ 适配策略:")
-                        print(f"   输出密度: {adapt.density_level.value}")
-                        print(f"   结构类型: {adapt.structure_type.value}")
-                        print(f"   认知负荷: {adapt.cognitive_load:.2f}")
-
-                    # 系统状态
-                    status = self.system.get_system_status()
                     print(f"🔍 系统状态:")
                     print(f"   系统类型: {system_type}")
-                    print(
-                        f"   LLM配置: {status.get('llm_provider', {}).get('provider', 'None')}")
-                    print(f"   响应长度: {len(response.content)}字符")
+                    print(f"   LLM配置: {status.get('components', {}).get('llm_provider', {}).get('provider', 'None')}")
+                    print(f"   响应长度: {len(''.join(content_parts))}字符")
+                    print(f"   流式输出: ✅ 已启用")
 
         except Exception as e:
             print(f"❌ 查询处理失败: {e}")
@@ -166,26 +145,25 @@ class AiEnhanceCliTool:
                 elif not user_input:
                     continue
 
-                # 处理查询
+                # 处理查询 - 使用流式输出
                 print("🤔 思考中...")
-                response = await self.system.process_query(
+                print(f"🤖 AI: ", end="", flush=True)
+                
+                content_parts = []
+                async for chunk in self.system.process_stream(
                     query=user_input,
                     user_id="interactive_user",
                     context={"session": session_count}
-                )
-
-                # 显示响应
-                print(f"🤖 AI: ", end="")
-                if response.content:
-                    print(response.content)
-
-                    # 显示简要信息
-                    if hasattr(response, 'adaptation_info'):
-                        adapt = response.adaptation_info
-                        print(
-                            f"    ⚙️ [{adapt.density_level.value}密度, 负荷{adapt.cognitive_load:.1f}]")
-                else:
+                ):
+                    # 过滤掉系统状态信息，只显示AI生成的内容
+                    if not chunk.startswith(("🚀", "🧠", "💾", "⚙️", "🤝", "✅", "❌", "⚠️", "🎯")):
+                        print(chunk, end="", flush=True)
+                        content_parts.append(chunk)
+                
+                if not content_parts:
                     print("(无法生成响应)")
+                else:
+                    print(f"\n    ⚙️ [流式输出, 长度{len(''.join(content_parts))}字符]")
 
                 session_count += 1
 
@@ -220,22 +198,23 @@ class AiEnhanceCliTool:
             print("🤔 AI思考中...")
 
             try:
-                response = await self.system.process_query(
+                print(f"🤖 AI: ", end="", flush=True)
+                
+                content_parts = []
+                async for chunk in self.system.process_stream(
                     query=query,
                     user_id="demo_user",
                     context={"demo_type": category}
-                )
+                ):
+                    # 只显示AI生成的内容，过滤掉处理状态信息
+                    if not chunk.startswith(("🚀", "🧠", "💾", "⚙️", "🤝", "✅", "❌", "⚠️", "🎯")):
+                        print(chunk, end="", flush=True)
+                        content_parts.append(chunk)
 
-                if response.content:
-                    print(f"🤖 AI: {response.content}")
-
-                    # 显示处理信息
-                    if hasattr(response, 'adaptation_info'):
-                        adapt = response.adaptation_info
-                        print(
-                            f"📊 适配信息: {adapt.density_level.value}密度, 认知负荷{adapt.cognitive_load:.2f}")
+                if not content_parts:
+                    print("(无响应生成)")
                 else:
-                    print("🤖 AI: (无响应生成)")
+                    print(f"\n📊 流式输出: 长度{len(''.join(content_parts))}字符")
 
                 print("-" * 50)
 
