@@ -182,8 +182,8 @@ class TaskTypeIdentifier(ContextAnalysisModule):
             openness += 0.2
 
         # 基于用户认知复杂度调整
-        if user_profile and hasattr(user_profile, 'cognitive'):
-            if user_profile.cognitive.cognitive_complexity > 0.7:
+        if user_profile and user_profile.cognitive_characteristics:
+            if user_profile.cognitive_characteristics.get('cognitive_complexity', 0.5) > 0.7:
                 openness += 0.1  # 高认知复杂度用户喜欢开放性问题
 
         return min(1.0, openness)
@@ -197,8 +197,8 @@ class TaskTypeIdentifier(ContextAnalysisModule):
             structure_need += 0.3
 
         # 基于用户思维模式调整
-        if user_profile and hasattr(user_profile, 'cognitive'):
-            if user_profile.cognitive.thinking_mode.value == 'analytical':
+        if user_profile and user_profile.cognitive_characteristics:
+            if user_profile.cognitive_characteristics.get('thinking_mode') == 'analytical':
                 structure_need += 0.2
 
         return min(1.0, structure_need)
@@ -214,8 +214,8 @@ class TaskTypeIdentifier(ContextAnalysisModule):
             creativity_need += 0.2
 
         # 基于用户创造性倾向调整
-        if user_profile and hasattr(user_profile, 'cognitive'):
-            creativity_need += user_profile.cognitive.creativity_tendency * 0.3
+        if user_profile and user_profile.cognitive_characteristics:
+            creativity_need += user_profile.cognitive_characteristics.get('creativity_tendency', 0.5) * 0.3
 
         return min(1.0, creativity_need)
 
@@ -325,8 +325,8 @@ class ContextualElementExtractor(ContextAnalysisModule):
             return AbstractionLevel.META
         else:
             # 基于用户抽象思维能力调整
-            if user_profile and hasattr(user_profile, 'cognitive'):
-                if user_profile.cognitive.abstraction_level > 0.7:
+            if user_profile and user_profile.cognitive_characteristics:
+                if user_profile.cognitive_characteristics.get('abstraction_level', 0.5) > 0.7:
                     return AbstractionLevel.META
             return AbstractionLevel.CONCEPTUAL
 
@@ -365,8 +365,8 @@ class ContextualElementExtractor(ContextAnalysisModule):
             complexity += 0.3
 
         # 基于用户认知复杂度调整
-        if user_profile and hasattr(user_profile, 'cognitive'):
-            if user_profile.cognitive.cognitive_complexity > 0.7:
+        if user_profile and user_profile.cognitive_characteristics:
+            if user_profile.cognitive_characteristics.get('cognitive_complexity', 0.5) > 0.7:
                 complexity += 0.1  # 高认知用户能处理更复杂的任务
 
         return min(1.0, complexity)

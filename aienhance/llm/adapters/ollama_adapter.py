@@ -67,30 +67,33 @@ class OllamaLLMAdapter(LLMProvider):
             raise RuntimeError("Ollama LLM未初始化")
 
         try:
-            # 构建Ollama格式的请求
-            ollama_messages = self._convert_messages_to_ollama(messages)
+            # 使用局部session避免事件循环冲突
+            timeout = aiohttp.ClientTimeout(total=self.config.timeout)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                # 构建Ollama格式的请求
+                ollama_messages = self._convert_messages_to_ollama(messages)
 
-            request_data = {
-                "model": self.config.model_name,
-                "messages": ollama_messages,
-                "stream": False,
-                "options": self._build_generation_options(**kwargs)
-            }
+                request_data = {
+                    "model": self.config.model_name,
+                    "messages": ollama_messages,
+                    "stream": False,
+                    "options": self._build_generation_options(**kwargs)
+                }
 
-            # 添加系统提示（如果有）
-            system_messages = [msg for msg in messages if msg.role == MessageRole.SYSTEM]
-            if system_messages:
-                request_data["system"] = system_messages[-1].content
+                # 添加系统提示（如果有）
+                system_messages = [msg for msg in messages if msg.role == MessageRole.SYSTEM]
+                if system_messages:
+                    request_data["system"] = system_messages[-1].content
 
-            # 发送请求
-            async with self.session.post(
-                f"{self.base_url}/api/chat",
-                json=request_data
-            ) as response:
-                response.raise_for_status()
-                result = await response.json()
+                # 发送请求
+                async with session.post(
+                    f"{self.base_url}/api/chat",
+                    json=request_data
+                ) as response:
+                    response.raise_for_status()
+                    result = await response.json()
 
-                return self._convert_ollama_response_to_chat(result)
+                    return self._convert_ollama_response_to_chat(result)
 
         except Exception as e:
             logger.error(f"Ollama聊天请求失败: {e}")
@@ -101,47 +104,50 @@ class OllamaLLMAdapter(LLMProvider):
         if not self.is_initialized:
             raise RuntimeError("Ollama LLM未初始化")
 
-        try:
-            # 构建流式请求
-            ollama_messages = self._convert_messages_to_ollama(messages)
+        # 为每次流式调用创建新的session，避免事件循环冲突
+        timeout = aiohttp.ClientTimeout(total=self.config.timeout)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            try:
+                # 构建流式请求
+                ollama_messages = self._convert_messages_to_ollama(messages)
 
-            request_data = {
-                "model": self.config.model_name,
-                "messages": ollama_messages,
-                "stream": True,
-                "options": self._build_generation_options(**kwargs)
-            }
+                request_data = {
+                    "model": self.config.model_name,
+                    "messages": ollama_messages,
+                    "stream": True,
+                    "options": self._build_generation_options(**kwargs)
+                }
 
-            # 添加系统提示（如果有）
-            system_messages = [msg for msg in messages if msg.role == MessageRole.SYSTEM]
-            if system_messages:
-                request_data["system"] = system_messages[-1].content
+                # 添加系统提示（如果有）
+                system_messages = [msg for msg in messages if msg.role == MessageRole.SYSTEM]
+                if system_messages:
+                    request_data["system"] = system_messages[-1].content
 
-            # 发送流式请求
-            async with self.session.post(
-                f"{self.base_url}/api/chat",
-                json=request_data
-            ) as response:
-                response.raise_for_status()
+                # 发送流式请求
+                async with session.post(
+                    f"{self.base_url}/api/chat",
+                    json=request_data
+                ) as response:
+                    response.raise_for_status()
 
-                async for line in response.content:
-                    if line:
-                        try:
-                            chunk = json.loads(line.decode('utf-8'))
-                            if 'message' in chunk and 'content' in chunk['message']:
-                                content = chunk['message']['content']
-                                if content:
-                                    yield content
-                        except json.JSONDecodeError:
-                            continue
+                    async for line in response.content:
+                        if line:
+                            try:
+                                chunk = json.loads(line.decode('utf-8'))
+                                if 'message' in chunk and 'content' in chunk['message']:
+                                    content = chunk['message']['content']
+                                    if content:
+                                        yield content
+                            except json.JSONDecodeError:
+                                continue
 
-                        # 检查是否完成
-                        if chunk.get('done', False):
-                            break
+                            # 检查是否完成
+                            if chunk.get('done', False):
+                                break
 
-        except Exception as e:
-            logger.error(f"Ollama流式聊天失败: {e}")
-            raise
+            except Exception as e:
+                logger.error(f"Ollama流式聊天失败: {e}")
+                raise
 
     async def completion(self, prompt: str, **kwargs) -> str:
         """Ollama文本完成接口"""
@@ -149,21 +155,24 @@ class OllamaLLMAdapter(LLMProvider):
             raise RuntimeError("Ollama LLM未初始化")
 
         try:
-            request_data = {
-                "model": self.config.model_name,
-                "prompt": prompt,
-                "stream": False,
-                "options": self._build_generation_options(**kwargs)
-            }
+            # 使用局部session避免事件循环冲突
+            timeout = aiohttp.ClientTimeout(total=self.config.timeout)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                request_data = {
+                    "model": self.config.model_name,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": self._build_generation_options(**kwargs)
+                }
 
-            async with self.session.post(
-                f"{self.base_url}/api/generate",
-                json=request_data
-            ) as response:
-                response.raise_for_status()
-                result = await response.json()
+                async with session.post(
+                    f"{self.base_url}/api/generate",
+                    json=request_data
+                ) as response:
+                    response.raise_for_status()
+                    result = await response.json()
 
-                return result.get('response', '')
+                    return result.get('response', '')
 
         except Exception as e:
             logger.error(f"Ollama文本完成失败: {e}")

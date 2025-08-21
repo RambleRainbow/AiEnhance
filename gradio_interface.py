@@ -275,9 +275,35 @@ class LayeredSystemVisualizer:
 visualizer = LayeredSystemVisualizer()
 
 
+def safe_asyncio_run(coro):
+    """安全的异步执行函数，避免事件循环冲突"""
+    try:
+        # 尝试获取当前事件循环
+        loop = asyncio.get_running_loop()
+        # 如果已有事件循环在运行，在新线程中执行
+        import threading
+        import concurrent.futures
+        
+        def run_in_new_loop():
+            new_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(new_loop)
+            try:
+                return new_loop.run_until_complete(coro)
+            finally:
+                new_loop.close()
+        
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(run_in_new_loop)
+            return future.result()
+            
+    except RuntimeError:
+        # 没有运行中的事件循环，可以直接使用 asyncio.run
+        return asyncio.run(coro)
+
+
 def sync_initialize_system(system_type: str, llm_provider: str, llm_model: str, temperature: float) -> str:
     """同步包装器用于初始化系统"""
-    return asyncio.run(visualizer.initialize_system(system_type, llm_provider, llm_model, temperature))
+    return safe_asyncio_run(visualizer.initialize_system(system_type, llm_provider, llm_model, temperature))
 
 
 def sync_process_query_stream(query: str):
@@ -339,19 +365,49 @@ def sync_process_query_stream(query: str):
 
             yield f"\n📈 **流式输出统计:** 总计{len(''.join(content_parts))}字符\n"
 
-        # 运行异步生成器
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        # 运行异步生成器 - 修复事件循环问题
         try:
-            async_gen = _process()
-            while True:
-                try:
-                    chunk = loop.run_until_complete(async_gen.__anext__())
+            # 尝试获取当前事件循环
+            try:
+                loop = asyncio.get_running_loop()
+                # 如果已有事件循环在运行，使用 asyncio.run_coroutine_threadsafe
+                import threading
+                
+                def run_async_gen():
+                    new_loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(new_loop)
+                    try:
+                        async def collect_all():
+                            results = []
+                            async for chunk in _process():
+                                results.append(chunk)
+                            return results
+                        
+                        return new_loop.run_until_complete(collect_all())
+                    finally:
+                        new_loop.close()
+                
+                # 在新线程中运行异步代码
+                with threading.ThreadPoolExecutor() as executor:
+                    future = executor.submit(run_async_gen)
+                    results = future.result()
+                    for chunk in results:
+                        yield chunk
+                        
+            except RuntimeError:
+                # 没有运行中的事件循环，可以直接使用 asyncio.run
+                async def collect_all():
+                    results = []
+                    async for chunk in _process():
+                        results.append(chunk)
+                    return results
+                
+                results = safe_asyncio_run(collect_all())
+                for chunk in results:
                     yield chunk
-                except StopAsyncIteration:
-                    break
-        finally:
-            loop.close()
+                    
+        except Exception as async_error:
+            yield f"❌ 异步处理出错: {str(async_error)}"
 
     except Exception as e:
         yield f"❌ 流式处理异常: {str(e)}"
@@ -391,7 +447,7 @@ def sync_process_query(query: str) -> tuple[str, str, str, str, str, str]:
 def sync_get_memory_status() -> str:
     """同步包装器用于获取记忆状态"""
     try:
-        memory_status = asyncio.run(visualizer.get_memory_status())
+        memory_status = safe_asyncio_run(visualizer.get_memory_status())
         return json.dumps(memory_status, ensure_ascii=False, indent=2)
     except Exception as e:
         return f"❌ 获取记忆状态失败: {str(e)}"
@@ -680,7 +736,7 @@ def create_gradio_interface():
                         limit=10,
                         memory_types=None
                     )
-                    results = asyncio.run(visualizer.system.memory_system.search_memories(
+                    results = safe_asyncio_run(visualizer.system.memory_system.search_memories(
                         user_context, search_query
                     ))
 
@@ -708,7 +764,7 @@ def create_gradio_interface():
                 if visualizer.system and visualizer.system.memory_system:
                     # 简化的仪表板生成
                     user_context = create_user_context("gradio_user", "dashboard_session")
-                    memories = asyncio.run(visualizer.system.memory_system.get_user_memories(
+                    memories = safe_asyncio_run(visualizer.system.memory_system.get_user_memories(
                         user_context, limit=100
                     ))
 

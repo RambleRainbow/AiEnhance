@@ -269,7 +269,7 @@ class ThinkingFrameworkMatcher(AnalogyReasoningModule):
             return frameworks
 
         # 基于用户认知风格过滤
-        user_style = getattr(user_profile.cognitive, 'thinking_mode', None)
+        user_style = user_profile.cognitive_characteristics.get('thinking_mode') if user_profile else None
         filtered_frameworks = []
 
         for framework in frameworks:

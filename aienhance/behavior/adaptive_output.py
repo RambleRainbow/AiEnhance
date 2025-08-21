@@ -103,16 +103,16 @@ class InformationDensityController(AdaptiveOutputModule):
         """评估用户认知能力"""
         # TODO: 基于用户画像评估认知处理能力
 
-        if not user_profile or not user_profile.cognitive:
+        if not user_profile or not user_profile.cognitive_characteristics:
             return 0.5  # 默认中等能力
 
-        cognitive = user_profile.cognitive
+        cognitive_chars = user_profile.cognitive_characteristics
 
         # 综合考虑抽象思维能力、认知复杂度等
         capacity_score = (
-            cognitive.abstraction_level * 0.4 +
-            cognitive.cognitive_complexity * 0.4 +
-            cognitive.creativity_tendency * 0.2
+            cognitive_chars.get('abstraction_level', 0.5) * 0.4 +
+            cognitive_chars.get('cognitive_complexity', 0.5) * 0.4 +
+            cognitive_chars.get('creativity_tendency', 0.5) * 0.2
         )
 
         return min(1.0, max(0.0, capacity_score))
@@ -272,13 +272,15 @@ class LogicalStructureAdapter(AdaptiveOutputModule):
         """选择表达形式"""
         # TODO: 根据用户偏好选择表达形式
 
-        if not user_profile or not user_profile.cognitive:
+        if not user_profile or not user_profile.cognitive_characteristics:
             return "logical"
 
+        cognitive_chars = user_profile.cognitive_characteristics
+        
         # 根据创造性思维倾向选择表达形式
-        if user_profile.cognitive.creativity_tendency > 0.7:
+        if cognitive_chars.get('creativity_tendency', 0.5) > 0.7:
             return "visual"  # 视觉型用户：图表、类比、形象化表达
-        elif user_profile.cognitive.abstraction_level > 0.7:
+        elif cognitive_chars.get('abstraction_level', 0.5) > 0.7:
             return "logical"  # 逻辑型用户：公式化、符号化、形式化
         else:
             return "narrative"  # 听觉型用户：对话式、韵律感、故事化
