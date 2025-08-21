@@ -1,3 +1,10 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["aienhance*"]
+
 [project]
 name = "aienhance"
 version = "0.1.0"
@@ -20,9 +27,10 @@ dependencies = [
     "requests>=2.32.5",
 ]
 
-[project.scripts]
-aienhance = "cli_example:main"
-aienhance-gradio = "gradio_interface:main"
+# 由于文件在根目录，使用Python直接执行的方式更简单
+# [project.scripts]
+# aienhance-cli = "cli_example:main"
+# aienhance-web = "gradio_interface:main"
 
 [dependency-groups]
 dev = [

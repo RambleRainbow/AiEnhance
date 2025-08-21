@@ -11,7 +11,7 @@
 uv sync
 
 # 启动Gradio界面
-uv run aienhance-gradio
+uv run python gradio_interface.py
 ```
 
 ### 使用传统方式

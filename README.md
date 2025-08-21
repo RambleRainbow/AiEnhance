@@ -63,8 +63,8 @@ pip install -e .
 #### 命令行界面
 ```bash
 # 使用UV
-uv run aienhance "什么是人工智能？"
-uv run aienhance -i  # 交互模式
+uv run python cli_example.py "什么是人工智能？"
+uv run python cli_example.py -i  # 交互模式
 
 # 或使用传统方式
 python cli_example.py "什么是人工智能？"
@@ -73,9 +73,9 @@ python cli_example.py "什么是人工智能？"
 #### Gradio Web界面
 ```bash
 # 使用UV
-uv run aienhance-gradio
+uv run python gradio_interface.py
 
-# 或使用传统方式
+# 或使用传统方式  
 python gradio_interface.py
 ```
 
