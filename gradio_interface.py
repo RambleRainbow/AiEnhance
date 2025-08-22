@@ -7,6 +7,7 @@ AiEnhance Gradio界面
 import asyncio
 import json
 import logging
+import os
 import traceback
 from datetime import datetime
 from typing import Any
@@ -40,10 +41,23 @@ class LayeredSystemVisualizer:
         self.current_system_type = "educational"
         self.user_context = create_user_context("gradio_user", "gradio_session")
 
-    async def initialize_system(self, system_type: str, llm_provider: str = "ollama",
-                              llm_model: str = "qwen3:8b", temperature: float = 0.7) -> str:
+    async def initialize_system(
+        self,
+        system_type: str = None,
+        llm_provider: str = None,
+        llm_model: str = None,
+        temperature: float = None,
+    ) -> str:
         """初始化分层认知系统"""
         try:
+            # 从环境变量获取默认配置
+            system_type = system_type or os.getenv("DEFAULT_SYSTEM_TYPE", "educational")
+            llm_provider = llm_provider or os.getenv("DEFAULT_LLM_PROVIDER", "ollama")
+            llm_model = llm_model or os.getenv("DEFAULT_LLM_MODEL", "qwen3:8b")
+            temperature = temperature or float(
+                os.getenv("DEFAULT_LLM_TEMPERATURE", "0.7")
+            )
+
             logger.info(f"初始化 {system_type} 系统...")
 
             # 创建系统配置
@@ -53,7 +67,9 @@ class LayeredSystemVisualizer:
                 "llm_model_name": llm_model,
                 "llm_temperature": temperature,
                 "use_unified_llm": True,
-                "memory_system_type": "mirix_unified"
+                "memory_system_type": os.getenv(
+                    "DEFAULT_MEMORY_SYSTEM", "mirix_unified"
+                ),
             }
 
             # 根据系统类型创建对应的系统
@@ -93,7 +109,7 @@ class LayeredSystemVisualizer:
                 "perception": {},
                 "cognition": {},
                 "behavior": {},
-                "collaboration": {}
+                "collaboration": {},
             }
 
             # 1. 感知层处理
@@ -104,26 +120,44 @@ class LayeredSystemVisualizer:
                 query=query,
                 user_id=self.user_context.user_id,
                 context={"session_id": self.user_context.session_id},
-                historical_data=None
+                historical_data=None,
             )
 
-            perception_result = await self.system.perception_layer.process(perception_input)
+            perception_result = await self.system.perception_layer.process(
+                perception_input
+            )
 
             layer_outputs["perception"] = {
                 "输入查询": query,
                 "处理状态": perception_result.status.value,
                 "用户画像": {
-                    "用户ID": perception_result.user_profile.user_id if perception_result.user_profile else "未知",
-                    "认知特征": perception_result.user_profile.cognitive_characteristics if perception_result.user_profile else {},
-                    "知识画像": perception_result.user_profile.knowledge_profile if perception_result.user_profile else {}
-                } if perception_result.user_profile else {},
+                    "用户ID": perception_result.user_profile.user_id
+                    if perception_result.user_profile
+                    else "未知",
+                    "认知特征": perception_result.user_profile.cognitive_characteristics
+                    if perception_result.user_profile
+                    else {},
+                    "知识画像": perception_result.user_profile.knowledge_profile
+                    if perception_result.user_profile
+                    else {},
+                }
+                if perception_result.user_profile
+                else {},
                 "情境分析": {
-                    "任务类型": perception_result.context_profile.task_type if perception_result.context_profile else "未知",
-                    "复杂度": perception_result.context_profile.complexity_level if perception_result.context_profile else 0,
-                    "领域特征": perception_result.context_profile.domain_characteristics if perception_result.context_profile else {}
-                } if perception_result.context_profile else {},
+                    "任务类型": perception_result.context_profile.task_type
+                    if perception_result.context_profile
+                    else "未知",
+                    "复杂度": perception_result.context_profile.complexity_level
+                    if perception_result.context_profile
+                    else 0,
+                    "领域特征": perception_result.context_profile.domain_characteristics
+                    if perception_result.context_profile
+                    else {},
+                }
+                if perception_result.context_profile
+                else {},
                 "感知洞察": perception_result.perception_insights,
-                "处理时间": perception_result.processing_time
+                "处理时间": perception_result.processing_time,
             }
 
             # 2. 认知层处理
@@ -135,29 +169,76 @@ class LayeredSystemVisualizer:
                 user_profile=perception_result.user_profile,
                 context_profile=perception_result.context_profile,
                 external_memories=[],
-                perception_insights=perception_result.perception_insights
+                perception_insights=perception_result.perception_insights,
             )
 
-            cognition_result = await self.system.cognition_layer.process(cognition_input)
+            cognition_result = await self.system.cognition_layer.process(
+                cognition_input
+            )
 
             layer_outputs["cognition"] = {
                 "处理状态": cognition_result.status.value,
                 "记忆激活": {
-                    "激活记忆数": len(cognition_result.memory_activation.activated_fragments) if cognition_result.memory_activation else 0,
-                    "激活置信度": cognition_result.memory_activation.activation_confidence if cognition_result.memory_activation else 0,
-                    "激活元数据": len(cognition_result.memory_activation.activation_metadata) if cognition_result.memory_activation else 0
-                } if hasattr(cognition_result, 'memory_activation') and cognition_result.memory_activation else {},
+                    "激活记忆数": len(
+                        cognition_result.memory_activation.activated_fragments
+                    )
+                    if cognition_result.memory_activation
+                    else 0,
+                    "激活置信度": cognition_result.memory_activation.activation_confidence
+                    if cognition_result.memory_activation
+                    else 0,
+                    "激活元数据": len(
+                        cognition_result.memory_activation.activation_metadata
+                    )
+                    if cognition_result.memory_activation
+                    else 0,
+                }
+                if hasattr(cognition_result, "memory_activation")
+                and cognition_result.memory_activation
+                else {},
                 "语义增强": {
-                    "增强内容数": len(cognition_result.semantic_enhancement.enhanced_content) if hasattr(cognition_result, 'semantic_enhancement') and cognition_result.semantic_enhancement else 0,
-                    "语义补全数": len(cognition_result.semantic_enhancement.semantic_gaps_filled) if hasattr(cognition_result, 'semantic_enhancement') and cognition_result.semantic_enhancement else 0,
-                    "增强置信度": cognition_result.semantic_enhancement.enhancement_confidence if hasattr(cognition_result, 'semantic_enhancement') and cognition_result.semantic_enhancement else 0
-                } if hasattr(cognition_result, 'semantic_enhancement') and cognition_result.semantic_enhancement else {},
+                    "增强内容数": len(
+                        cognition_result.semantic_enhancement.enhanced_content
+                    )
+                    if hasattr(cognition_result, "semantic_enhancement")
+                    and cognition_result.semantic_enhancement
+                    else 0,
+                    "语义补全数": len(
+                        cognition_result.semantic_enhancement.semantic_gaps_filled
+                    )
+                    if hasattr(cognition_result, "semantic_enhancement")
+                    and cognition_result.semantic_enhancement
+                    else 0,
+                    "增强置信度": cognition_result.semantic_enhancement.enhancement_confidence
+                    if hasattr(cognition_result, "semantic_enhancement")
+                    and cognition_result.semantic_enhancement
+                    else 0,
+                }
+                if hasattr(cognition_result, "semantic_enhancement")
+                and cognition_result.semantic_enhancement
+                else {},
                 "类比推理": {
-                    "类比数量": len(cognition_result.analogy_reasoning.analogies) if hasattr(cognition_result, 'analogy_reasoning') and cognition_result.analogy_reasoning else 0,
-                    "推理链数": len(cognition_result.analogy_reasoning.reasoning_chains) if hasattr(cognition_result, 'analogy_reasoning') and cognition_result.analogy_reasoning else 0,
-                    "平均置信度": sum(cognition_result.analogy_reasoning.confidence_scores) / len(cognition_result.analogy_reasoning.confidence_scores) if hasattr(cognition_result, 'analogy_reasoning') and cognition_result.analogy_reasoning and cognition_result.analogy_reasoning.confidence_scores else 0
-                } if hasattr(cognition_result, 'analogy_reasoning') and cognition_result.analogy_reasoning else {},
-                "处理时间": cognition_result.processing_time
+                    "类比数量": len(cognition_result.analogy_reasoning.analogies)
+                    if hasattr(cognition_result, "analogy_reasoning")
+                    and cognition_result.analogy_reasoning
+                    else 0,
+                    "推理链数": len(cognition_result.analogy_reasoning.reasoning_chains)
+                    if hasattr(cognition_result, "analogy_reasoning")
+                    and cognition_result.analogy_reasoning
+                    else 0,
+                    "平均置信度": sum(
+                        cognition_result.analogy_reasoning.confidence_scores
+                    )
+                    / len(cognition_result.analogy_reasoning.confidence_scores)
+                    if hasattr(cognition_result, "analogy_reasoning")
+                    and cognition_result.analogy_reasoning
+                    and cognition_result.analogy_reasoning.confidence_scores
+                    else 0,
+                }
+                if hasattr(cognition_result, "analogy_reasoning")
+                and cognition_result.analogy_reasoning
+                else {},
+                "处理时间": cognition_result.processing_time,
             }
 
             # 3. 行为层处理
@@ -169,7 +250,7 @@ class LayeredSystemVisualizer:
                 user_profile=perception_result.user_profile,
                 context_profile=perception_result.context_profile,
                 cognition_output=cognition_result,
-                generation_requirements={"format": "text", "style": "informative"}
+                generation_requirements={"format": "text", "style": "informative"},
             )
 
             behavior_result = await self.system.behavior_layer.process(behavior_input)
@@ -177,19 +258,50 @@ class LayeredSystemVisualizer:
             layer_outputs["behavior"] = {
                 "处理状态": behavior_result.status.value,
                 "响应生成": {
-                    "生成内容": behavior_result.adapted_content.content[:200] + "..." if hasattr(behavior_result, 'adapted_content') and behavior_result.adapted_content and len(behavior_result.adapted_content.content) > 200 else (behavior_result.adapted_content.content if hasattr(behavior_result, 'adapted_content') and behavior_result.adapted_content else ""),
-                    "适配策略": behavior_result.adapted_content.adaptation_strategy if hasattr(behavior_result, 'adapted_content') and behavior_result.adapted_content else "默认",
-                    "认知负荷": behavior_result.adapted_content.cognitive_load if hasattr(behavior_result, 'adapted_content') and behavior_result.adapted_content else 0,
-                    "信息密度": behavior_result.adapted_content.information_density if hasattr(behavior_result, 'adapted_content') and behavior_result.adapted_content else "中等",
-                    "个性化程度": behavior_result.adapted_content.personalization_level if hasattr(behavior_result, 'adapted_content') and behavior_result.adapted_content else 0
-                } if hasattr(behavior_result, 'adapted_content') and behavior_result.adapted_content else {},
-                "生成元数据": behavior_result.generation_metadata if hasattr(behavior_result, 'generation_metadata') else {},
-                "质量指标": behavior_result.quality_metrics if hasattr(behavior_result, 'quality_metrics') else {},
-                "处理时间": behavior_result.processing_time
+                    "生成内容": behavior_result.adapted_content.content[:200] + "..."
+                    if hasattr(behavior_result, "adapted_content")
+                    and behavior_result.adapted_content
+                    and len(behavior_result.adapted_content.content) > 200
+                    else (
+                        behavior_result.adapted_content.content
+                        if hasattr(behavior_result, "adapted_content")
+                        and behavior_result.adapted_content
+                        else ""
+                    ),
+                    "适配策略": behavior_result.adapted_content.adaptation_strategy
+                    if hasattr(behavior_result, "adapted_content")
+                    and behavior_result.adapted_content
+                    else "默认",
+                    "认知负荷": behavior_result.adapted_content.cognitive_load
+                    if hasattr(behavior_result, "adapted_content")
+                    and behavior_result.adapted_content
+                    else 0,
+                    "信息密度": behavior_result.adapted_content.information_density
+                    if hasattr(behavior_result, "adapted_content")
+                    and behavior_result.adapted_content
+                    else "中等",
+                    "个性化程度": behavior_result.adapted_content.personalization_level
+                    if hasattr(behavior_result, "adapted_content")
+                    and behavior_result.adapted_content
+                    else 0,
+                }
+                if hasattr(behavior_result, "adapted_content")
+                and behavior_result.adapted_content
+                else {},
+                "生成元数据": behavior_result.generation_metadata
+                if hasattr(behavior_result, "generation_metadata")
+                else {},
+                "质量指标": behavior_result.quality_metrics
+                if hasattr(behavior_result, "quality_metrics")
+                else {},
+                "处理时间": behavior_result.processing_time,
             }
 
             # 4. 协作层处理（如果启用）
-            if hasattr(self.system, 'collaboration_layer') and self.system.collaboration_layer:
+            if (
+                hasattr(self.system, "collaboration_layer")
+                and self.system.collaboration_layer
+            ):
                 logger.info("🤝 协作层处理中...")
                 from aienhance.core.layer_interfaces import CollaborationInput
 
@@ -198,31 +310,77 @@ class LayeredSystemVisualizer:
                     user_profile=perception_result.user_profile,
                     context_profile=perception_result.context_profile,
                     behavior_output=behavior_result,
-                    collaboration_context={"mode": "enhancement", "perspectives": ["analytical", "creative"]}
+                    collaboration_context={
+                        "mode": "enhancement",
+                        "perspectives": ["analytical", "creative"],
+                    },
                 )
 
-                collaboration_result = await self.system.collaboration_layer.process(collaboration_input)
+                collaboration_result = await self.system.collaboration_layer.process(
+                    collaboration_input
+                )
 
                 layer_outputs["collaboration"] = {
                     "处理状态": collaboration_result.status.value,
                     "多角度分析": {
-                        "生成视角数": len(collaboration_result.perspective_generation.perspectives) if hasattr(collaboration_result, 'perspective_generation') and collaboration_result.perspective_generation else 0,
-                        "视角多样性": collaboration_result.perspective_generation.perspective_diversity if hasattr(collaboration_result, 'perspective_generation') and collaboration_result.perspective_generation else 0,
-                        "生成元数据": len(collaboration_result.perspective_generation.generation_metadata) if hasattr(collaboration_result, 'perspective_generation') and collaboration_result.perspective_generation else 0
-                    } if hasattr(collaboration_result, 'perspective_generation') and collaboration_result.perspective_generation else {},
+                        "生成视角数": len(
+                            collaboration_result.perspective_generation.perspectives
+                        )
+                        if hasattr(collaboration_result, "perspective_generation")
+                        and collaboration_result.perspective_generation
+                        else 0,
+                        "视角多样性": collaboration_result.perspective_generation.perspective_diversity
+                        if hasattr(collaboration_result, "perspective_generation")
+                        and collaboration_result.perspective_generation
+                        else 0,
+                        "生成元数据": len(
+                            collaboration_result.perspective_generation.generation_metadata
+                        )
+                        if hasattr(collaboration_result, "perspective_generation")
+                        and collaboration_result.perspective_generation
+                        else 0,
+                    }
+                    if hasattr(collaboration_result, "perspective_generation")
+                    and collaboration_result.perspective_generation
+                    else {},
                     "认知挑战": {
-                        "挑战数量": len(collaboration_result.cognitive_challenge.challenges) if hasattr(collaboration_result, 'cognitive_challenge') and collaboration_result.cognitive_challenge else 0,
-                        "挑战强度": collaboration_result.cognitive_challenge.challenge_intensity if hasattr(collaboration_result, 'cognitive_challenge') and collaboration_result.cognitive_challenge else 0,
-                        "教育价值": collaboration_result.cognitive_challenge.educational_value if hasattr(collaboration_result, 'cognitive_challenge') and collaboration_result.cognitive_challenge else 0
-                    } if hasattr(collaboration_result, 'cognitive_challenge') and collaboration_result.cognitive_challenge else {},
-                    "协作增强": collaboration_result.enhanced_content[:200] + "..." if hasattr(collaboration_result, 'enhanced_content') and collaboration_result.enhanced_content and len(collaboration_result.enhanced_content) > 200 else (collaboration_result.enhanced_content if hasattr(collaboration_result, 'enhanced_content') else ""),
-                    "处理时间": collaboration_result.processing_time
+                        "挑战数量": len(
+                            collaboration_result.cognitive_challenge.challenges
+                        )
+                        if hasattr(collaboration_result, "cognitive_challenge")
+                        and collaboration_result.cognitive_challenge
+                        else 0,
+                        "挑战强度": collaboration_result.cognitive_challenge.challenge_intensity
+                        if hasattr(collaboration_result, "cognitive_challenge")
+                        and collaboration_result.cognitive_challenge
+                        else 0,
+                        "教育价值": collaboration_result.cognitive_challenge.educational_value
+                        if hasattr(collaboration_result, "cognitive_challenge")
+                        and collaboration_result.cognitive_challenge
+                        else 0,
+                    }
+                    if hasattr(collaboration_result, "cognitive_challenge")
+                    and collaboration_result.cognitive_challenge
+                    else {},
+                    "协作增强": collaboration_result.enhanced_content[:200] + "..."
+                    if hasattr(collaboration_result, "enhanced_content")
+                    and collaboration_result.enhanced_content
+                    and len(collaboration_result.enhanced_content) > 200
+                    else (
+                        collaboration_result.enhanced_content
+                        if hasattr(collaboration_result, "enhanced_content")
+                        else ""
+                    ),
+                    "处理时间": collaboration_result.processing_time,
                 }
             else:
                 layer_outputs["collaboration"] = {"状态": "协作层未启用或不可用"}
 
             # 获取最终响应
-            if hasattr(behavior_result, 'adapted_content') and behavior_result.adapted_content:
+            if (
+                hasattr(behavior_result, "adapted_content")
+                and behavior_result.adapted_content
+            ):
                 final_response = behavior_result.adapted_content.content
             else:
                 final_response = "处理完成，但无法获取生成内容"
@@ -264,7 +422,7 @@ class LayeredSystemVisualizer:
                 "记忆总数": user_memories.total_count,
                 "记忆类型统计": memory_stats,
                 "查询时间": f"{user_memories.query_time:.3f}秒",
-                "支持的功能": system_info.get("features", {})
+                "支持的功能": system_info.get("features", {}),
             }
 
         except Exception as e:
@@ -283,7 +441,7 @@ def safe_asyncio_run(coro):
         # 如果已有事件循环在运行，在新线程中执行
         import threading
         import concurrent.futures
-        
+
         def run_in_new_loop():
             new_loop = asyncio.new_event_loop()
             asyncio.set_event_loop(new_loop)
@@ -291,19 +449,23 @@ def safe_asyncio_run(coro):
                 return new_loop.run_until_complete(coro)
             finally:
                 new_loop.close()
-        
+
         with concurrent.futures.ThreadPoolExecutor() as executor:
             future = executor.submit(run_in_new_loop)
             return future.result()
-            
+
     except RuntimeError:
         # 没有运行中的事件循环，可以直接使用 asyncio.run
         return asyncio.run(coro)
 
 
-def sync_initialize_system(system_type: str, llm_provider: str, llm_model: str, temperature: float) -> str:
+def sync_initialize_system(
+    system_type: str, llm_provider: str, llm_model: str, temperature: float
+) -> str:
     """同步包装器用于初始化系统"""
-    return safe_asyncio_run(visualizer.initialize_system(system_type, llm_provider, llm_model, temperature))
+    return safe_asyncio_run(
+        visualizer.initialize_system(system_type, llm_provider, llm_model, temperature)
+    )
 
 
 def sync_process_query_stream(query: str):
@@ -323,7 +485,7 @@ def sync_process_query_stream(query: str):
                 "perception": "",
                 "cognition": "",
                 "behavior": "",
-                "collaboration": ""
+                "collaboration": "",
             }
 
             content_parts = []
@@ -332,7 +494,7 @@ def sync_process_query_stream(query: str):
             async for chunk in visualizer.system.process_stream(
                 query=query,
                 user_id="gradio_user",
-                context={"source": "gradio", "timestamp": datetime.now().isoformat()}
+                context={"source": "gradio", "timestamp": datetime.now().isoformat()},
             ):
                 # 识别当前处理层
                 if "感知层" in chunk:
@@ -372,28 +534,29 @@ def sync_process_query_stream(query: str):
                 loop = asyncio.get_running_loop()
                 # 如果已有事件循环在运行，使用 asyncio.run_coroutine_threadsafe
                 import threading
-                
+
                 def run_async_gen():
                     new_loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(new_loop)
                     try:
+
                         async def collect_all():
                             results = []
                             async for chunk in _process():
                                 results.append(chunk)
                             return results
-                        
+
                         return new_loop.run_until_complete(collect_all())
                     finally:
                         new_loop.close()
-                
+
                 # 在新线程中运行异步代码
                 with threading.ThreadPoolExecutor() as executor:
                     future = executor.submit(run_async_gen)
                     results = future.result()
                     for chunk in results:
                         yield chunk
-                        
+
             except RuntimeError:
                 # 没有运行中的事件循环，可以直接使用 asyncio.run
                 async def collect_all():
@@ -401,11 +564,11 @@ def sync_process_query_stream(query: str):
                     async for chunk in _process():
                         results.append(chunk)
                     return results
-                
+
                 results = safe_asyncio_run(collect_all())
                 for chunk in results:
                     yield chunk
-                    
+
         except Exception as async_error:
             yield f"❌ 异步处理出错: {str(async_error)}"
 
@@ -429,15 +592,30 @@ def sync_process_query(query: str) -> tuple[str, str, str, str, str, str]:
             "perception": {"状态": "✅ 已完成流式处理"},
             "cognition": {"状态": "✅ 已完成流式处理"},
             "behavior": {"状态": "✅ 已完成流式处理"},
-            "collaboration": {"状态": "✅ 已完成流式处理"}
+            "collaboration": {"状态": "✅ 已完成流式处理"},
         }
 
-        perception_output = json.dumps(layer_status["perception"], ensure_ascii=False, indent=2)
-        cognition_output = json.dumps(layer_status["cognition"], ensure_ascii=False, indent=2)
-        behavior_output = json.dumps(layer_status["behavior"], ensure_ascii=False, indent=2)
-        collaboration_output = json.dumps(layer_status["collaboration"], ensure_ascii=False, indent=2)
+        perception_output = json.dumps(
+            layer_status["perception"], ensure_ascii=False, indent=2
+        )
+        cognition_output = json.dumps(
+            layer_status["cognition"], ensure_ascii=False, indent=2
+        )
+        behavior_output = json.dumps(
+            layer_status["behavior"], ensure_ascii=False, indent=2
+        )
+        collaboration_output = json.dumps(
+            layer_status["collaboration"], ensure_ascii=False, indent=2
+        )
 
-        return final_response, perception_output, cognition_output, behavior_output, collaboration_output, "✅ 流式处理完成"
+        return (
+            final_response,
+            perception_output,
+            cognition_output,
+            behavior_output,
+            collaboration_output,
+            "✅ 流式处理完成",
+        )
 
     except Exception as e:
         error_msg = f"❌ 查询处理异常: {str(e)}"
@@ -473,11 +651,12 @@ def create_gradio_interface():
             padding: 12px;
             background-color: #f0f8ff;
         }
-        """
+        """,
     ) as interface:
-
         gr.Markdown("# 🧠 AiEnhance - 分层认知系统可视化界面")
-        gr.Markdown("探索感知层→认知层→行为层→协作层的完整处理流程，并可视化MIRIX记忆系统")
+        gr.Markdown(
+            "探索感知层→认知层→行为层→协作层的完整处理流程，并可视化MIRIX记忆系统"
+        )
 
         with gr.Tab("🎛️ 系统配置"):
             gr.Markdown("## 系统初始化配置")
@@ -488,21 +667,19 @@ def create_gradio_interface():
                         choices=["educational", "research", "creative", "lightweight"],
                         value="educational",
                         label="🎯 系统类型",
-                        info="选择适合的认知系统类型"
+                        info="选择适合的认知系统类型",
                     )
 
                     llm_provider = gr.Dropdown(
                         choices=["ollama", "openai", "anthropic", "google_ai"],
                         value="ollama",
                         label="🤖 LLM提供商",
-                        info="选择大语言模型提供商"
+                        info="选择大语言模型提供商",
                     )
 
                 with gr.Column(scale=1):
                     llm_model = gr.Textbox(
-                        value="qwen3:8b",
-                        label="📦 模型名称",
-                        info="输入具体的模型名称"
+                        value="qwen3:8b", label="📦 模型名称", info="输入具体的模型名称"
                     )
 
                     temperature = gr.Slider(
@@ -511,17 +688,14 @@ def create_gradio_interface():
                         value=0.7,
                         step=0.1,
                         label="🌡️ 温度参数",
-                        info="控制输出的随机性"
+                        info="控制输出的随机性",
                     )
 
             with gr.Row():
                 init_btn = gr.Button("🚀 初始化系统", variant="primary", size="lg")
 
             init_status = gr.Textbox(
-                label="📊 初始化状态",
-                lines=10,
-                max_lines=20,
-                interactive=False
+                label="📊 初始化状态", lines=10, max_lines=20, interactive=False
             )
 
         with gr.Tab("💬 分层处理可视化"):
@@ -532,21 +706,21 @@ def create_gradio_interface():
                     query_input = gr.Textbox(
                         label="❓ 输入查询问题",
                         placeholder="例如：什么是人工智能？请解释深度学习的原理。",
-                        lines=3
+                        lines=3,
                     )
 
                     with gr.Row():
-                        process_btn = gr.Button("🔄 开始处理", variant="primary", size="lg")
+                        process_btn = gr.Button(
+                            "🔄 开始处理", variant="primary", size="lg"
+                        )
                         stream_toggle = gr.Checkbox(
                             label="⚡ 流式输出",
                             value=True,
-                            info="默认启用流式输出以获得更好体验"
+                            info="默认启用流式输出以获得更好体验",
                         )
 
                     process_status = gr.Textbox(
-                        label="⚡ 处理状态",
-                        lines=2,
-                        interactive=False
+                        label="⚡ 处理状态", lines=2, interactive=False
                     )
 
             with gr.Row():
@@ -555,37 +729,29 @@ def create_gradio_interface():
                     lines=8,
                     max_lines=15,
                     interactive=False,
-                    info="AI回答将在此处实时显示"
+                    info="AI回答将在此处实时显示",
                 )
 
             with gr.Row():
                 with gr.Column(scale=1):
                     perception_output = gr.Code(
-                        label="🔍 感知层输出",
-                        language="json",
-                        lines=12
+                        label="🔍 感知层输出", language="json", lines=12
                     )
 
                 with gr.Column(scale=1):
                     cognition_output = gr.Code(
-                        label="🧠 认知层输出",
-                        language="json",
-                        lines=12
+                        label="🧠 认知层输出", language="json", lines=12
                     )
 
             with gr.Row():
                 with gr.Column(scale=1):
                     behavior_output = gr.Code(
-                        label="🎯 行为层输出",
-                        language="json",
-                        lines=12
+                        label="🎯 行为层输出", language="json", lines=12
                     )
 
                 with gr.Column(scale=1):
                     collaboration_output = gr.Code(
-                        label="🤝 协作层输出",
-                        language="json",
-                        lines=12
+                        label="🤝 协作层输出", language="json", lines=12
                     )
 
         with gr.Tab("🧠 MIRIX记忆系统"):
@@ -593,29 +759,26 @@ def create_gradio_interface():
 
             with gr.Row():
                 with gr.Column(scale=1):
-                    refresh_memory_btn = gr.Button("🔄 刷新记忆状态", variant="secondary")
+                    refresh_memory_btn = gr.Button(
+                        "🔄 刷新记忆状态", variant="secondary"
+                    )
                     dashboard_btn = gr.Button("📊 生成记忆仪表板", variant="primary")
 
                 with gr.Column(scale=1):
                     search_query = gr.Textbox(
-                        label="🔍 搜索记忆",
-                        placeholder="输入关键词搜索相关记忆..."
+                        label="🔍 搜索记忆", placeholder="输入关键词搜索相关记忆..."
                     )
                     search_btn = gr.Button("🔎 搜索", variant="secondary")
 
             with gr.Row():
                 with gr.Column(scale=1):
                     memory_status = gr.Code(
-                        label="📊 记忆系统状态",
-                        language="json",
-                        lines=15
+                        label="📊 记忆系统状态", language="json", lines=15
                     )
 
                 with gr.Column(scale=1):
                     search_results = gr.Code(
-                        label="🔍 搜索结果",
-                        language="json",
-                        lines=15
+                        label="🔍 搜索结果", language="json", lines=15
                     )
 
             with gr.Tab("📈 记忆分析图表"):
@@ -638,13 +801,12 @@ def create_gradio_interface():
                     mirix_url = gr.Textbox(
                         value="http://localhost:3000",
                         label="🌐 MIRIX Web界面URL",
-                        info="请确保MIRIX服务已启动"
+                        info="请确保MIRIX服务已启动",
                     )
                     load_iframe_btn = gr.Button("🚀 加载MIRIX界面", variant="primary")
 
                 mirix_iframe = gr.HTML(
-                    label="MIRIX Web界面",
-                    value="<p>点击上方按钮加载MIRIX界面</p>"
+                    label="MIRIX Web界面", value="<p>点击上方按钮加载MIRIX界面</p>"
                 )
 
                 gr.Markdown("### 💡 MIRIX前端集成说明")
@@ -672,17 +834,13 @@ def create_gradio_interface():
             with gr.Row():
                 monitor_btn = gr.Button("📈 获取系统状态", variant="secondary")
 
-            system_monitor = gr.Code(
-                label="🔍 系统监控信息",
-                language="json",
-                lines=10
-            )
+            system_monitor = gr.Code(label="🔍 系统监控信息", language="json", lines=10)
 
         # 绑定事件处理器
         init_btn.click(
             fn=sync_initialize_system,
             inputs=[system_type, llm_provider, llm_model, temperature],
-            outputs=init_status
+            outputs=init_status,
         )
 
         # 定义处理函数选择器
@@ -695,25 +853,50 @@ def create_gradio_interface():
                     final_response, layer_outputs = safe_asyncio_run(
                         visualizer.process_query_with_layers(query)
                     )
-                    
+
                     # 格式化各层输出
-                    perception_json = json.dumps(layer_outputs.get("perception", {"状态": "未处理"}), ensure_ascii=False, indent=2)
-                    cognition_json = json.dumps(layer_outputs.get("cognition", {"状态": "未处理"}), ensure_ascii=False, indent=2)
-                    behavior_json = json.dumps(layer_outputs.get("behavior", {"状态": "未处理"}), ensure_ascii=False, indent=2)
-                    collaboration_json = json.dumps(layer_outputs.get("collaboration", {"状态": "未处理"}), ensure_ascii=False, indent=2)
-                    
+                    perception_json = json.dumps(
+                        layer_outputs.get("perception", {"状态": "未处理"}),
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                    cognition_json = json.dumps(
+                        layer_outputs.get("cognition", {"状态": "未处理"}),
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                    behavior_json = json.dumps(
+                        layer_outputs.get("behavior", {"状态": "未处理"}),
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                    collaboration_json = json.dumps(
+                        layer_outputs.get("collaboration", {"状态": "未处理"}),
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+
                     return (
                         final_response,
                         perception_json,
-                        cognition_json, 
+                        cognition_json,
                         behavior_json,
                         collaboration_json,
-                        "✅ 分层处理完成 - 显示详细信息"
+                        "✅ 分层处理完成 - 显示详细信息",
                     )
                 except Exception as e:
                     error_msg = f"❌ 处理失败: {str(e)}"
-                    error_json = json.dumps({"错误": str(e)}, ensure_ascii=False, indent=2)
-                    return (error_msg, error_json, error_json, error_json, error_json, error_msg)
+                    error_json = json.dumps(
+                        {"错误": str(e)}, ensure_ascii=False, indent=2
+                    )
+                    return (
+                        error_msg,
+                        error_json,
+                        error_json,
+                        error_json,
+                        error_json,
+                        error_msg,
+                    )
             else:
                 # 传统处理 - 同样使用详细输出
                 return sync_process_query(query)
@@ -721,14 +904,17 @@ def create_gradio_interface():
         process_btn.click(
             fn=process_query_handler,
             inputs=[query_input, stream_toggle],
-            outputs=[final_response, perception_output, cognition_output,
-                    behavior_output, collaboration_output, process_status]
+            outputs=[
+                final_response,
+                perception_output,
+                cognition_output,
+                behavior_output,
+                collaboration_output,
+                process_status,
+            ],
         )
 
-        refresh_memory_btn.click(
-            fn=sync_get_memory_status,
-            outputs=memory_status
-        )
+        refresh_memory_btn.click(fn=sync_get_memory_status, outputs=memory_status)
 
         # 记忆搜索功能
         def sync_search_memories(query: str) -> str:
@@ -739,14 +925,12 @@ def create_gradio_interface():
                 if visualizer.system and visualizer.system.memory_system:
                     # 简化的记忆搜索实现
                     user_context = create_user_context("gradio_user", "search_session")
-                    search_query = MemoryQuery(
-                        query=query,
-                        limit=10,
-                        memory_types=None
+                    search_query = MemoryQuery(query=query, limit=10, memory_types=None)
+                    results = safe_asyncio_run(
+                        visualizer.system.memory_system.search_memories(
+                            user_context, search_query
+                        )
                     )
-                    results = safe_asyncio_run(visualizer.system.memory_system.search_memories(
-                        user_context, search_query
-                    ))
 
                     if results.memories:
                         summary = f"找到 {len(results.memories)} 个相关记忆:\n\n"
@@ -761,20 +945,24 @@ def create_gradio_interface():
                 return f"搜索失败: {str(e)}"
 
         search_btn.click(
-            fn=sync_search_memories,
-            inputs=search_query,
-            outputs=search_results
+            fn=sync_search_memories, inputs=search_query, outputs=search_results
         )
 
         # 记忆仪表板生成
-        def sync_generate_dashboard() -> tuple[go.Figure, go.Figure, go.Figure, go.Figure]:
+        def sync_generate_dashboard() -> tuple[
+            go.Figure, go.Figure, go.Figure, go.Figure
+        ]:
             try:
                 if visualizer.system and visualizer.system.memory_system:
                     # 简化的仪表板生成
-                    user_context = create_user_context("gradio_user", "dashboard_session")
-                    memories = safe_asyncio_run(visualizer.system.memory_system.get_user_memories(
-                        user_context, limit=100
-                    ))
+                    user_context = create_user_context(
+                        "gradio_user", "dashboard_session"
+                    )
+                    memories = safe_asyncio_run(
+                        visualizer.system.memory_system.get_user_memories(
+                            user_context, limit=100
+                        )
+                    )
 
                     # 创建简单的统计图表
                     # 记忆类型分布图
@@ -783,32 +971,47 @@ def create_gradio_interface():
                         mem_type = memory.memory_type.value
                         type_counts[mem_type] = type_counts.get(mem_type, 0) + 1
 
-                    type_fig = go.Figure(data=[go.Pie(
-                        labels=list(type_counts.keys()),
-                        values=list(type_counts.values()),
-                        title="记忆类型分布"
-                    )])
+                    type_fig = go.Figure(
+                        data=[
+                            go.Pie(
+                                labels=list(type_counts.keys()),
+                                values=list(type_counts.values()),
+                                title="记忆类型分布",
+                            )
+                        ]
+                    )
 
                     # 简单的时间线图
                     timeline_fig = go.Figure()
-                    timeline_fig.add_trace(go.Scatter(
-                        x=list(range(len(memories.memories))),
-                        y=[1] * len(memories.memories),
-                        mode='markers',
-                        name='记忆创建时间线'
-                    ))
+                    timeline_fig.add_trace(
+                        go.Scatter(
+                            x=list(range(len(memories.memories))),
+                            y=[1] * len(memories.memories),
+                            mode="markers",
+                            name="记忆创建时间线",
+                        )
+                    )
                     timeline_fig.update_layout(title="记忆时间线")
 
                     # 置信度分析
-                    confidences = [memory.confidence for memory in memories.memories if hasattr(memory, 'confidence')]
-                    conf_fig = go.Figure(data=[go.Histogram(x=confidences, title="置信度分布")])
+                    confidences = [
+                        memory.confidence
+                        for memory in memories.memories
+                        if hasattr(memory, "confidence")
+                    ]
+                    conf_fig = go.Figure(
+                        data=[go.Histogram(x=confidences, title="置信度分布")]
+                    )
 
                     # 简单的网络图（占位）
                     network_fig = go.Figure()
                     network_fig.add_annotation(
                         text="记忆关系网络图（开发中）",
-                        xref="paper", yref="paper",
-                        x=0.5, y=0.5, showarrow=False
+                        xref="paper",
+                        yref="paper",
+                        x=0.5,
+                        y=0.5,
+                        showarrow=False,
                     )
 
                     return type_fig, timeline_fig, conf_fig, network_fig
@@ -816,8 +1019,11 @@ def create_gradio_interface():
                     empty_fig = go.Figure()
                     empty_fig.add_annotation(
                         text="记忆系统未初始化",
-                        xref="paper", yref="paper",
-                        x=0.5, y=0.5, showarrow=False
+                        xref="paper",
+                        yref="paper",
+                        x=0.5,
+                        y=0.5,
+                        showarrow=False,
                     )
                     return empty_fig, empty_fig, empty_fig, empty_fig
 
@@ -825,14 +1031,22 @@ def create_gradio_interface():
                 error_fig = go.Figure()
                 error_fig.add_annotation(
                     text=f"生成图表失败: {str(e)}",
-                    xref="paper", yref="paper",
-                    x=0.5, y=0.5, showarrow=False
+                    xref="paper",
+                    yref="paper",
+                    x=0.5,
+                    y=0.5,
+                    showarrow=False,
                 )
                 return error_fig, error_fig, error_fig, error_fig
 
         dashboard_btn.click(
             fn=sync_generate_dashboard,
-            outputs=[memory_type_plot, memory_timeline_plot, memory_confidence_plot, memory_network_plot]
+            outputs=[
+                memory_type_plot,
+                memory_timeline_plot,
+                memory_confidence_plot,
+                memory_network_plot,
+            ],
         )
 
         # MIRIX Web界面加载
@@ -860,9 +1074,7 @@ def create_gradio_interface():
             return iframe_html
 
         load_iframe_btn.click(
-            fn=load_mirix_iframe,
-            inputs=mirix_url,
-            outputs=mirix_iframe
+            fn=load_mirix_iframe, inputs=mirix_url, outputs=mirix_iframe
         )
 
         # 监控按钮处理
@@ -876,10 +1088,7 @@ def create_gradio_interface():
             except Exception as e:
                 return f"获取系统信息失败: {str(e)}"
 
-        monitor_btn.click(
-            fn=get_system_monitor,
-            outputs=system_monitor
-        )
+        monitor_btn.click(fn=get_system_monitor, outputs=system_monitor)
 
         # 示例查询按钮
         with gr.Row():
@@ -887,11 +1096,11 @@ def create_gradio_interface():
                 "什么是人工智能？请给出详细解释。",
                 "深度学习和机器学习有什么区别？",
                 "如何设计一个推荐系统？",
-                "请解释注意力机制的工作原理。"
+                "请解释注意力机制的工作原理。",
             ]
 
             for i, example in enumerate(example_queries):
-                btn = gr.Button(f"示例 {i+1}", variant="secondary", size="sm")
+                btn = gr.Button(f"示例 {i + 1}", variant="secondary", size="sm")
                 btn.click(lambda x=example: x, outputs=query_input)
 
     return interface
@@ -906,11 +1115,11 @@ def main():
 
     # 启动服务
     interface.launch(
-        server_name="0.0.0.0",
-        server_port=7860,
-        share=False,
-        debug=True,
-        show_error=True
+        server_name=os.getenv("GRADIO_SERVER_NAME", "0.0.0.0"),
+        server_port=int(os.getenv("GRADIO_SERVER_PORT", "7860")),
+        share=os.getenv("GRADIO_SHARE", "false").lower() == "true",
+        debug=os.getenv("DEBUG_MODE", "true").lower() == "true",
+        show_error=True,
     )
 
 

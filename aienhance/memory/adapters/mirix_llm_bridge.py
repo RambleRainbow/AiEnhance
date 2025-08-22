@@ -33,7 +33,7 @@ class MirixLLMBridge:
         self.llm_provider = llm_provider
         self.temp_config_path = None
 
-    def create_mirix_config(self, agent_name: str = "aienhance_mirix") -> str:
+    def create_mirix_config(self, agent_name: str = None) -> str:
         """
         为MIRIX创建兼容的配置文件
 
@@ -43,6 +43,10 @@ class MirixLLMBridge:
         Returns:
             str: 临时配置文件路径
         """
+        # 使用环境变量或默认值
+        agent_name = agent_name or os.environ.get(
+            "MIRIX_AGENT_NAME", "aienhance_unified"
+        )
         config = self._generate_mirix_config(agent_name)
 
         # 创建临时配置文件

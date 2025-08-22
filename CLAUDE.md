@@ -13,6 +13,17 @@ uv sync
 # Manual activation: source .venv/bin/activate
 ```
 
+### Environment Configuration
+```bash
+# Copy environment template (first time setup)
+cp .env.example .env
+
+# Check current configuration
+uv run python scripts/check_config.py
+
+# All configurations can be customized via environment variables in .env file
+```
+
 ### Running the Application
 ```bash
 # Command-line interface (默认流式输出)
@@ -159,6 +170,46 @@ The system uses a **unified LLM approach** where the same LLM serves both chat a
 - Memory system failures → Continue without memory
 - Collaboration layer failures → Continue with core 3 layers
 - Individual layer failures → Stop processing with detailed error info
+
+## Configuration Management
+
+### Environment Variables
+The project uses environment variables for all configuration. Key variables include:
+
+**LLM Configuration:**
+- `DEFAULT_LLM_PROVIDER`: LLM provider (default: "ollama")
+- `DEFAULT_LLM_MODEL`: Model name (default: "qwen3:8b")
+- `DEFAULT_LLM_TEMPERATURE`: Temperature (default: "0.7")
+- `DEFAULT_LLM_MAX_TOKENS`: Max tokens (default: "800")
+- `OLLAMA_BASE_URL`: Ollama service URL (default: "http://localhost:11434")
+
+**System Configuration:**
+- `DEFAULT_SYSTEM_TYPE`: System type (default: "educational")
+- `DEFAULT_MEMORY_SYSTEM`: Memory system (default: "mirix_unified")
+- `ENABLE_MEMORY_SYSTEM`: Enable memory (default: "true")
+- `ENABLE_STREAMING_OUTPUT`: Enable streaming (default: "true")
+- `ENABLE_COLLABORATION_LAYER`: Enable collaboration (default: "true")
+
+**Gradio Interface:**
+- `GRADIO_SERVER_NAME`: Server host (default: "0.0.0.0")
+- `GRADIO_SERVER_PORT`: Server port (default: "7860")
+- `GRADIO_SHARE`: Public sharing (default: "false")
+
+**MIRIX Configuration:**
+- `MIRIX_AGENT_NAME`: Agent identifier (default: "aienhance_unified")
+- `MIRIX_AUTO_SAVE_INTERACTIONS`: Auto-save interactions (default: "true")
+
+### Configuration Usage
+```python
+from aienhance.config import config
+
+# Get configuration values
+llm_config = config.get_llm_config()
+system_config = config.get_system_config()
+
+# Print configuration summary
+config.print_config_summary()
+```
 
 ## Development Guidelines
 
