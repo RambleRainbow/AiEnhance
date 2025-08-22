@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 class Mem0Adapter(MemorySystem):
     """
     Mem0记忆系统适配器
-    
+
     适配Mem0的多级记忆系统 (User, Session, Agent state)
     """
 
@@ -67,10 +67,7 @@ class Mem0Adapter(MemorySystem):
             messages = [{"role": "user", "content": memory.content}]
 
             # 准备Mem0 add参数
-            add_kwargs = {
-                "messages": messages,
-                "user_id": memory.user_context.user_id
-            }
+            add_kwargs = {"messages": messages, "user_id": memory.user_context.user_id}
 
             # 添加会话ID (如果有)
             if memory.user_context.session_id:
@@ -85,10 +82,7 @@ class Mem0Adapter(MemorySystem):
                 add_kwargs["metadata"] = memory.metadata
 
             # 调用Mem0的add方法
-            result = await asyncio.to_thread(
-                self._memory_client.add,
-                **add_kwargs
-            )
+            result = await asyncio.to_thread(self._memory_client.add, **add_kwargs)
 
             # 提取记忆ID
             memory_id = self._extract_memory_id_from_result(result)
@@ -112,7 +106,7 @@ class Mem0Adapter(MemorySystem):
             search_kwargs = {
                 "query": query.query,
                 "user_id": query.user_context.user_id,
-                "limit": query.limit
+                "limit": query.limit,
             }
 
             # 添加会话ID (如果有)
@@ -125,8 +119,7 @@ class Mem0Adapter(MemorySystem):
 
             # 调用Mem0的search方法
             search_results = await asyncio.to_thread(
-                self._memory_client.search,
-                **search_kwargs
+                self._memory_client.search, **search_kwargs
             )
 
             query_time = (datetime.datetime.now() - start_time).total_seconds()
@@ -141,28 +134,27 @@ class Mem0Adapter(MemorySystem):
                 memories=filtered_memories,
                 total_count=len(filtered_memories),
                 query_time=query_time,
-                metadata={"system": "mem0", "original_results": search_results}
+                metadata={"system": "mem0", "original_results": search_results},
             )
 
         except Exception as e:
             logger.error(f"搜索Mem0记忆失败: {e}")
             raise
 
-    async def get_memory(self, memory_id: str, user_context: UserContext) -> MemoryEntry | None:
+    async def get_memory(
+        self, memory_id: str, user_context: UserContext
+    ) -> MemoryEntry | None:
         """获取特定记忆"""
         if not self.is_initialized:
             raise RuntimeError("Mem0系统未初始化")
 
         try:
             # Mem0可能通过get方法获取特定记忆
-            get_kwargs = {
-                "memory_id": memory_id,
-                "user_id": user_context.user_id
-            }
+            get_kwargs = {"memory_id": memory_id, "user_id": user_context.user_id}
 
             result = await asyncio.to_thread(
-                getattr(self._memory_client, 'get', self._fallback_get_memory),
-                **get_kwargs
+                getattr(self._memory_client, "get", self._fallback_get_memory),
+                **get_kwargs,
             )
 
             if result:
@@ -184,15 +176,15 @@ class Mem0Adapter(MemorySystem):
             update_kwargs = {
                 "memory_id": memory_id,
                 "data": memory.content,
-                "user_id": memory.user_context.user_id
+                "user_id": memory.user_context.user_id,
             }
 
             if memory.metadata:
                 update_kwargs["metadata"] = memory.metadata
 
             result = await asyncio.to_thread(
-                getattr(self._memory_client, 'update', self._fallback_update_memory),
-                **update_kwargs
+                getattr(self._memory_client, "update", self._fallback_update_memory),
+                **update_kwargs,
             )
 
             return bool(result)
@@ -208,14 +200,11 @@ class Mem0Adapter(MemorySystem):
 
         try:
             # Mem0可能支持delete方法
-            delete_kwargs = {
-                "memory_id": memory_id,
-                "user_id": user_context.user_id
-            }
+            delete_kwargs = {"memory_id": memory_id, "user_id": user_context.user_id}
 
             result = await asyncio.to_thread(
-                getattr(self._memory_client, 'delete', self._fallback_delete_memory),
-                **delete_kwargs
+                getattr(self._memory_client, "delete", self._fallback_delete_memory),
+                **delete_kwargs,
             )
 
             return bool(result)
@@ -224,19 +213,19 @@ class Mem0Adapter(MemorySystem):
             logger.error(f"删除Mem0记忆失败: {e}")
             return False
 
-    async def get_user_memories(self, user_context: UserContext,
-                              memory_types: list[MemoryType] | None = None,
-                              limit: int = 100) -> MemoryResult:
+    async def get_user_memories(
+        self,
+        user_context: UserContext,
+        memory_types: list[MemoryType] | None = None,
+        limit: int = 100,
+    ) -> MemoryResult:
         """获取用户的所有记忆"""
         if not self.is_initialized:
             raise RuntimeError("Mem0系统未初始化")
 
         try:
             # Mem0可能支持获取所有用户记忆
-            get_all_kwargs = {
-                "user_id": user_context.user_id,
-                "limit": limit
-            }
+            get_all_kwargs = {"user_id": user_context.user_id, "limit": limit}
 
             if user_context.session_id:
                 get_all_kwargs["session_id"] = user_context.session_id
@@ -245,13 +234,17 @@ class Mem0Adapter(MemorySystem):
                 get_all_kwargs["agent_id"] = user_context.agent_id
 
             results = await asyncio.to_thread(
-                getattr(self._memory_client, 'get_all', self._fallback_get_all_memories),
-                **get_all_kwargs
+                getattr(
+                    self._memory_client, "get_all", self._fallback_get_all_memories
+                ),
+                **get_all_kwargs,
             )
 
             # 转换结果
-            memories = [self._convert_mem0_memory_to_entry(result, user_context)
-                       for result in results]
+            memories = [
+                self._convert_mem0_memory_to_entry(result, user_context)
+                for result in results
+            ]
 
             # 按记忆类型过滤
             if memory_types:
@@ -261,7 +254,7 @@ class Mem0Adapter(MemorySystem):
                 memories=memories,
                 total_count=len(memories),
                 query_time=0.0,
-                metadata={"system": "mem0", "method": "get_all"}
+                metadata={"system": "mem0", "method": "get_all"},
             )
 
         except Exception as e:
@@ -275,9 +268,7 @@ class Mem0Adapter(MemorySystem):
 
         try:
             # Mem0可能支持删除所有用户记忆
-            clear_kwargs = {
-                "user_id": user_context.user_id
-            }
+            clear_kwargs = {"user_id": user_context.user_id}
 
             if user_context.session_id:
                 clear_kwargs["session_id"] = user_context.session_id
@@ -286,8 +277,10 @@ class Mem0Adapter(MemorySystem):
                 clear_kwargs["agent_id"] = user_context.agent_id
 
             result = await asyncio.to_thread(
-                getattr(self._memory_client, 'delete_all', self._fallback_clear_memories),
-                **clear_kwargs
+                getattr(
+                    self._memory_client, "delete_all", self._fallback_clear_memories
+                ),
+                **clear_kwargs,
             )
 
             return bool(result)
@@ -299,13 +292,18 @@ class Mem0Adapter(MemorySystem):
     def _extract_memory_id_from_result(self, result) -> str:
         """从Mem0结果中提取记忆ID"""
         if isinstance(result, dict):
-            return result.get("id", result.get("memory_id", f"mem0_{datetime.datetime.now().isoformat()}"))
+            return result.get(
+                "id",
+                result.get("memory_id", f"mem0_{datetime.datetime.now().isoformat()}"),
+            )
         elif isinstance(result, list) and result:
             return result[0].get("id", f"mem0_{datetime.datetime.now().isoformat()}")
         else:
             return f"mem0_{datetime.datetime.now().isoformat()}_{hash(str(result)) % 10000}"
 
-    def _convert_search_results_to_memories(self, results, query: MemoryQuery) -> list[MemoryEntry]:
+    def _convert_search_results_to_memories(
+        self, results, query: MemoryQuery
+    ) -> list[MemoryEntry]:
         """将Mem0搜索结果转换为MemoryEntry列表"""
         memories = []
 
@@ -319,20 +317,28 @@ class Mem0Adapter(MemorySystem):
 
         return memories
 
-    def _convert_mem0_memory_to_entry(self, mem0_result, user_context: UserContext) -> MemoryEntry | None:
+    def _convert_mem0_memory_to_entry(
+        self, mem0_result, user_context: UserContext
+    ) -> MemoryEntry | None:
         """将Mem0记忆结果转换为MemoryEntry"""
         try:
             # Mem0结果格式可能包含: memory, score, metadata等
             if isinstance(mem0_result, dict):
-                content = mem0_result.get("memory", mem0_result.get("text", str(mem0_result)))
+                content = mem0_result.get(
+                    "memory", mem0_result.get("text", str(mem0_result))
+                )
                 confidence = mem0_result.get("score", 1.0)
                 metadata = mem0_result.get("metadata", {})
-                timestamp_str = mem0_result.get("created_at", datetime.datetime.now().isoformat())
+                timestamp_str = mem0_result.get(
+                    "created_at", datetime.datetime.now().isoformat()
+                )
 
                 # 解析时间戳
                 try:
                     if isinstance(timestamp_str, str):
-                        timestamp = datetime.datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+                        timestamp = datetime.datetime.fromisoformat(
+                            timestamp_str.replace("Z", "+00:00")
+                        )
                     else:
                         timestamp = datetime.datetime.now()
                 except:
@@ -347,7 +353,7 @@ class Mem0Adapter(MemorySystem):
                     user_context=user_context,
                     timestamp=timestamp,
                     confidence=confidence,
-                    metadata=metadata
+                    metadata=metadata,
                 )
 
             return None
@@ -374,7 +380,9 @@ class Mem0Adapter(MemorySystem):
         else:
             return MemoryType.EPISODIC  # 默认为情节记忆
 
-    def _apply_filters(self, memories: list[MemoryEntry], query: MemoryQuery) -> list[MemoryEntry]:
+    def _apply_filters(
+        self, memories: list[MemoryEntry], query: MemoryQuery
+    ) -> list[MemoryEntry]:
         """应用查询过滤器"""
         filtered = memories
 

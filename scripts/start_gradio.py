@@ -67,9 +67,7 @@ def install_with_uv(package_name: str):
 def install_with_pip(package_name: str):
     """使用pip安装包"""
     try:
-        subprocess.check_call([
-            sys.executable, "-m", "pip", "install", package_name
-        ])
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package_name])
         logger.info(f"✅ {package_name} 安装成功 (pip)")
         return True
     except subprocess.CalledProcessError as e:
@@ -84,7 +82,7 @@ def install_required_dependencies():
         ("plotly", "plotly"),
         ("pandas", "pandas"),
         ("asyncio", None),  # 内置模块
-        ("json", None),     # 内置模块
+        ("json", None),  # 内置模块
     ]
 
     logger.info("🔍 检查依赖包...")
@@ -104,6 +102,7 @@ def check_ollama_service():
     """检查Ollama服务状态"""
     try:
         import requests
+
         response = requests.get("http://localhost:11434/api/version", timeout=3)
         if response.status_code == 200:
             logger.info("✅ Ollama服务运行正常")
@@ -136,6 +135,7 @@ def main():
     logger.info("3️⃣ 启动Gradio界面...")
     try:
         from gradio_interface import main as start_gradio
+
         start_gradio()
     except ImportError as e:
         logger.error(f"❌ 无法导入Gradio界面: {e}")

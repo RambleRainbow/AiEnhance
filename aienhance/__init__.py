@@ -52,60 +52,57 @@ from .memory import (
 # 便捷接口
 __all__ = [
     # 分层架构 (核心)
-    'LayeredCognitiveSystem',
-    'LayeredSystemFactory',
-    'PerceptionLayer',
-    'CognitionLayer',
-    'BehaviorLayer',
-    'CollaborationLayer',
-    'IPerceptionLayer',
-    'ICognitionLayer',
-    'IBehaviorLayer',
-    'ICollaborationLayer',
-    'ICognitiveLayers',
-    'UserProfile',
-    'ContextProfile',
-    'InformationFlow',
-    'ProcessingStatus',
-
+    "LayeredCognitiveSystem",
+    "LayeredSystemFactory",
+    "PerceptionLayer",
+    "CognitionLayer",
+    "BehaviorLayer",
+    "CollaborationLayer",
+    "IPerceptionLayer",
+    "ICognitionLayer",
+    "IBehaviorLayer",
+    "ICollaborationLayer",
+    "ICognitiveLayers",
+    "UserProfile",
+    "ContextProfile",
+    "InformationFlow",
+    "ProcessingStatus",
     # 记忆系统
-    'MemorySystemFactory',
-    'MemorySystemConfig',
-    'MemoryType',
-    'create_user_context',
-    'create_memory_entry',
-
+    "MemorySystemFactory",
+    "MemorySystemConfig",
+    "MemoryType",
+    "create_user_context",
+    "create_memory_entry",
     # LLM系统
-    'LLMProviderFactory',
-    'EmbeddingProviderFactory',
-    'ModelConfig',
-    'MessageRole',
-    'create_model_config',
-    'create_chat_message',
-
+    "LLMProviderFactory",
+    "EmbeddingProviderFactory",
+    "ModelConfig",
+    "MessageRole",
+    "create_model_config",
+    "create_chat_message",
     # 分层系统工厂函数
-    'create_layered_system',
-    'create_educational_layered_system',
-    'create_research_layered_system',
-    'create_creative_layered_system',
-    'create_lightweight_layered_system',
-    'get_layered_system_info',
-    'get_system_info',
-
+    "create_layered_system",
+    "create_educational_layered_system",
+    "create_research_layered_system",
+    "create_creative_layered_system",
+    "create_lightweight_layered_system",
+    "get_layered_system_info",
+    "get_system_info",
     # 便捷函数
-    'create_memory_system',
-    '__version__'
+    "create_memory_system",
+    "__version__",
 ]
+
 
 # 便捷工厂函数 - 现在推荐使用 create_layered_system
 def create_memory_system(system_type: str, **kwargs):
     """
     便捷创建记忆系统
-    
+
     Args:
         system_type: 记忆系统类型 ('mirix_unified', 'mem0', 'graphiti')
         **kwargs: 配置参数
-    
+
     Returns:
         MemorySystem: 记忆系统实例
     """

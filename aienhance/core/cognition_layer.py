@@ -32,7 +32,7 @@ class CognitionLayer(ICognitionLayer):
     def __init__(self, config: dict[str, Any] | None = None):
         """
         初始化认知层
-        
+
         Args:
             config: 认知层配置
         """
@@ -78,10 +78,10 @@ class CognitionLayer(ICognitionLayer):
     async def process(self, input_data: CognitionInput) -> CognitionOutput:
         """
         处理认知层输入，进行记忆激活、语义增强和类比推理
-        
+
         Args:
             input_data: 认知层输入数据
-            
+
         Returns:
             CognitionOutput: 认知层处理结果
         """
@@ -90,28 +90,30 @@ class CognitionLayer(ICognitionLayer):
 
         start_time = datetime.now()
         processing_metadata = {
-            'input_query': input_data.query,
-            'user_id': input_data.user_profile.user_id,
-            'processing_id': f"cognition_{self.processing_count}",
-            'steps': [],
-            'external_memories_count': len(input_data.external_memories)
+            "input_query": input_data.query,
+            "user_id": input_data.user_profile.user_id,
+            "processing_id": f"cognition_{self.processing_count}",
+            "steps": [],
+            "external_memories_count": len(input_data.external_memories),
         }
 
         try:
-            logger.info(f"Processing cognition input for query: {input_data.query[:50]}...")
-            processing_metadata['steps'].append('started')
+            logger.info(
+                f"Processing cognition input for query: {input_data.query[:50]}..."
+            )
+            processing_metadata["steps"].append("started")
 
             # 1. 记忆激活
             memory_activation = await self.activate_memories(
                 input_data.query,
                 {
-                    'user_profile': input_data.user_profile,
-                    'context_profile': input_data.context_profile,
-                    'external_memories': input_data.external_memories,
-                    'perception_insights': input_data.perception_insights
-                }
+                    "user_profile": input_data.user_profile,
+                    "context_profile": input_data.context_profile,
+                    "external_memories": input_data.external_memories,
+                    "perception_insights": input_data.perception_insights,
+                },
             )
-            processing_metadata['steps'].append('memory_activation_completed')
+            processing_metadata["steps"].append("memory_activation_completed")
 
             # 2. 语义增强
             # 合并内部激活的片段和外部记忆
@@ -126,31 +128,31 @@ class CognitionLayer(ICognitionLayer):
             semantic_enhancement = await self.enhance_semantics(
                 all_fragments,
                 {
-                    'user_profile': input_data.user_profile,
-                    'context_profile': input_data.context_profile,
-                    'perception_insights': input_data.perception_insights
-                }
+                    "user_profile": input_data.user_profile,
+                    "context_profile": input_data.context_profile,
+                    "perception_insights": input_data.perception_insights,
+                },
             )
-            processing_metadata['steps'].append('semantic_enhancement_completed')
+            processing_metadata["steps"].append("semantic_enhancement_completed")
 
             # 3. 类比推理
             analogy_reasoning = await self.reason_analogies(
                 input_data.query,
                 {
-                    'user_profile': input_data.user_profile,
-                    'context_profile': input_data.context_profile,
-                    'memory_activation': memory_activation,
-                    'semantic_enhancement': semantic_enhancement,
-                    'perception_insights': input_data.perception_insights
-                }
+                    "user_profile": input_data.user_profile,
+                    "context_profile": input_data.context_profile,
+                    "memory_activation": memory_activation,
+                    "semantic_enhancement": semantic_enhancement,
+                    "perception_insights": input_data.perception_insights,
+                },
             )
-            processing_metadata['steps'].append('analogy_reasoning_completed')
+            processing_metadata["steps"].append("analogy_reasoning_completed")
 
             # 4. 生成认知洞察
             cognitive_insights = await self._generate_cognitive_insights(
                 input_data, memory_activation, semantic_enhancement, analogy_reasoning
             )
-            processing_metadata['steps'].append('cognitive_insights_generated')
+            processing_metadata["steps"].append("cognitive_insights_generated")
 
             # 计算处理时间
             end_time = datetime.now()
@@ -163,10 +165,10 @@ class CognitionLayer(ICognitionLayer):
                 layer_name="cognition",
                 status=ProcessingStatus.COMPLETED,
                 data={
-                    'memory_activation': memory_activation,
-                    'semantic_enhancement': semantic_enhancement,
-                    'analogy_reasoning': analogy_reasoning,
-                    'cognitive_insights': cognitive_insights
+                    "memory_activation": memory_activation,
+                    "semantic_enhancement": semantic_enhancement,
+                    "analogy_reasoning": analogy_reasoning,
+                    "cognitive_insights": cognitive_insights,
                 },
                 metadata=processing_metadata,
                 timestamp=end_time.isoformat(),
@@ -174,7 +176,7 @@ class CognitionLayer(ICognitionLayer):
                 memory_activation=memory_activation,
                 semantic_enhancement=semantic_enhancement,
                 analogy_reasoning=analogy_reasoning,
-                cognitive_insights=cognitive_insights
+                cognitive_insights=cognitive_insights,
             )
 
             logger.info(f"Cognition processing completed in {processing_time:.3f}s")
@@ -185,8 +187,8 @@ class CognitionLayer(ICognitionLayer):
             processing_time = (end_time - start_time).total_seconds()
 
             logger.error(f"Cognition processing failed: {e}")
-            processing_metadata['error'] = str(e)
-            processing_metadata['steps'].append('error')
+            processing_metadata["error"] = str(e)
+            processing_metadata["steps"].append("error")
 
             # 返回错误状态的输出
             return CognitionOutput(
@@ -200,22 +202,22 @@ class CognitionLayer(ICognitionLayer):
                 memory_activation=MemoryActivation(
                     activated_fragments=[],
                     activation_confidence=0.0,
-                    activation_metadata={}
+                    activation_metadata={},
                 ),
                 semantic_enhancement=SemanticEnhancement(
                     enhanced_content=[],
                     semantic_gaps_filled=[],
-                    enhancement_confidence=0.0
+                    enhancement_confidence=0.0,
                 ),
                 analogy_reasoning=AnalogyReasoning(
-                    analogies=[],
-                    reasoning_chains=[],
-                    confidence_scores=[]
+                    analogies=[], reasoning_chains=[], confidence_scores=[]
                 ),
-                cognitive_insights={}
+                cognitive_insights={},
             )
 
-    async def activate_memories(self, query: str, context: dict[str, Any]) -> MemoryActivation:
+    async def activate_memories(
+        self, query: str, context: dict[str, Any]
+    ) -> MemoryActivation:
         """激活相关记忆"""
         try:
             logger.info("Activating memories...")
@@ -235,30 +237,36 @@ class CognitionLayer(ICognitionLayer):
             all_fragments = []
             total_confidence = 0.0
             activation_metadata = {
-                'activation_levels': [],
-                'activation_methods': [],
-                'fragment_sources': []
+                "activation_levels": [],
+                "activation_methods": [],
+                "fragment_sources": [],
             }
 
             for result in activation_results:
                 all_fragments.extend(result.fragments)
-                total_confidence += getattr(result, 'confidence', 0.5)
+                total_confidence += getattr(result, "confidence", 0.5)
 
-                activation_metadata['activation_levels'].append({
-                    'level': getattr(result, 'level', 'unknown'),
-                    'fragment_count': len(result.fragments),
-                    'confidence': getattr(result, 'confidence', 0.5)
-                })
+                activation_metadata["activation_levels"].append(
+                    {
+                        "level": getattr(result, "level", "unknown"),
+                        "fragment_count": len(result.fragments),
+                        "confidence": getattr(result, "confidence", 0.5),
+                    }
+                )
 
-                activation_metadata['activation_methods'].extend([
-                    getattr(fragment, 'activation_method', 'unknown')
-                    for fragment in result.fragments
-                ])
+                activation_metadata["activation_methods"].extend(
+                    [
+                        getattr(fragment, "activation_method", "unknown")
+                        for fragment in result.fragments
+                    ]
+                )
 
-                activation_metadata['fragment_sources'].extend([
-                    getattr(fragment, 'source', 'internal')
-                    for fragment in result.fragments
-                ])
+                activation_metadata["fragment_sources"].extend(
+                    [
+                        getattr(fragment, "source", "internal")
+                        for fragment in result.fragments
+                    ]
+                )
 
             # 计算平均置信度
             avg_confidence = total_confidence / max(1, len(activation_results))
@@ -266,7 +274,7 @@ class CognitionLayer(ICognitionLayer):
             memory_activation = MemoryActivation(
                 activated_fragments=all_fragments,
                 activation_confidence=avg_confidence,
-                activation_metadata=activation_metadata
+                activation_metadata=activation_metadata,
             )
 
             # 缓存结果（限制缓存大小）
@@ -277,7 +285,9 @@ class CognitionLayer(ICognitionLayer):
 
             self.activation_cache[cache_key] = memory_activation
 
-            logger.info(f"Memory activation completed: {len(all_fragments)} fragments activated")
+            logger.info(
+                f"Memory activation completed: {len(all_fragments)} fragments activated"
+            )
             return memory_activation
 
         except Exception as e:
@@ -285,11 +295,12 @@ class CognitionLayer(ICognitionLayer):
             return MemoryActivation(
                 activated_fragments=[],
                 activation_confidence=0.0,
-                activation_metadata={'error': str(e)}
+                activation_metadata={"error": str(e)},
             )
 
-    async def enhance_semantics(self, fragments: list[Any],
-                              context: dict[str, Any]) -> SemanticEnhancement:
+    async def enhance_semantics(
+        self, fragments: list[Any], context: dict[str, Any]
+    ) -> SemanticEnhancement:
         """语义增强"""
         try:
             logger.info(f"Enhancing semantics for {len(fragments)} fragments...")
@@ -298,7 +309,7 @@ class CognitionLayer(ICognitionLayer):
                 return SemanticEnhancement(
                     enhanced_content=[],
                     semantic_gaps_filled=[],
-                    enhancement_confidence=0.0
+                    enhancement_confidence=0.0,
                 )
 
             # 使用语义增强器进行综合语义增强
@@ -310,27 +321,29 @@ class CognitionLayer(ICognitionLayer):
             enhanced_content = []
             semantic_gaps_filled = []
 
-            if hasattr(enhancement_result, 'enhanced_fragments'):
+            if hasattr(enhancement_result, "enhanced_fragments"):
                 enhanced_content = enhancement_result.enhanced_fragments
             else:
                 enhanced_content = fragments  # 回退到原始片段
 
-            if hasattr(enhancement_result, 'semantic_bridges'):
+            if hasattr(enhancement_result, "semantic_bridges"):
                 semantic_gaps_filled = [
-                    bridge.get('description', 'unknown_bridge')
+                    bridge.get("description", "unknown_bridge")
                     for bridge in enhancement_result.semantic_bridges
                 ]
 
             # 计算增强置信度
-            enhancement_confidence = getattr(enhancement_result, 'confidence', 0.7)
+            enhancement_confidence = getattr(enhancement_result, "confidence", 0.7)
 
             semantic_enhancement = SemanticEnhancement(
                 enhanced_content=enhanced_content,
                 semantic_gaps_filled=semantic_gaps_filled,
-                enhancement_confidence=enhancement_confidence
+                enhancement_confidence=enhancement_confidence,
             )
 
-            logger.info(f"Semantic enhancement completed: {len(enhanced_content)} enhanced items")
+            logger.info(
+                f"Semantic enhancement completed: {len(enhanced_content)} enhanced items"
+            )
             return semantic_enhancement
 
         except Exception as e:
@@ -338,10 +351,12 @@ class CognitionLayer(ICognitionLayer):
             return SemanticEnhancement(
                 enhanced_content=fragments,  # 回退到原始片段
                 semantic_gaps_filled=[],
-                enhancement_confidence=0.0
+                enhancement_confidence=0.0,
             )
 
-    async def reason_analogies(self, query: str, context: dict[str, Any]) -> AnalogyReasoning:
+    async def reason_analogies(
+        self, query: str, context: dict[str, Any]
+    ) -> AnalogyReasoning:
         """类比推理"""
         try:
             logger.info("Performing analogy reasoning...")
@@ -358,62 +373,65 @@ class CognitionLayer(ICognitionLayer):
 
             if isinstance(reasoning_result, dict):
                 # 处理字典格式的结果
-                analogies = reasoning_result.get('analogies', [])
-                reasoning_chains = reasoning_result.get('reasoning_chains', [])
-                confidence_scores = reasoning_result.get('confidence_scores', [])
-            elif hasattr(reasoning_result, 'analogies'):
+                analogies = reasoning_result.get("analogies", [])
+                reasoning_chains = reasoning_result.get("reasoning_chains", [])
+                confidence_scores = reasoning_result.get("confidence_scores", [])
+            elif hasattr(reasoning_result, "analogies"):
                 # 处理对象格式的结果
-                analogies = getattr(reasoning_result, 'analogies', [])
-                reasoning_chains = getattr(reasoning_result, 'reasoning_chains', [])
-                confidence_scores = getattr(reasoning_result, 'confidence_scores', [])
+                analogies = getattr(reasoning_result, "analogies", [])
+                reasoning_chains = getattr(reasoning_result, "reasoning_chains", [])
+                confidence_scores = getattr(reasoning_result, "confidence_scores", [])
             else:
                 # 处理其他格式
-                analogies = [{'analogy': str(reasoning_result), 'confidence': 0.5}]
-                reasoning_chains = [['query', 'reasoning', 'conclusion']]
+                analogies = [{"analogy": str(reasoning_result), "confidence": 0.5}]
+                reasoning_chains = [["query", "reasoning", "conclusion"]]
                 confidence_scores = [0.5]
 
             analogy_reasoning = AnalogyReasoning(
                 analogies=analogies,
                 reasoning_chains=reasoning_chains,
-                confidence_scores=confidence_scores
+                confidence_scores=confidence_scores,
             )
 
-            logger.info(f"Analogy reasoning completed: {len(analogies)} analogies generated")
+            logger.info(
+                f"Analogy reasoning completed: {len(analogies)} analogies generated"
+            )
             return analogy_reasoning
 
         except Exception as e:
             logger.error(f"Failed to perform analogy reasoning: {e}")
             return AnalogyReasoning(
-                analogies=[],
-                reasoning_chains=[],
-                confidence_scores=[]
+                analogies=[], reasoning_chains=[], confidence_scores=[]
             )
 
-    async def _generate_cognitive_insights(self, input_data: CognitionInput,
-                                         memory_activation: MemoryActivation,
-                                         semantic_enhancement: SemanticEnhancement,
-                                         analogy_reasoning: AnalogyReasoning) -> dict[str, Any]:
+    async def _generate_cognitive_insights(
+        self,
+        input_data: CognitionInput,
+        memory_activation: MemoryActivation,
+        semantic_enhancement: SemanticEnhancement,
+        analogy_reasoning: AnalogyReasoning,
+    ) -> dict[str, Any]:
         """生成认知洞察"""
         try:
             insights = {
-                'cognitive_load': self._assess_cognitive_load(
+                "cognitive_load": self._assess_cognitive_load(
                     input_data, memory_activation, semantic_enhancement
                 ),
-                'knowledge_gaps': self._identify_knowledge_gaps(
+                "knowledge_gaps": self._identify_knowledge_gaps(
                     input_data, semantic_enhancement
                 ),
-                'reasoning_complexity': self._assess_reasoning_complexity(
+                "reasoning_complexity": self._assess_reasoning_complexity(
                     analogy_reasoning
                 ),
-                'memory_utilization': self._assess_memory_utilization(
+                "memory_utilization": self._assess_memory_utilization(
                     memory_activation, input_data.external_memories
                 ),
-                'semantic_coherence': self._assess_semantic_coherence(
+                "semantic_coherence": self._assess_semantic_coherence(
                     semantic_enhancement
                 ),
-                'creative_potential': self._assess_creative_potential(
+                "creative_potential": self._assess_creative_potential(
                     analogy_reasoning, input_data.user_profile
-                )
+                ),
             }
 
             return insights
@@ -421,17 +439,20 @@ class CognitionLayer(ICognitionLayer):
         except Exception as e:
             logger.error(f"Failed to generate cognitive insights: {e}")
             return {
-                'cognitive_load': 0.5,
-                'knowledge_gaps': [],
-                'reasoning_complexity': 0.5,
-                'memory_utilization': 0.5,
-                'semantic_coherence': 0.5,
-                'creative_potential': 0.5
+                "cognitive_load": 0.5,
+                "knowledge_gaps": [],
+                "reasoning_complexity": 0.5,
+                "memory_utilization": 0.5,
+                "semantic_coherence": 0.5,
+                "creative_potential": 0.5,
             }
 
-    def _assess_cognitive_load(self, input_data: CognitionInput,
-                              memory_activation: MemoryActivation,
-                              semantic_enhancement: SemanticEnhancement) -> float:
+    def _assess_cognitive_load(
+        self,
+        input_data: CognitionInput,
+        memory_activation: MemoryActivation,
+        semantic_enhancement: SemanticEnhancement,
+    ) -> float:
         """评估认知负荷"""
         # 基于多个因素评估认知负荷
         factors = []
@@ -450,7 +471,7 @@ class CognitionLayer(ICognitionLayer):
 
         # 用户认知能力
         user_cognitive_capacity = input_data.user_profile.cognitive_characteristics.get(
-            'cognitive_complexity', 0.5
+            "cognitive_complexity", 0.5
         )
 
         # 计算加权平均认知负荷
@@ -459,8 +480,9 @@ class CognitionLayer(ICognitionLayer):
 
         return min(1.0, adjusted_load)
 
-    def _identify_knowledge_gaps(self, input_data: CognitionInput,
-                               semantic_enhancement: SemanticEnhancement) -> list[str]:
+    def _identify_knowledge_gaps(
+        self, input_data: CognitionInput, semantic_enhancement: SemanticEnhancement
+    ) -> list[str]:
         """识别知识缺口"""
         gaps = []
 
@@ -468,15 +490,19 @@ class CognitionLayer(ICognitionLayer):
         gaps.extend(semantic_enhancement.semantic_gaps_filled)
 
         # 基于用户画像识别潜在缺口
-        user_domains = input_data.user_profile.knowledge_profile.get('core_domains', [])
-        task_domain = input_data.context_profile.domain_characteristics.get('primary_domain', '')
+        user_domains = input_data.user_profile.knowledge_profile.get("core_domains", [])
+        task_domain = input_data.context_profile.domain_characteristics.get(
+            "primary_domain", ""
+        )
 
-        if task_domain not in user_domains and task_domain != 'general':
+        if task_domain not in user_domains and task_domain != "general":
             gaps.append(f"领域知识缺口: {task_domain}")
 
         return gaps
 
-    def _assess_reasoning_complexity(self, analogy_reasoning: AnalogyReasoning) -> float:
+    def _assess_reasoning_complexity(
+        self, analogy_reasoning: AnalogyReasoning
+    ) -> float:
         """评估推理复杂度"""
         if not analogy_reasoning.reasoning_chains:
             return 0.0
@@ -494,8 +520,9 @@ class CognitionLayer(ICognitionLayer):
         complexity = (avg_chain_length / 10.0) * (1.0 - avg_confidence)
         return min(1.0, complexity)
 
-    def _assess_memory_utilization(self, memory_activation: MemoryActivation,
-                                 external_memories: list[Any]) -> float:
+    def _assess_memory_utilization(
+        self, memory_activation: MemoryActivation, external_memories: list[Any]
+    ) -> float:
         """评估记忆利用率"""
         internal_count = len(memory_activation.activated_fragments)
         external_count = len(external_memories)
@@ -508,17 +535,20 @@ class CognitionLayer(ICognitionLayer):
         utilization = (total_count / 50.0) * memory_activation.activation_confidence
         return min(1.0, utilization)
 
-    def _assess_semantic_coherence(self, semantic_enhancement: SemanticEnhancement) -> float:
+    def _assess_semantic_coherence(
+        self, semantic_enhancement: SemanticEnhancement
+    ) -> float:
         """评估语义连贯性"""
         return semantic_enhancement.enhancement_confidence
 
-    def _assess_creative_potential(self, analogy_reasoning: AnalogyReasoning,
-                                 user_profile) -> float:
+    def _assess_creative_potential(
+        self, analogy_reasoning: AnalogyReasoning, user_profile
+    ) -> float:
         """评估创造潜力"""
         # 基于类比数量和用户创造倾向
         analogy_count = len(analogy_reasoning.analogies)
         user_creativity = user_profile.cognitive_characteristics.get(
-            'creativity_tendency', 0.5
+            "creativity_tendency", 0.5
         )
 
         # 类比的多样性和质量
@@ -534,28 +564,38 @@ class CognitionLayer(ICognitionLayer):
         try:
             if isinstance(memory, MemoryEntry):
                 # 创建简化的记忆片段
-                fragment = type('MemoryFragment', (), {
-                    'content': memory.content,
-                    'confidence': memory.confidence,
-                    'source': 'external_memory',
-                    'memory_type': memory.memory_type.value if hasattr(memory.memory_type, 'value') else str(memory.memory_type),
-                    'timestamp': memory.timestamp,
-                    'metadata': memory.metadata or {},
-                    'activation_method': 'external_import'
-                })()
+                fragment = type(
+                    "MemoryFragment",
+                    (),
+                    {
+                        "content": memory.content,
+                        "confidence": memory.confidence,
+                        "source": "external_memory",
+                        "memory_type": memory.memory_type.value
+                        if hasattr(memory.memory_type, "value")
+                        else str(memory.memory_type),
+                        "timestamp": memory.timestamp,
+                        "metadata": memory.metadata or {},
+                        "activation_method": "external_import",
+                    },
+                )()
 
                 return fragment
             else:
                 # 处理其他格式的记忆对象
-                return type('MemoryFragment', (), {
-                    'content': str(memory),
-                    'confidence': 0.5,
-                    'source': 'external_memory',
-                    'memory_type': 'unknown',
-                    'timestamp': datetime.now().isoformat(),
-                    'metadata': {},
-                    'activation_method': 'external_import'
-                })()
+                return type(
+                    "MemoryFragment",
+                    (),
+                    {
+                        "content": str(memory),
+                        "confidence": 0.5,
+                        "source": "external_memory",
+                        "memory_type": "unknown",
+                        "timestamp": datetime.now().isoformat(),
+                        "metadata": {},
+                        "activation_method": "external_import",
+                    },
+                )()
 
         except Exception as e:
             logger.warning(f"Failed to convert memory to fragment: {e}")
@@ -591,14 +631,14 @@ class CognitionLayer(ICognitionLayer):
     def get_status(self) -> dict[str, Any]:
         """获取认知层状态"""
         return {
-            'layer_name': 'cognition',
-            'initialized': self.is_initialized,
-            'processing_count': self.processing_count,
-            'last_processing_time': self.last_processing_time,
-            'cache_size': len(self.activation_cache),
-            'components': {
-                'memory_activator': self.memory_activator is not None,
-                'semantic_enhancer': self.semantic_enhancer is not None,
-                'analogy_reasoner': self.analogy_reasoner is not None
-            }
+            "layer_name": "cognition",
+            "initialized": self.is_initialized,
+            "processing_count": self.processing_count,
+            "last_processing_time": self.last_processing_time,
+            "cache_size": len(self.activation_cache),
+            "components": {
+                "memory_activator": self.memory_activator is not None,
+                "semantic_enhancer": self.semantic_enhancer is not None,
+                "analogy_reasoner": self.analogy_reasoner is not None,
+            },
         }

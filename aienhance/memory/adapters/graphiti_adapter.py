@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 class GraphitiAdapter(MemorySystem):
     """
     Graphiti记忆系统适配器
-    
+
     适配Graphiti的时序感知知识图谱记忆系统
     支持实体关系、时间查询、混合搜索等高级功能
     """
@@ -77,7 +77,7 @@ class GraphitiAdapter(MemorySystem):
                 "content": memory.content,
                 "timestamp": memory.timestamp,
                 "user_id": memory.user_context.user_id,
-                "memory_type": memory.memory_type.value
+                "memory_type": memory.memory_type.value,
             }
 
             # 添加额外的上下文信息
@@ -120,7 +120,7 @@ class GraphitiAdapter(MemorySystem):
             search_kwargs = {
                 "query": query.query,
                 "limit": query.limit,
-                "user_id": query.user_context.user_id
+                "user_id": query.user_context.user_id,
             }
 
             # 添加时间范围 (Graphiti支持时序查询)
@@ -155,15 +155,17 @@ class GraphitiAdapter(MemorySystem):
                 metadata={
                     "system": "graphiti",
                     "search_type": "hybrid",
-                    "original_results": search_results
-                }
+                    "original_results": search_results,
+                },
             )
 
         except Exception as e:
             logger.error(f"搜索Graphiti记忆失败: {e}")
             raise
 
-    async def get_memory(self, memory_id: str, user_context: UserContext) -> MemoryEntry | None:
+    async def get_memory(
+        self, memory_id: str, user_context: UserContext
+    ) -> MemoryEntry | None:
         """获取特定记忆"""
         if not self.is_initialized:
             raise RuntimeError("Graphiti系统未初始化")
@@ -171,8 +173,7 @@ class GraphitiAdapter(MemorySystem):
         try:
             # Graphiti通过节点ID获取记忆
             result = await self._graphiti_client.get_node(
-                node_id=memory_id,
-                user_id=user_context.user_id
+                node_id=memory_id, user_id=user_context.user_id
             )
 
             if result:
@@ -195,7 +196,7 @@ class GraphitiAdapter(MemorySystem):
                 "node_id": memory_id,
                 "content": memory.content,
                 "timestamp": memory.timestamp,
-                "user_id": memory.user_context.user_id
+                "user_id": memory.user_context.user_id,
             }
 
             if memory.metadata:
@@ -219,8 +220,7 @@ class GraphitiAdapter(MemorySystem):
 
         try:
             result = await self._graphiti_client.delete_node(
-                node_id=memory_id,
-                user_id=user_context.user_id
+                node_id=memory_id, user_id=user_context.user_id
             )
 
             return bool(result)
@@ -229,9 +229,12 @@ class GraphitiAdapter(MemorySystem):
             logger.error(f"删除Graphiti记忆失败: {e}")
             return False
 
-    async def get_user_memories(self, user_context: UserContext,
-                              memory_types: list[MemoryType] | None = None,
-                              limit: int = 100) -> MemoryResult:
+    async def get_user_memories(
+        self,
+        user_context: UserContext,
+        memory_types: list[MemoryType] | None = None,
+        limit: int = 100,
+    ) -> MemoryResult:
         """获取用户的所有记忆"""
         if not self.is_initialized:
             raise RuntimeError("Graphiti系统未初始化")
@@ -245,34 +248,32 @@ class GraphitiAdapter(MemorySystem):
             LIMIT $limit
             """
 
-            query_params = {
-                "user_id": user_context.user_id,
-                "limit": limit
-            }
+            query_params = {"user_id": user_context.user_id, "limit": limit}
 
             # 添加记忆类型过滤
             if memory_types:
                 memory_type_values = [mt.value for mt in memory_types]
                 cypher_query = cypher_query.replace(
                     "MATCH (n:Memory {user_id: $user_id})",
-                    "MATCH (n:Memory {user_id: $user_id}) WHERE n.memory_type IN $memory_types"
+                    "MATCH (n:Memory {user_id: $user_id}) WHERE n.memory_type IN $memory_types",
                 )
                 query_params["memory_types"] = memory_type_values
 
             results = await self._graphiti_client.run_cypher_query(
-                cypher_query,
-                query_params
+                cypher_query, query_params
             )
 
             # 转换结果
-            memories = [self._convert_graphiti_node_to_entry(result["n"], user_context)
-                       for result in results]
+            memories = [
+                self._convert_graphiti_node_to_entry(result["n"], user_context)
+                for result in results
+            ]
 
             return MemoryResult(
                 memories=memories,
                 total_count=len(memories),
                 query_time=0.0,
-                metadata={"system": "graphiti", "method": "cypher_query"}
+                metadata={"system": "graphiti", "method": "cypher_query"},
             )
 
         except Exception as e:
@@ -293,8 +294,7 @@ class GraphitiAdapter(MemorySystem):
             """
 
             result = await self._graphiti_client.run_cypher_query(
-                cypher_query,
-                {"user_id": user_context.user_id}
+                cypher_query, {"user_id": user_context.user_id}
             )
 
             deleted_count = result[0]["deleted_count"] if result else 0
@@ -308,16 +308,19 @@ class GraphitiAdapter(MemorySystem):
 
     # Graphiti特有的高级功能
 
-    async def get_entity_timeline(self, entity_name: str, user_context: UserContext) -> list[MemoryEntry]:
+    async def get_entity_timeline(
+        self, entity_name: str, user_context: UserContext
+    ) -> list[MemoryEntry]:
         """获取实体的时间线记忆"""
         try:
             timeline_data = await self._graphiti_client.get_entity_timeline(
-                entity_name=entity_name,
-                user_id=user_context.user_id
+                entity_name=entity_name, user_id=user_context.user_id
             )
 
-            memories = [self._convert_graphiti_timeline_to_entry(item, user_context)
-                       for item in timeline_data]
+            memories = [
+                self._convert_graphiti_timeline_to_entry(item, user_context)
+                for item in timeline_data
+            ]
 
             return memories
 
@@ -325,18 +328,19 @@ class GraphitiAdapter(MemorySystem):
             logger.error(f"获取实体时间线失败: {e}")
             return []
 
-    async def query_relationships(self, query: str, user_context: UserContext) -> dict[str, Any]:
+    async def query_relationships(
+        self, query: str, user_context: UserContext
+    ) -> dict[str, Any]:
         """查询实体关系"""
         try:
             relationships = await self._graphiti_client.query_relationships(
-                query=query,
-                user_id=user_context.user_id
+                query=query, user_id=user_context.user_id
             )
 
             return {
                 "relationships": relationships,
                 "query": query,
-                "user_id": user_context.user_id
+                "user_id": user_context.user_id,
             }
 
         except Exception as e:
@@ -346,13 +350,18 @@ class GraphitiAdapter(MemorySystem):
     def _extract_memory_id_from_result(self, result) -> str:
         """从Graphiti结果中提取记忆ID"""
         if isinstance(result, dict):
-            return result.get("node_id", result.get("id", f"graphiti_{datetime.datetime.now().isoformat()}"))
+            return result.get(
+                "node_id",
+                result.get("id", f"graphiti_{datetime.datetime.now().isoformat()}"),
+            )
         elif hasattr(result, "id"):
             return str(result.id)
         else:
             return f"graphiti_{datetime.datetime.now().isoformat()}_{hash(str(result)) % 10000}"
 
-    def _convert_search_results_to_memories(self, results, query: MemoryQuery) -> list[MemoryEntry]:
+    def _convert_search_results_to_memories(
+        self, results, query: MemoryQuery
+    ) -> list[MemoryEntry]:
         """将Graphiti搜索结果转换为MemoryEntry列表"""
         memories = []
 
@@ -366,20 +375,30 @@ class GraphitiAdapter(MemorySystem):
 
         return memories
 
-    def _convert_graphiti_result_to_entry(self, graphiti_result, user_context: UserContext) -> MemoryEntry | None:
+    def _convert_graphiti_result_to_entry(
+        self, graphiti_result, user_context: UserContext
+    ) -> MemoryEntry | None:
         """将Graphiti搜索结果转换为MemoryEntry"""
         try:
             if isinstance(graphiti_result, dict):
                 # 处理搜索结果格式
-                content = graphiti_result.get("content", graphiti_result.get("text", str(graphiti_result)))
-                confidence = graphiti_result.get("score", graphiti_result.get("similarity", 1.0))
+                content = graphiti_result.get(
+                    "content", graphiti_result.get("text", str(graphiti_result))
+                )
+                confidence = graphiti_result.get(
+                    "score", graphiti_result.get("similarity", 1.0)
+                )
                 metadata = graphiti_result.get("metadata", {})
 
                 # 解析时间戳
-                timestamp_str = graphiti_result.get("timestamp", datetime.datetime.now().isoformat())
+                timestamp_str = graphiti_result.get(
+                    "timestamp", datetime.datetime.now().isoformat()
+                )
                 try:
                     if isinstance(timestamp_str, str):
-                        timestamp = datetime.datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+                        timestamp = datetime.datetime.fromisoformat(
+                            timestamp_str.replace("Z", "+00:00")
+                        )
                     else:
                         timestamp = timestamp_str
                 except:
@@ -387,10 +406,16 @@ class GraphitiAdapter(MemorySystem):
 
                 # 获取记忆类型
                 memory_type_str = graphiti_result.get("memory_type", "episodic")
-                memory_type = MemoryType(memory_type_str) if memory_type_str in [mt.value for mt in MemoryType] else MemoryType.EPISODIC
+                memory_type = (
+                    MemoryType(memory_type_str)
+                    if memory_type_str in [mt.value for mt in MemoryType]
+                    else MemoryType.EPISODIC
+                )
 
                 # 获取关系信息
-                relationships = graphiti_result.get("relationships", graphiti_result.get("entities"))
+                relationships = graphiti_result.get(
+                    "relationships", graphiti_result.get("entities")
+                )
 
                 return MemoryEntry(
                     content=content,
@@ -399,7 +424,7 @@ class GraphitiAdapter(MemorySystem):
                     timestamp=timestamp,
                     confidence=confidence,
                     metadata=metadata,
-                    relationships=relationships
+                    relationships=relationships,
                 )
 
             return None
@@ -408,16 +433,22 @@ class GraphitiAdapter(MemorySystem):
             logger.error(f"转换Graphiti记忆失败: {e}")
             return None
 
-    def _convert_graphiti_node_to_entry(self, node, user_context: UserContext) -> MemoryEntry | None:
+    def _convert_graphiti_node_to_entry(
+        self, node, user_context: UserContext
+    ) -> MemoryEntry | None:
         """将Graphiti节点转换为MemoryEntry"""
         # 类似于_convert_graphiti_result_to_entry，但处理节点对象
         return self._convert_graphiti_result_to_entry(dict(node), user_context)
 
-    def _convert_graphiti_timeline_to_entry(self, timeline_item, user_context: UserContext) -> MemoryEntry:
+    def _convert_graphiti_timeline_to_entry(
+        self, timeline_item, user_context: UserContext
+    ) -> MemoryEntry:
         """将Graphiti时间线项转换为MemoryEntry"""
         return self._convert_graphiti_result_to_entry(timeline_item, user_context)
 
-    def _apply_filters(self, memories: list[MemoryEntry], query: MemoryQuery) -> list[MemoryEntry]:
+    def _apply_filters(
+        self, memories: list[MemoryEntry], query: MemoryQuery
+    ) -> list[MemoryEntry]:
         """应用查询过滤器"""
         filtered = memories
 

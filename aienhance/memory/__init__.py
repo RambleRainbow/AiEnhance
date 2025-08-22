@@ -19,20 +19,19 @@ from .interfaces import (
 
 __all__ = [
     # Core Interfaces
-    'MemorySystem',
-    'MemoryEntry',
-    'MemoryQuery',
-    'MemoryResult',
-    'UserContext',
-    'MemoryType',
-    'MemorySystemConfig',
-    'MemorySystemFactory',
-    'create_user_context',
-    'create_memory_entry',
-
+    "MemorySystem",
+    "MemoryEntry",
+    "MemoryQuery",
+    "MemoryResult",
+    "UserContext",
+    "MemoryType",
+    "MemorySystemConfig",
+    "MemorySystemFactory",
+    "create_user_context",
+    "create_memory_entry",
     # Adapters
-    'MirixUnifiedAdapter',
-    'MirixLLMBridge',
-    'Mem0Adapter',
-    'GraphitiAdapter'
+    "MirixUnifiedAdapter",
+    "MirixLLMBridge",
+    "Mem0Adapter",
+    "GraphitiAdapter",
 ]

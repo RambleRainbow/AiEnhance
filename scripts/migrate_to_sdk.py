@@ -38,6 +38,7 @@ def check_mirix_package():
     """检查MIRIX包"""
     try:
         import mirix
+
         return True
     except ImportError:
         return False
@@ -52,8 +53,12 @@ def install_mirix():
     """安装MIRIX包"""
     print("🔧 安装MIRIX SDK...")
     try:
-        subprocess.run([sys.executable, "-m", "pip", "install", "mirix"],
-                      check=True, capture_output=True, text=True)
+        subprocess.run(
+            [sys.executable, "-m", "pip", "install", "mirix"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
         print("✅ MIRIX SDK安装成功")
         return True
     except subprocess.CalledProcessError as e:
@@ -112,7 +117,11 @@ def main():
     checks = [
         ("Python版本 (>=3.8)", check_python_version, "请升级到Python 3.8+"),
         ("MIRIX包", check_mirix_package, "运行: pip install mirix"),
-        ("Google API密钥", check_google_api_key, "设置环境变量: export GOOGLE_API_KEY='your-key'"),
+        (
+            "Google API密钥",
+            check_google_api_key,
+            "设置环境变量: export GOOGLE_API_KEY='your-key'",
+        ),
     ]
 
     all_passed = True
@@ -124,7 +133,7 @@ def main():
 
     # 如果MIRIX包未安装，尝试安装
     if not check_mirix_package():
-        if input("是否现在安装MIRIX SDK? (y/N): ").lower() in ['y', 'yes']:
+        if input("是否现在安装MIRIX SDK? (y/N): ").lower() in ["y", "yes"]:
             if install_mirix():
                 print("✅ MIRIX SDK安装完成")
             else:
@@ -140,7 +149,7 @@ def main():
         print("🎉 迁移准备完成！")
         print("你现在可以使用MIRIX SDK模式了。")
 
-        if input("\n是否运行测试验证? (y/N): ").lower() in ['y', 'yes']:
+        if input("\n是否运行测试验证? (y/N): ").lower() in ["y", "yes"]:
             print("\n运行测试...")
             try:
                 subprocess.run([sys.executable, "test_mirix_sdk.py"], check=True)

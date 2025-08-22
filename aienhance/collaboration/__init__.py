@@ -15,12 +15,12 @@ from .interfaces import (
 )
 
 __all__ = [
-    'DialecticalPerspectiveGenerator',
-    'CognitiveChallenge',
-    'CollaborativeCoordinator',
-    'PerspectiveRequest',
-    'PerspectiveResult',
-    'ChallengeRequest',
-    'ChallengeResult',
-    'CollaborationContext'
+    "DialecticalPerspectiveGenerator",
+    "CognitiveChallenge",
+    "CollaborativeCoordinator",
+    "PerspectiveRequest",
+    "PerspectiveResult",
+    "ChallengeRequest",
+    "ChallengeResult",
+    "CollaborationContext",
 ]

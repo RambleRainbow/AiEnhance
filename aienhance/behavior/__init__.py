@@ -11,9 +11,9 @@ from .adaptive_output import (
 )
 
 __all__ = [
-    'IntegratedAdaptiveOutput',
-    'AdaptedContent',
-    'InformationDensity',
-    'OutputStructure',
-    'ConceptGranularity'
+    "IntegratedAdaptiveOutput",
+    "AdaptedContent",
+    "InformationDensity",
+    "OutputStructure",
+    "ConceptGranularity",
 ]

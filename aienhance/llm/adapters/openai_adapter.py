@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 class OpenAILLMAdapter(LLMProvider):
     """
     OpenAI LLM适配器
-    
+
     支持GPT-3.5、GPT-4等OpenAI模型
     """
 
@@ -46,19 +46,19 @@ class OpenAILLMAdapter(LLMProvider):
             client_kwargs = {}
 
             if self.config.api_key:
-                client_kwargs['api_key'] = self.config.api_key
+                client_kwargs["api_key"] = self.config.api_key
 
             if self.config.api_base:
-                client_kwargs['base_url'] = self.config.api_base
+                client_kwargs["base_url"] = self.config.api_base
 
             if self.config.organization:
-                client_kwargs['organization'] = self.config.organization
+                client_kwargs["organization"] = self.config.organization
 
             if self.config.timeout:
-                client_kwargs['timeout'] = self.config.timeout
+                client_kwargs["timeout"] = self.config.timeout
 
             if self.config.max_retries:
-                client_kwargs['max_retries'] = self.config.max_retries
+                client_kwargs["max_retries"] = self.config.max_retries
 
             self.client = AsyncOpenAI(**client_kwargs)
 
@@ -89,8 +89,12 @@ class OpenAILLMAdapter(LLMProvider):
                 "temperature": kwargs.get("temperature", self.config.temperature),
                 "max_tokens": kwargs.get("max_tokens", self.config.max_tokens),
                 "top_p": kwargs.get("top_p", self.config.top_p),
-                "frequency_penalty": kwargs.get("frequency_penalty", self.config.frequency_penalty),
-                "presence_penalty": kwargs.get("presence_penalty", self.config.presence_penalty)
+                "frequency_penalty": kwargs.get(
+                    "frequency_penalty", self.config.frequency_penalty
+                ),
+                "presence_penalty": kwargs.get(
+                    "presence_penalty", self.config.presence_penalty
+                ),
             }
 
             # 添加函数调用支持
@@ -117,7 +121,9 @@ class OpenAILLMAdapter(LLMProvider):
             logger.error(f"OpenAI聊天请求失败: {e}")
             raise
 
-    async def chat_stream(self, messages: list[ChatMessage], **kwargs) -> AsyncIterator[str]:
+    async def chat_stream(
+        self, messages: list[ChatMessage], **kwargs
+    ) -> AsyncIterator[str]:
         """OpenAI流式聊天接口"""
         if not self.is_initialized:
             raise RuntimeError("OpenAI LLM未初始化")
@@ -133,14 +139,16 @@ class OpenAILLMAdapter(LLMProvider):
                 "temperature": kwargs.get("temperature", self.config.temperature),
                 "max_tokens": kwargs.get("max_tokens", self.config.max_tokens),
                 "top_p": kwargs.get("top_p", self.config.top_p),
-                "stream": True
+                "stream": True,
             }
 
             # 过滤None值
             request_params = {k: v for k, v in request_params.items() if v is not None}
 
             # 流式调用
-            async for chunk in await self.client.chat.completions.create(**request_params):
+            async for chunk in await self.client.chat.completions.create(
+                **request_params
+            ):
                 if chunk.choices and chunk.choices[0].delta.content:
                     yield chunk.choices[0].delta.content
 
@@ -157,15 +165,14 @@ class OpenAILLMAdapter(LLMProvider):
         except Exception as e:
             raise RuntimeError(f"OpenAI连接测试失败: {e}")
 
-    def _convert_messages_to_openai(self, messages: list[ChatMessage]) -> list[dict[str, Any]]:
+    def _convert_messages_to_openai(
+        self, messages: list[ChatMessage]
+    ) -> list[dict[str, Any]]:
         """将ChatMessage转换为OpenAI格式"""
         openai_messages = []
 
         for message in messages:
-            openai_message = {
-                "role": message.role.value,
-                "content": message.content
-            }
+            openai_message = {"role": message.role.value, "content": message.content}
 
             if message.name:
                 openai_message["name"] = message.name
@@ -191,16 +198,16 @@ class OpenAILLMAdapter(LLMProvider):
             usage=openai_response.usage.model_dump() if openai_response.usage else {},
             model=openai_response.model,
             created_at=datetime.datetime.fromtimestamp(openai_response.created),
-            function_call=getattr(message, 'function_call', None),
-            tool_calls=getattr(message, 'tool_calls', None),
-            metadata={"provider": "openai"}
+            function_call=getattr(message, "function_call", None),
+            tool_calls=getattr(message, "tool_calls", None),
+            metadata={"provider": "openai"},
         )
 
 
 class OpenAIEmbeddingAdapter(EmbeddingProvider):
     """
     OpenAI嵌入模型适配器
-    
+
     支持text-embedding-ada-002等OpenAI嵌入模型
     """
 
@@ -222,13 +229,13 @@ class OpenAIEmbeddingAdapter(EmbeddingProvider):
             client_kwargs = {}
 
             if self.config.api_key:
-                client_kwargs['api_key'] = self.config.api_key
+                client_kwargs["api_key"] = self.config.api_key
 
             if self.config.api_base:
-                client_kwargs['base_url'] = self.config.api_base
+                client_kwargs["base_url"] = self.config.api_base
 
             if self.config.organization:
-                client_kwargs['organization'] = self.config.organization
+                client_kwargs["organization"] = self.config.organization
 
             self.client = AsyncOpenAI(**client_kwargs)
 
@@ -253,7 +260,7 @@ class OpenAIEmbeddingAdapter(EmbeddingProvider):
             embed_params = {
                 "model": self.config.model_name,
                 "input": request.texts,
-                "encoding_format": request.encoding_format
+                "encoding_format": request.encoding_format,
             }
 
             if request.dimensions:
@@ -273,7 +280,7 @@ class OpenAIEmbeddingAdapter(EmbeddingProvider):
                 model=response.model,
                 usage=response.usage.model_dump() if response.usage else {},
                 created_at=datetime.datetime.now(),
-                metadata={"provider": "openai"}
+                metadata={"provider": "openai"},
             )
 
         except Exception as e:

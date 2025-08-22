@@ -16,9 +16,9 @@ from aienhance import MemorySystemConfig, create_model_config, create_system
 
 async def test_ollama_llm_integration():
     """测试Ollama LLM集成"""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("🤖 测试Ollama LLM集成")
-    print("="*60)
+    print("=" * 60)
 
     try:
         # 创建Ollama LLM配置
@@ -27,7 +27,7 @@ async def test_ollama_llm_integration():
             model_name="qwen3:8b",  # 使用较小的模型进行测试
             api_base="http://localhost:11434",
             temperature=0.7,
-            max_tokens=500
+            max_tokens=500,
         )
 
         # 创建系统（仅LLM，不使用记忆系统进行简单测试）
@@ -37,7 +37,7 @@ async def test_ollama_llm_integration():
             llm_model_name="qwen3:8b",
             llm_api_base="http://localhost:11434",
             llm_temperature=0.7,
-            llm_max_tokens=500
+            llm_max_tokens=500,
         )
 
         print("✅ 系统创建成功")
@@ -50,19 +50,23 @@ async def test_ollama_llm_integration():
         # 测试简单查询
         print("\n🔍 测试用户查询...")
         response = await system.process_query(
-            query="什么是人工智能？请简要解释。",
-            user_id="test_user_001"
+            query="什么是人工智能？请简要解释。", user_id="test_user_001"
         )
 
         print(f"💬 系统响应: {response.content[:200]}...")
         print(f"🎯 响应长度: {len(response.content)} 字符")
 
         # 检查LLM元数据
-        if hasattr(response.adaptation_info, 'metadata') and response.adaptation_info.metadata:
-            if response.adaptation_info.metadata.get('llm_generated'):
+        if (
+            hasattr(response.adaptation_info, "metadata")
+            and response.adaptation_info.metadata
+        ):
+            if response.adaptation_info.metadata.get("llm_generated"):
                 print("✅ LLM成功生成响应")
-                print(f"🤖 使用模型: {response.adaptation_info.metadata.get('llm_model')}")
-                usage = response.adaptation_info.metadata.get('llm_usage', {})
+                print(
+                    f"🤖 使用模型: {response.adaptation_info.metadata.get('llm_model')}"
+                )
+                usage = response.adaptation_info.metadata.get("llm_usage", {})
                 if usage:
                     print(f"📈 Token使用: {usage}")
             else:
@@ -77,16 +81,14 @@ async def test_ollama_llm_integration():
 
 async def test_memory_llm_integration():
     """测试记忆系统与LLM的完整集成"""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("🧠 测试记忆系统与LLM完整集成")
-    print("="*60)
+    print("=" * 60)
 
     try:
         # 创建带记忆系统的完整配置
         memory_config = MemorySystemConfig(
-            system_type="mirix",
-            api_key="test-key",
-            api_base="http://localhost:8000"
+            system_type="mirix", api_key="test-key", api_base="http://localhost:8000"
         )
 
         llm_config = create_model_config(
@@ -94,7 +96,7 @@ async def test_memory_llm_integration():
             model_name="qwen3:8b",
             api_base="http://localhost:11434",
             temperature=0.7,
-            max_tokens=300
+            max_tokens=300,
         )
 
         # 创建完整系统
@@ -107,7 +109,7 @@ async def test_memory_llm_integration():
             llm_model_name="qwen3:8b",
             llm_api_base="http://localhost:11434",
             llm_temperature=0.7,
-            llm_max_tokens=300
+            llm_max_tokens=300,
         )
 
         print("✅ 完整系统创建成功")
@@ -116,8 +118,12 @@ async def test_memory_llm_integration():
         status = system.get_system_status()
         print("📊 系统状态:")
         print(f"  - 初始化: {status['initialized']}")
-        print(f"  - 记忆系统: {status.get('memory_system', {}).get('system_type', 'None')}")
-        print(f"  - LLM提供商: {status.get('llm_provider', {}).get('provider', 'None')}")
+        print(
+            f"  - 记忆系统: {status.get('memory_system', {}).get('system_type', 'None')}"
+        )
+        print(
+            f"  - LLM提供商: {status.get('llm_provider', {}).get('provider', 'None')}"
+        )
 
         # 测试连续对话
         print("\n🔄 测试连续对话...")
@@ -125,7 +131,7 @@ async def test_memory_llm_integration():
         queries = [
             "我对机器学习很感兴趣，能介绍一下基本概念吗？",
             "刚才提到的监督学习能举个例子吗？",
-            "我想深入了解神经网络，有什么建议？"
+            "我想深入了解神经网络，有什么建议？",
         ]
 
         user_id = "test_user_002"
@@ -137,13 +143,13 @@ async def test_memory_llm_integration():
                 response = await system.process_query(
                     query=query,
                     user_id=user_id,
-                    context={"session_id": "test_session_001"}
+                    context={"session_id": "test_session_001"},
                 )
 
                 print(f"💭 响应 {i}: {response.content[:150]}...")
 
                 # 分析处理步骤
-                steps = response.processing_metadata.get('processing_steps', [])
+                steps = response.processing_metadata.get("processing_steps", [])
                 print(f"🔧 处理步骤: {', '.join(steps)}")
 
                 # 检查记忆激活
@@ -151,8 +157,11 @@ async def test_memory_llm_integration():
                     print(f"🧠 激活记忆: {len(response.activated_memories)} 条")
 
                 # 检查LLM生成
-                if hasattr(response.adaptation_info, 'metadata') and response.adaptation_info.metadata:
-                    if response.adaptation_info.metadata.get('llm_generated'):
+                if (
+                    hasattr(response.adaptation_info, "metadata")
+                    and response.adaptation_info.metadata
+                ):
+                    if response.adaptation_info.metadata.get("llm_generated"):
                         print("✅ LLM参与响应生成")
 
             except Exception as e:
@@ -169,16 +178,16 @@ async def test_memory_llm_integration():
 
 async def test_different_llm_providers():
     """测试不同LLM提供商的切换"""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("🔄 测试不同LLM提供商切换")
-    print("="*60)
+    print("=" * 60)
 
     providers_configs = [
         {
             "name": "Ollama",
             "provider": "ollama",
             "model_name": "qwen3:8b",
-            "api_base": "http://localhost:11434"
+            "api_base": "http://localhost:11434",
         },
         # 注释掉需要API密钥的提供商，避免测试失败
         # {
@@ -205,7 +214,7 @@ async def test_different_llm_providers():
             kwargs = {
                 "system_type": "default",
                 "llm_provider": config["provider"],
-                "llm_model_name": config["model_name"]
+                "llm_model_name": config["model_name"],
             }
 
             # 添加可选参数
@@ -223,11 +232,13 @@ async def test_different_llm_providers():
             try:
                 response = await system.process_query(
                     query="Hello, how are you?",
-                    user_id=f"test_user_{config['provider']}"
+                    user_id=f"test_user_{config['provider']}",
                 )
 
                 if response.content:
-                    print(f"💬 {config['name']} 响应正常 (长度: {len(response.content)})")
+                    print(
+                        f"💬 {config['name']} 响应正常 (长度: {len(response.content)})"
+                    )
                     success_count += 1
                 else:
                     print(f"⚠️ {config['name']} 响应为空")
@@ -244,9 +255,9 @@ async def test_different_llm_providers():
 
 async def test_streaming_functionality():
     """测试流式响应功能"""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("🌊 测试流式响应功能")
-    print("="*60)
+    print("=" * 60)
 
     try:
         # 创建支持流式的系统
@@ -254,20 +265,19 @@ async def test_streaming_functionality():
             system_type="default",
             llm_provider="ollama",
             llm_model_name="qwen3:8b",
-            llm_api_base="http://localhost:11434"
+            llm_api_base="http://localhost:11434",
         )
 
         print("✅ 流式系统创建成功")
 
         # 测试流式响应（需要添加到系统API中）
         # 注意：当前系统架构中没有直接的流式接口，这里演示概念
-        if hasattr(system, 'llm_provider') and system.llm_provider:
+        if hasattr(system, "llm_provider") and system.llm_provider:
             print("🔄 测试LLM流式接口...")
 
             from aienhance.llm import create_chat_message
-            messages = [
-                create_chat_message("user", "请写一首关于春天的短诗")
-            ]
+
+            messages = [create_chat_message("user", "请写一首关于春天的短诗")]
 
             try:
                 # 直接测试LLM适配器的流式功能
@@ -277,9 +287,9 @@ async def test_streaming_functionality():
                 content_parts = []
                 async for chunk in system.llm_provider.chat_stream(messages):
                     content_parts.append(chunk)
-                    print(chunk, end='', flush=True)
+                    print(chunk, end="", flush=True)
 
-                full_content = ''.join(content_parts)
+                full_content = "".join(content_parts)
                 print(f"\n✅ 流式响应完成 (总长度: {len(full_content)})")
                 return True
 
@@ -297,9 +307,9 @@ async def test_streaming_functionality():
 
 async def test_system_performance():
     """测试系统性能"""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("⚡ 测试系统性能")
-    print("="*60)
+    print("=" * 60)
 
     import time
 
@@ -311,7 +321,7 @@ async def test_system_performance():
             llm_model_name="qwen3:8b",
             llm_api_base="http://localhost:11434",
             llm_temperature=0.5,
-            llm_max_tokens=100  # 限制token数量以提高速度
+            llm_max_tokens=100,  # 限制token数量以提高速度
         )
 
         print("✅ 性能测试系统创建成功")
@@ -322,7 +332,7 @@ async def test_system_performance():
             "解释机器学习",
             "Python的特点",
             "数据科学应用",
-            "深度学习概念"
+            "深度学习概念",
         ]
 
         print(f"🔄 开始处理 {len(test_queries)} 个查询...")
@@ -335,32 +345,37 @@ async def test_system_performance():
 
             try:
                 response = await system.process_query(
-                    query=query,
-                    user_id=f"perf_user_{i:03d}"
+                    query=query, user_id=f"perf_user_{i:03d}"
                 )
 
                 end_time = time.time()
                 duration = end_time - start_time
 
-                results.append({
-                    "query": query,
-                    "duration": duration,
-                    "response_length": len(response.content),
-                    "success": True
-                })
+                results.append(
+                    {
+                        "query": query,
+                        "duration": duration,
+                        "response_length": len(response.content),
+                        "success": True,
+                    }
+                )
 
-                print(f"✅ 查询 {i}: {duration:.2f}s (响应长度: {len(response.content)})")
+                print(
+                    f"✅ 查询 {i}: {duration:.2f}s (响应长度: {len(response.content)})"
+                )
 
             except Exception as e:
                 end_time = time.time()
                 duration = end_time - start_time
 
-                results.append({
-                    "query": query,
-                    "duration": duration,
-                    "error": str(e),
-                    "success": False
-                })
+                results.append(
+                    {
+                        "query": query,
+                        "duration": duration,
+                        "error": str(e),
+                        "success": False,
+                    }
+                )
 
                 print(f"❌ 查询 {i}: {duration:.2f}s (失败: {e})")
 
@@ -371,15 +386,21 @@ async def test_system_performance():
         successful_results = [r for r in results if r["success"]]
 
         if successful_results:
-            avg_duration = sum(r["duration"] for r in successful_results) / len(successful_results)
-            avg_response_length = sum(r["response_length"] for r in successful_results) / len(successful_results)
+            avg_duration = sum(r["duration"] for r in successful_results) / len(
+                successful_results
+            )
+            avg_response_length = sum(
+                r["response_length"] for r in successful_results
+            ) / len(successful_results)
 
             print("\n📊 性能统计:")
             print(f"  - 总时间: {total_duration:.2f}s")
-            print(f"  - 成功率: {len(successful_results)}/{len(test_queries)} ({len(successful_results)/len(test_queries)*100:.1f}%)")
+            print(
+                f"  - 成功率: {len(successful_results)}/{len(test_queries)} ({len(successful_results) / len(test_queries) * 100:.1f}%)"
+            )
             print(f"  - 平均响应时间: {avg_duration:.2f}s")
             print(f"  - 平均响应长度: {avg_response_length:.0f} 字符")
-            print(f"  - 吞吐量: {len(successful_results)/total_duration:.2f} 查询/秒")
+            print(f"  - 吞吐量: {len(successful_results) / total_duration:.2f} 查询/秒")
 
         return len(successful_results) > 0
 
@@ -401,11 +422,11 @@ async def main():
         ("记忆-LLM完整集成", test_memory_llm_integration),
         ("多提供商切换", test_different_llm_providers),
         ("流式响应功能", test_streaming_functionality),
-        ("系统性能", test_system_performance)
+        ("系统性能", test_system_performance),
     ]
 
     for test_name, test_func in tests:
-        print(f"\n{'='*20} {test_name} {'='*20}")
+        print(f"\n{'=' * 20} {test_name} {'=' * 20}")
         try:
             result = await test_func()
             test_results[test_name] = "✅ 通过" if result else "⚠️ 部分失败"
@@ -414,9 +435,9 @@ async def main():
             print(f"❌ 测试异常: {e}")
 
     # 汇总结果
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("📋 测试结果汇总")
-    print("="*60)
+    print("=" * 60)
 
     for test_name, result in test_results.items():
         print(f"{test_name}: {result}")

@@ -67,7 +67,7 @@ class MirixSdkTester:
 
         user_context = UserContext(
             user_id="test_user_sdk",
-            session_id="test_session_" + datetime.now().strftime("%Y%m%d_%H%M%S")
+            session_id="test_session_" + datetime.now().strftime("%Y%m%d_%H%M%S"),
         )
 
         try:
@@ -78,7 +78,7 @@ class MirixSdkTester:
                 memory_type=MemoryType.SEMANTIC,
                 user_context=user_context,
                 timestamp=datetime.now(),
-                metadata={"test": True, "version": "sdk"}
+                metadata={"test": True, "version": "sdk"},
             )
 
             memory_id = await self.adapter.add_memory(test_memory)
@@ -87,9 +87,7 @@ class MirixSdkTester:
             # 测试搜索记忆
             print("  🔍 搜索相关记忆...")
             query = MemoryQuery(
-                query="人工智能学习",
-                user_context=user_context,
-                limit=5
+                query="人工智能学习", user_context=user_context, limit=5
             )
 
             search_result = await self.adapter.search_memories(query)
@@ -99,7 +97,11 @@ class MirixSdkTester:
             if search_result.memories:
                 print("  📋 记忆内容预览:")
                 for i, memory in enumerate(search_result.memories[:2], 1):
-                    preview = memory.content[:100] + "..." if len(memory.content) > 100 else memory.content
+                    preview = (
+                        memory.content[:100] + "..."
+                        if len(memory.content) > 100
+                        else memory.content
+                    )
                     print(f"    {i}. {preview}")
 
             return True
@@ -118,7 +120,7 @@ class MirixSdkTester:
 
         user_context = UserContext(
             user_id="test_user_sdk",
-            session_id="chat_test_" + datetime.now().strftime("%Y%m%d_%H%M%S")
+            session_id="chat_test_" + datetime.now().strftime("%Y%m%d_%H%M%S"),
         )
 
         try:
@@ -128,12 +130,14 @@ class MirixSdkTester:
             print("  🤔 AI思考中...")
 
             response = await self.adapter.chat_with_memory(
-                message=test_message,
-                user_context=user_context,
-                save_interaction=True
+                message=test_message, user_context=user_context, save_interaction=True
             )
 
-            print(f"  🤖 AI: {response[:200]}..." if len(response) > 200 else f"  🤖 AI: {response}")
+            print(
+                f"  🤖 AI: {response[:200]}..."
+                if len(response) > 200
+                else f"  🤖 AI: {response}"
+            )
             print("  ✅ 对话功能正常")
 
             return True
@@ -155,7 +159,9 @@ class MirixSdkTester:
             print("  ✅ 系统信息:")
             print(f"    系统类型: {info['system_type']}")
             print(f"    初始化状态: {info['initialized']}")
-            print(f"    功能特性: {', '.join(k for k, v in info['features'].items() if v)}")
+            print(
+                f"    功能特性: {', '.join(k for k, v in info['features'].items() if v)}"
+            )
 
             return True
 

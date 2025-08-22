@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 # ===== 分层认知系统工厂函数 (推荐使用) =====
 
+
 def create_layered_system(
     system_type: str = "educational",
     memory_system_type: str = "mirix_unified",
@@ -28,14 +29,14 @@ def create_layered_system(
     embedding_provider: str | None = None,
     embedding_model_name: str | None = None,
     use_unified_llm: bool = True,
-    **kwargs
+    **kwargs,
 ) -> LayeredCognitiveSystem:
     """
     创建分层认知系统（推荐使用）
-    
+
     这是新的分层架构，将感知、认知、行为、协作四层显式化为独立对象。
     相比旧架构，提供更好的模块化、可维护性和扩展性。
-    
+
     Args:
         system_type: 系统类型 ('educational', 'research', 'creative', 'lightweight')
         memory_system_type: 记忆系统类型
@@ -49,7 +50,7 @@ def create_layered_system(
         embedding_model_name: 嵌入模型名称
         use_unified_llm: 是否使用统一LLM
         **kwargs: 其他参数
-        
+
     Returns:
         LayeredCognitiveSystem: 分层认知系统实例
     """
@@ -66,7 +67,7 @@ def create_layered_system(
         embedding_provider=embedding_provider,
         embedding_model_name=embedding_model_name,
         use_unified_llm=use_unified_llm,
-        **kwargs
+        **kwargs,
     )
 
 
@@ -74,17 +75,17 @@ def create_educational_layered_system(
     model_name: str = "qwen3:8b",
     ollama_base: str = "http://localhost:11434",
     system_type: str = "educational",
-    **kwargs
+    **kwargs,
 ) -> LayeredCognitiveSystem:
     """
     创建教育场景的分层认知系统
-    
+
     Args:
         model_name: 模型名称
         ollama_base: Ollama服务地址
         system_type: 系统类型
         **kwargs: 其他参数
-        
+
     Returns:
         LayeredCognitiveSystem: 教育特化的分层认知系统
     """
@@ -95,9 +96,9 @@ def create_educational_layered_system(
             provider="ollama",
             model_name=model_name,
             api_base=ollama_base,
-            temperature=kwargs.get('llm_temperature', 0.7),
-            max_tokens=kwargs.get('llm_max_tokens', 800)
-        )
+            temperature=kwargs.get("llm_temperature", 0.7),
+            max_tokens=kwargs.get("llm_max_tokens", 800),
+        ),
     )
 
 
@@ -105,17 +106,17 @@ def create_research_layered_system(
     model_name: str = "qwen3:8b",
     ollama_base: str = "http://localhost:11434",
     system_type: str = "research",
-    **kwargs
+    **kwargs,
 ) -> LayeredCognitiveSystem:
     """
     创建研究场景的分层认知系统
-    
+
     Args:
         model_name: 模型名称
         ollama_base: Ollama服务地址
         system_type: 系统类型
         **kwargs: 其他参数
-        
+
     Returns:
         LayeredCognitiveSystem: 研究特化的分层认知系统
     """
@@ -126,9 +127,9 @@ def create_research_layered_system(
             provider="ollama",
             model_name=model_name,
             api_base=ollama_base,
-            temperature=kwargs.get('llm_temperature', 0.8),
-            max_tokens=kwargs.get('llm_max_tokens', 1200)
-        )
+            temperature=kwargs.get("llm_temperature", 0.8),
+            max_tokens=kwargs.get("llm_max_tokens", 1200),
+        ),
     )
 
 
@@ -136,17 +137,17 @@ def create_creative_layered_system(
     model_name: str = "qwen3:8b",
     ollama_base: str = "http://localhost:11434",
     system_type: str = "creative",
-    **kwargs
+    **kwargs,
 ) -> LayeredCognitiveSystem:
     """
     创建创意场景的分层认知系统
-    
+
     Args:
         model_name: 模型名称
         ollama_base: Ollama服务地址
         system_type: 系统类型
         **kwargs: 其他参数
-        
+
     Returns:
         LayeredCognitiveSystem: 创意特化的分层认知系统
     """
@@ -157,25 +158,23 @@ def create_creative_layered_system(
             provider="ollama",
             model_name=model_name,
             api_base=ollama_base,
-            temperature=kwargs.get('llm_temperature', 0.9),
-            max_tokens=kwargs.get('llm_max_tokens', 1000)
-        )
+            temperature=kwargs.get("llm_temperature", 0.9),
+            max_tokens=kwargs.get("llm_max_tokens", 1000),
+        ),
     )
 
 
 def create_lightweight_layered_system(
-    model_name: str = "qwen3:8b",
-    ollama_base: str = "http://localhost:11434",
-    **kwargs
+    model_name: str = "qwen3:8b", ollama_base: str = "http://localhost:11434", **kwargs
 ) -> LayeredCognitiveSystem:
     """
     创建轻量级分层认知系统
-    
+
     Args:
         model_name: 模型名称
         ollama_base: Ollama服务地址
         **kwargs: 其他参数
-        
+
     Returns:
         LayeredCognitiveSystem: 轻量级分层认知系统
     """
@@ -185,8 +184,8 @@ def create_lightweight_layered_system(
             provider="ollama",
             model_name=model_name,
             api_base=ollama_base,
-            temperature=kwargs.get('llm_temperature', 0.7),
-            max_tokens=kwargs.get('llm_max_tokens', 600)
+            temperature=kwargs.get("llm_temperature", 0.7),
+            max_tokens=kwargs.get("llm_max_tokens", 600),
         )
     )
 
@@ -194,7 +193,7 @@ def create_lightweight_layered_system(
 def get_layered_system_info() -> dict[str, Any]:
     """
     获取分层系统信息
-    
+
     Returns:
         Dict: 分层系统信息
     """
@@ -206,14 +205,14 @@ def get_layered_system_info() -> dict[str, Any]:
         },
         "version": "2.0.0",
         "architecture": "Layered Cognitive System",
-        "layers": ["perception", "cognition", "behavior", "collaboration"]
+        "layers": ["perception", "cognition", "behavior", "collaboration"],
     }
 
 
 def get_system_info() -> dict[str, Any]:
     """
     获取系统信息
-    
+
     Returns:
         Dict: 系统信息
     """
@@ -222,7 +221,7 @@ def get_system_info() -> dict[str, Any]:
         "enhanced_factory_version": "2.0.0",  # 升级到2.0，专注分层架构
         "architecture": {
             "layered_architecture": True,
-            "recommended_architecture": "layered"
+            "recommended_architecture": "layered",
         },
         "supported_memory_systems": ["mirix_unified", "mem0", "graphiti"],
         "supported_llm_providers": ["ollama", "openai", "anthropic", "azure"],
@@ -233,18 +232,18 @@ def get_system_info() -> dict[str, Any]:
             "layered_architecture": True,
             "explicit_layer_objects": True,
             "information_flow_tracking": True,
-            "streaming_output": True
-        }
+            "streaming_output": True,
+        },
     }
 
 
 def get_layered_system_info_detailed(system_type: str = None) -> dict[str, Any]:
     """
     获取详细的分层系统信息
-    
+
     Args:
         system_type: 系统类型，如果提供则返回特定类型的信息
-        
+
     Returns:
         Dict: 分层系统信息
     """
@@ -264,7 +263,7 @@ def get_layered_system_info_detailed(system_type: str = None) -> dict[str, Any]:
                     "perception": "感知层：用户建模、情境分析、输入理解",
                     "cognition": "认知层：记忆激活、语义增强、类比推理",
                     "behavior": "行为层：内容适配、个性化输出、LLM生成",
-                    "collaboration": "协作层：多元观点、认知挑战、辩证思考"
+                    "collaboration": "协作层：多元观点、认知挑战、辩证思考",
                 },
                 "information_flow": "感知层 → 认知层 → 行为层 → 协作层",
                 "key_features": [
@@ -273,7 +272,7 @@ def get_layered_system_info_detailed(system_type: str = None) -> dict[str, Any]:
                     "独立的层级配置",
                     "模块化设计",
                     "可扩展架构",
-                    "流式输出支持"
-                ]
-            }
+                    "流式输出支持",
+                ],
+            },
         }

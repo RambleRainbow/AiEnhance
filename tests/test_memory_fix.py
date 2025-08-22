@@ -23,7 +23,7 @@ async def test_memory_system():
             llm_model_name="qwen3:8b",
             llm_temperature=0.7,
             llm_max_tokens=800,
-            embedding_model_name="bge-m3:latest"
+            embedding_model_name="bge-m3:latest",
         )
         print("✅ 系统创建成功，clear_user_memories方法已实现")
 
@@ -32,7 +32,9 @@ async def test_memory_system():
         print(f"📊 系统状态: {status.get('memory_system', 'None')}")
 
     except Exception as e:
-        if "Can't instantiate abstract class" in str(e) and "clear_user_memories" in str(e):
+        if "Can't instantiate abstract class" in str(
+            e
+        ) and "clear_user_memories" in str(e):
             print(f"❌ 修复失败: {e}")
             return False
         else:
@@ -42,6 +44,7 @@ async def test_memory_system():
 
     print("✅ 测试成功！clear_user_memories方法修复已生效")
     return True
+
 
 if __name__ == "__main__":
     result = asyncio.run(test_memory_system())

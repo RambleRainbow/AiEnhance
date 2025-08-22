@@ -26,22 +26,21 @@ from .user_modeling import (
 
 __all__ = [
     # User Modeling
-    'UserProfile',
-    'CognitiveProfile',
-    'KnowledgeProfile',
-    'InteractionProfile',
-    'DynamicUserModeler',
-    'CognitiveStyle',
-    'ThinkingMode',
-
+    "UserProfile",
+    "CognitiveProfile",
+    "KnowledgeProfile",
+    "InteractionProfile",
+    "DynamicUserModeler",
+    "CognitiveStyle",
+    "ThinkingMode",
     # Context Analysis
-    'ContextProfile',
-    'TaskCharacteristics',
-    'ContextualElements',
-    'CognitiveNeeds',
-    'IntegratedContextAnalyzer',
-    'TaskType',
-    'TimeDimension',
-    'AbstractionLevel',
-    'PurposeType'
+    "ContextProfile",
+    "TaskCharacteristics",
+    "ContextualElements",
+    "CognitiveNeeds",
+    "IntegratedContextAnalyzer",
+    "TaskType",
+    "TimeDimension",
+    "AbstractionLevel",
+    "PurposeType",
 ]

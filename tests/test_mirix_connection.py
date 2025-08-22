@@ -47,15 +47,11 @@ async def test_mirix_connection():
                 "memory_type": "episodic",
                 "user_id": "test_user",
                 "session_id": "test_session",
-                "metadata": {
-                    "test": True,
-                    "timestamp": datetime.now().isoformat()
-                }
+                "metadata": {"test": True, "timestamp": datetime.now().isoformat()},
             }
 
             add_response = await client.post(
-                "http://localhost:8000/api/memory/add",
-                json=memory_data
+                "http://localhost:8000/api/memory/add", json=memory_data
             )
 
             if add_response.status_code == 200:
@@ -64,20 +60,17 @@ async def test_mirix_connection():
 
                 # 4. 测试记忆搜索
                 print("\n🔍 测试记忆搜索功能...")
-                search_data = {
-                    "query": "测试",
-                    "user_id": "test_user",
-                    "limit": 10
-                }
+                search_data = {"query": "测试", "user_id": "test_user", "limit": 10}
 
                 search_response = await client.post(
-                    "http://localhost:8000/api/memory/search",
-                    json=search_data
+                    "http://localhost:8000/api/memory/search", json=search_data
                 )
 
                 if search_response.status_code == 200:
                     search_result = search_response.json()
-                    print(f"✅ 搜索成功，找到 {len(search_result.get('memories', []))} 条记忆")
+                    print(
+                        f"✅ 搜索成功，找到 {len(search_result.get('memories', []))} 条记忆"
+                    )
                 else:
                     print(f"⚠️  记忆搜索失败: HTTP {search_response.status_code}")
 
@@ -100,6 +93,7 @@ async def test_mirix_connection():
         print(f"❌ 连接测试失败: {e}")
         return False
 
+
 async def main():
     """主函数"""
     print("=" * 50)
@@ -114,6 +108,7 @@ async def main():
     else:
         print("\n❌ 测试失败！请检查MIRIX服务状态")
         print("💡 启动服务: ./start-dev.sh")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

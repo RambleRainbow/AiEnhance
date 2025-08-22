@@ -39,7 +39,7 @@ async def test_dialectical_perspective():
             model_name="qwen3:8b",
             model_type=ModelType.CHAT,
             api_base="http://localhost:11434",
-            temperature=0.7
+            temperature=0.7,
         )
 
         llm_provider = LLMProviderFactory.create_provider(llm_config)
@@ -52,17 +52,17 @@ async def test_dialectical_perspective():
         test_content = "人工智能将会完全替代人类的工作，这是技术发展的必然趋势。"
 
         # 创建协作上下文
-        context = CollaborationContext(
-            user_id="test_user",
-            session_id="test_session"
-        )
+        context = CollaborationContext(user_id="test_user", session_id="test_session")
 
         # 创建视角请求
         request = PerspectiveRequest(
             content=test_content,
             user_position="支持AI替代人类工作",
-            perspective_types=[PerspectiveType.OPPOSING, PerspectiveType.MULTI_DISCIPLINARY],
-            max_perspectives=3
+            perspective_types=[
+                PerspectiveType.OPPOSING,
+                PerspectiveType.MULTI_DISCIPLINARY,
+            ],
+            max_perspectives=3,
         )
 
         # 生成视角
@@ -112,7 +112,7 @@ async def test_cognitive_challenge():
             model_name="qwen3:8b",
             model_type=ModelType.CHAT,
             api_base="http://localhost:11434",
-            temperature=0.7
+            temperature=0.7,
         )
 
         llm_provider = LLMProviderFactory.create_provider(llm_config)
@@ -126,10 +126,7 @@ async def test_cognitive_challenge():
         user_reasoning = "因为员工可以避免通勤时间，有更好的工作环境，所以效率更高。"
 
         # 创建协作上下文
-        context = CollaborationContext(
-            user_id="test_user",
-            session_id="test_session"
-        )
+        context = CollaborationContext(user_id="test_user", session_id="test_session")
 
         # 创建挑战请求
         request = ChallengeRequest(
@@ -138,9 +135,9 @@ async def test_cognitive_challenge():
             challenge_types=[
                 ChallengeType.ASSUMPTION_QUESTIONING,
                 ChallengeType.BLIND_SPOT_DETECTION,
-                ChallengeType.COMPLEXITY_EXPANSION
+                ChallengeType.COMPLEXITY_EXPANSION,
             ],
-            intensity_level="moderate"
+            intensity_level="moderate",
         )
 
         # 生成挑战
@@ -193,7 +190,7 @@ async def test_collaborative_coordinator():
             model_name="qwen3:8b",
             model_type=ModelType.CHAT,
             api_base="http://localhost:11434",
-            temperature=0.7
+            temperature=0.7,
         )
 
         llm_provider = LLMProviderFactory.create_provider(llm_config)
@@ -212,8 +209,8 @@ async def test_collaborative_coordinator():
             collaboration_preferences={
                 "enable_perspectives": True,
                 "enable_challenges": True,
-                "challenge_intensity": "moderate"
-            }
+                "challenge_intensity": "moderate",
+            },
         )
 
         # 编排协作过程
@@ -227,21 +224,21 @@ async def test_collaborative_coordinator():
         print(f"   用户ID: {result.get('user_id')}")
 
         # 显示视角结果
-        perspectives = result.get('perspectives')
-        if perspectives and not perspectives.get('error'):
+        perspectives = result.get("perspectives")
+        if perspectives and not perspectives.get("error"):
             print(f"\n🎭 生成视角: {len(perspectives.get('perspectives', []))} 个")
-            for i, p in enumerate(perspectives.get('perspectives', []), 1):
+            for i, p in enumerate(perspectives.get("perspectives", []), 1):
                 print(f"   {i}. {p.get('title', 'N/A')}")
 
         # 显示挑战结果
-        challenges = result.get('challenges')
-        if challenges and not challenges.get('error'):
+        challenges = result.get("challenges")
+        if challenges and not challenges.get("error"):
             print(f"\n🧠 认知挑战: {len(challenges.get('challenges', []))} 个")
-            for i, c in enumerate(challenges.get('challenges', []), 1):
+            for i, c in enumerate(challenges.get("challenges", []), 1):
                 print(f"   {i}. {c.get('title', 'N/A')}")
 
         # 显示协作洞察
-        insights = result.get('collaboration_insights')
+        insights = result.get("collaboration_insights")
         if insights:
             print("\n💡 协作洞察:")
             print(f"   协作效果: {insights.get('collaboration_effectiveness', 'N/A')}")
@@ -249,7 +246,7 @@ async def test_collaborative_coordinator():
             print(f"   个性化建议: {insights.get('personalized_recommendations', [])}")
 
         # 显示下一步建议
-        next_steps = result.get('next_collaboration_steps')
+        next_steps = result.get("next_collaboration_steps")
         if next_steps:
             print("\n🚀 下一步建议:")
             for step in next_steps:
@@ -261,6 +258,7 @@ async def test_collaborative_coordinator():
     except Exception as e:
         print(f"❌ 协作协调器测试失败: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -275,6 +273,7 @@ async def main():
     # 检查Ollama是否可用
     try:
         import httpx
+
         async with httpx.AsyncClient() as client:
             response = await client.get("http://localhost:11434/api/tags", timeout=5.0)
             if response.status_code != 200:
@@ -289,7 +288,7 @@ async def main():
     tests = [
         ("辩证视角生成", test_dialectical_perspective),
         ("认知挑战", test_cognitive_challenge),
-        ("协作协调器", test_collaborative_coordinator)
+        ("协作协调器", test_collaborative_coordinator),
     ]
 
     for test_name, test_func in tests:

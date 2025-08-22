@@ -25,22 +25,21 @@ from .perception_layer import PerceptionLayer
 
 __all__ = [
     # 分层架构接口
-    'IPerceptionLayer',
-    'ICognitionLayer',
-    'IBehaviorLayer',
-    'ICollaborationLayer',
-    'ICognitiveLayers',
-    'SystemResponse',
-    'UserProfile',
-    'ContextProfile',
-    'InformationFlow',
-    'ProcessingStatus',
-
+    "IPerceptionLayer",
+    "ICognitionLayer",
+    "IBehaviorLayer",
+    "ICollaborationLayer",
+    "ICognitiveLayers",
+    "SystemResponse",
+    "UserProfile",
+    "ContextProfile",
+    "InformationFlow",
+    "ProcessingStatus",
     # 分层架构实现
-    'PerceptionLayer',
-    'CognitionLayer',
-    'BehaviorLayer',
-    'CollaborationLayer',
-    'LayeredCognitiveSystem',
-    'LayeredSystemFactory'
+    "PerceptionLayer",
+    "CognitionLayer",
+    "BehaviorLayer",
+    "CollaborationLayer",
+    "LayeredCognitiveSystem",
+    "LayeredSystemFactory",
 ]

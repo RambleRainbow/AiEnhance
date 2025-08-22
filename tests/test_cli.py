@@ -20,7 +20,7 @@ async def main():
             llm_provider="ollama",
             llm_model_name="qwen3:8b",
             llm_temperature=0.7,
-            llm_max_tokens=800
+            llm_max_tokens=800,
         )
         print("✅ 简化系统创建成功")
 
@@ -30,19 +30,21 @@ async def main():
             response = await system.process_query(
                 query="你好，请简单介绍一下自己",
                 user_id="test_user",
-                context={"source": "test"}
+                context={"source": "test"},
             )
 
-            print("\n" + "="*50)
+            print("\n" + "=" * 50)
             print("🤖 AI回答:")
-            print("="*50)
+            print("=" * 50)
             print(response.content)
             print("\n✅ 测试成功！参数修复已生效")
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
         import traceback
+
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

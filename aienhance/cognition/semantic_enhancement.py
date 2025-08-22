@@ -13,6 +13,7 @@ from .memory_activation import MemoryFragment
 
 class GapType(Enum):
     """概念空隙类型"""
+
     KNOWLEDGE_COMPLETENESS = "knowledge_completeness"  # 知识完整性
     CONCEPT_UNDERSTANDING = "concept_understanding"  # 概念理解深度
     COGNITIVE_SPAN = "cognitive_span"  # 认知跨度
@@ -20,6 +21,7 @@ class GapType(Enum):
 
 class BridgingStrategy(Enum):
     """语义桥接策略"""
+
     ANALOGY = "analogy"  # 类比桥接
     PROGRESSIVE = "progressive"  # 渐进桥接
     MULTIPATH = "multipath"  # 多路径桥接
@@ -27,6 +29,7 @@ class BridgingStrategy(Enum):
 
 class IntegrationLevel(Enum):
     """整合层次"""
+
     LOCAL = "local"  # 局部整合
     GLOBAL = "global"  # 全局整合
     COGNITIVE = "cognitive"  # 认知整合
@@ -35,6 +38,7 @@ class IntegrationLevel(Enum):
 @dataclass
 class ConceptGap:
     """概念空隙"""
+
     gap_type: GapType
     description: str
     severity: float  # 严重程度 (0-1)
@@ -45,6 +49,7 @@ class ConceptGap:
 @dataclass
 class SemanticBridge:
     """语义桥接"""
+
     strategy: BridgingStrategy
     source_concept: str
     target_concept: str
@@ -56,6 +61,7 @@ class SemanticBridge:
 @dataclass
 class IntegrationResult:
     """整合结果"""
+
     enhanced_fragments: list[MemoryFragment]
     bridges: list[SemanticBridge]
     integration_level: IntegrationLevel
@@ -66,8 +72,9 @@ class SemanticEnhancementModule(ABC):
     """语义补充模块基类"""
 
     @abstractmethod
-    def enhance_semantics(self, fragments: list[MemoryFragment],
-                         context: dict[str, Any]) -> IntegrationResult:
+    def enhance_semantics(
+        self, fragments: list[MemoryFragment], context: dict[str, Any]
+    ) -> IntegrationResult:
         """增强语义"""
         pass
 
@@ -75,8 +82,9 @@ class SemanticEnhancementModule(ABC):
 class ConceptGapIdentifier(SemanticEnhancementModule):
     """概念空隙识别器 - 对应设计文档第5.2.1节"""
 
-    def enhance_semantics(self, fragments: list[MemoryFragment],
-                         context: dict[str, Any]) -> IntegrationResult:
+    def enhance_semantics(
+        self, fragments: list[MemoryFragment], context: dict[str, Any]
+    ) -> IntegrationResult:
         """识别概念空隙并进行补充"""
         gaps = self._identify_concept_gaps(fragments, context)
         filled_fragments = self._fill_concept_gaps(fragments, gaps, context)
@@ -85,11 +93,12 @@ class ConceptGapIdentifier(SemanticEnhancementModule):
             enhanced_fragments=filled_fragments,
             bridges=[],
             integration_level=IntegrationLevel.LOCAL,
-            coherence_score=self._calculate_coherence(filled_fragments)
+            coherence_score=self._calculate_coherence(filled_fragments),
         )
 
-    def _identify_concept_gaps(self, fragments: list[MemoryFragment],
-                             context: dict[str, Any]) -> list[ConceptGap]:
+    def _identify_concept_gaps(
+        self, fragments: list[MemoryFragment], context: dict[str, Any]
+    ) -> list[ConceptGap]:
         """
         识别概念空隙
         对应设计文档第5.2.1节的识别维度
@@ -110,7 +119,9 @@ class ConceptGapIdentifier(SemanticEnhancementModule):
 
         return gaps
 
-    def _check_knowledge_completeness(self, fragments: list[MemoryFragment]) -> list[ConceptGap]:
+    def _check_knowledge_completeness(
+        self, fragments: list[MemoryFragment]
+    ) -> list[ConceptGap]:
         """检查知识完整性"""
         # TODO: 实现知识图谱遍历，检查概念间的连通性
         # TODO: 实现依赖分析，识别理解新概念所需的前知识
@@ -124,18 +135,19 @@ class ConceptGapIdentifier(SemanticEnhancementModule):
                     description=f"缺失前提条件: {fragment.fragment_id}",
                     severity=0.7,
                     required_concepts=self._identify_prerequisites(fragment),
-                    bridging_difficulty=0.6
+                    bridging_difficulty=0.6,
                 )
                 gaps.append(gap)
 
         return gaps
 
-    def _assess_concept_understanding(self, fragments: list[MemoryFragment],
-                                    context: dict[str, Any]) -> list[ConceptGap]:
+    def _assess_concept_understanding(
+        self, fragments: list[MemoryFragment], context: dict[str, Any]
+    ) -> list[ConceptGap]:
         """评估概念理解深度"""
         # TODO: 对比用户已知和目标知识的差距
         gaps = []
-        user_profile = context.get('user_profile')
+        user_profile = context.get("user_profile")
 
         for fragment in fragments:
             # 检查专业术语理解
@@ -145,14 +157,15 @@ class ConceptGapIdentifier(SemanticEnhancementModule):
                     description=f"需要术语定义: {fragment.fragment_id}",
                     severity=0.5,
                     required_concepts=self._extract_technical_terms(fragment),
-                    bridging_difficulty=0.3
+                    bridging_difficulty=0.3,
                 )
                 gaps.append(gap)
 
         return gaps
 
-    def _analyze_cognitive_span(self, fragments: list[MemoryFragment],
-                              context: dict[str, Any]) -> list[ConceptGap]:
+    def _analyze_cognitive_span(
+        self, fragments: list[MemoryFragment], context: dict[str, Any]
+    ) -> list[ConceptGap]:
         """分析认知跨度"""
         gaps = []
 
@@ -161,8 +174,12 @@ class ConceptGapIdentifier(SemanticEnhancementModule):
 
         return gaps
 
-    def _fill_concept_gaps(self, fragments: list[MemoryFragment],
-                          gaps: list[ConceptGap], context: dict[str, Any]) -> list[MemoryFragment]:
+    def _fill_concept_gaps(
+        self,
+        fragments: list[MemoryFragment],
+        gaps: list[ConceptGap],
+        context: dict[str, Any],
+    ) -> list[MemoryFragment]:
         """填补概念空隙"""
         enhanced_fragments = fragments.copy()
 
@@ -208,8 +225,9 @@ class ConceptGapIdentifier(SemanticEnhancementModule):
 class SemanticBridgeBuilder(SemanticEnhancementModule):
     """语义桥接构建器 - 对应设计文档第5.2.2节"""
 
-    def enhance_semantics(self, fragments: list[MemoryFragment],
-                         context: dict[str, Any]) -> IntegrationResult:
+    def enhance_semantics(
+        self, fragments: list[MemoryFragment], context: dict[str, Any]
+    ) -> IntegrationResult:
         """构建语义桥接"""
         bridges = self._build_semantic_bridges(fragments, context)
         bridged_fragments = self._apply_bridges(fragments, bridges)
@@ -218,17 +236,18 @@ class SemanticBridgeBuilder(SemanticEnhancementModule):
             enhanced_fragments=bridged_fragments,
             bridges=bridges,
             integration_level=IntegrationLevel.LOCAL,
-            coherence_score=self._calculate_bridge_quality(bridges)
+            coherence_score=self._calculate_bridge_quality(bridges),
         )
 
-    def _build_semantic_bridges(self, fragments: list[MemoryFragment],
-                              context: dict[str, Any]) -> list[SemanticBridge]:
+    def _build_semantic_bridges(
+        self, fragments: list[MemoryFragment], context: dict[str, Any]
+    ) -> list[SemanticBridge]:
         """
         构建语义桥接
         对应设计文档第5.2.2节的桥接策略设计
         """
         bridges = []
-        user_profile = context.get('user_profile')
+        user_profile = context.get("user_profile")
 
         # 类比桥接：寻找用户熟悉领域的相似概念
         analogy_bridges = self._build_analogy_bridges(fragments, user_profile)
@@ -244,8 +263,9 @@ class SemanticBridgeBuilder(SemanticEnhancementModule):
 
         return bridges
 
-    def _build_analogy_bridges(self, fragments: list[MemoryFragment],
-                             user_profile: Any) -> list[SemanticBridge]:
+    def _build_analogy_bridges(
+        self, fragments: list[MemoryFragment], user_profile: Any
+    ) -> list[SemanticBridge]:
         """构建类比桥接"""
         # TODO: 寻找用户熟悉领域的相似概念
         # TODO: 构建"A之于B，如同C之于D"的类比结构
@@ -261,14 +281,15 @@ class SemanticBridgeBuilder(SemanticEnhancementModule):
                     target_concept=fragment.content,
                     bridge_path=[familiar_domain, "类比关系", fragment.content],
                     confidence=0.7,
-                    cognitive_load=0.4
+                    cognitive_load=0.4,
                 )
                 bridges.append(bridge)
 
         return bridges
 
-    def _build_progressive_bridges(self, fragments: list[MemoryFragment],
-                                 user_profile: Any) -> list[SemanticBridge]:
+    def _build_progressive_bridges(
+        self, fragments: list[MemoryFragment], user_profile: Any
+    ) -> list[SemanticBridge]:
         """构建渐进桥接"""
         # TODO: 设计从简单到复杂的概念序列
         # TODO: 每步只引入一个新概念
@@ -283,16 +304,19 @@ class SemanticBridgeBuilder(SemanticEnhancementModule):
                 strategy=BridgingStrategy.PROGRESSIVE,
                 source_concept=sorted_fragments[i].content,
                 target_concept=sorted_fragments[i + 1].content,
-                bridge_path=self._build_progressive_path(sorted_fragments[i], sorted_fragments[i + 1]),
+                bridge_path=self._build_progressive_path(
+                    sorted_fragments[i], sorted_fragments[i + 1]
+                ),
                 confidence=0.8,
-                cognitive_load=0.3
+                cognitive_load=0.3,
             )
             bridges.append(bridge)
 
         return bridges
 
-    def _build_multipath_bridges(self, fragments: list[MemoryFragment],
-                               user_profile: Any) -> list[SemanticBridge]:
+    def _build_multipath_bridges(
+        self, fragments: list[MemoryFragment], user_profile: Any
+    ) -> list[SemanticBridge]:
         """构建多路径桥接"""
         # TODO: 提供多条理解路径供选择
         # TODO: 不同路径对应不同的认知风格
@@ -309,14 +333,15 @@ class SemanticBridgeBuilder(SemanticEnhancementModule):
                     target_concept=fragment.content,
                     bridge_path=path,
                     confidence=0.6,
-                    cognitive_load=0.5
+                    cognitive_load=0.5,
                 )
                 bridges.append(bridge)
 
         return bridges
 
-    def _apply_bridges(self, fragments: list[MemoryFragment],
-                      bridges: list[SemanticBridge]) -> list[MemoryFragment]:
+    def _apply_bridges(
+        self, fragments: list[MemoryFragment], bridges: list[SemanticBridge]
+    ) -> list[MemoryFragment]:
         """应用语义桥接"""
         enhanced_fragments = fragments.copy()
 
@@ -326,16 +351,24 @@ class SemanticBridgeBuilder(SemanticEnhancementModule):
         return enhanced_fragments
 
     # Helper methods (TODO: implement)
-    def _find_familiar_domain(self, fragment: MemoryFragment, user_profile: Any) -> str | None:
+    def _find_familiar_domain(
+        self, fragment: MemoryFragment, user_profile: Any
+    ) -> str | None:
         return None
 
-    def _sort_by_complexity(self, fragments: list[MemoryFragment]) -> list[MemoryFragment]:
+    def _sort_by_complexity(
+        self, fragments: list[MemoryFragment]
+    ) -> list[MemoryFragment]:
         return fragments
 
-    def _build_progressive_path(self, source: MemoryFragment, target: MemoryFragment) -> list[str]:
+    def _build_progressive_path(
+        self, source: MemoryFragment, target: MemoryFragment
+    ) -> list[str]:
         return [source.content, target.content]
 
-    def _generate_multiple_paths(self, fragment: MemoryFragment, user_profile: Any) -> list[list[str]]:
+    def _generate_multiple_paths(
+        self, fragment: MemoryFragment, user_profile: Any
+    ) -> list[list[str]]:
         return [[fragment.content]]
 
     def _calculate_bridge_quality(self, bridges: list[SemanticBridge]) -> float:
@@ -347,8 +380,9 @@ class SemanticBridgeBuilder(SemanticEnhancementModule):
 class ContextualIntegrator(SemanticEnhancementModule):
     """上下文整合器 - 对应设计文档第5.2.3节"""
 
-    def enhance_semantics(self, fragments: list[MemoryFragment],
-                         context: dict[str, Any]) -> IntegrationResult:
+    def enhance_semantics(
+        self, fragments: list[MemoryFragment], context: dict[str, Any]
+    ) -> IntegrationResult:
         """进行上下文整合"""
         # 局部整合：段落级别的信息组织
         local_integration = self._local_integration(fragments)
@@ -363,10 +397,14 @@ class ContextualIntegrator(SemanticEnhancementModule):
             enhanced_fragments=cognitive_integration,
             bridges=[],
             integration_level=IntegrationLevel.COGNITIVE,
-            coherence_score=self._calculate_integration_coherence(cognitive_integration)
+            coherence_score=self._calculate_integration_coherence(
+                cognitive_integration
+            ),
         )
 
-    def _local_integration(self, fragments: list[MemoryFragment]) -> list[MemoryFragment]:
+    def _local_integration(
+        self, fragments: list[MemoryFragment]
+    ) -> list[MemoryFragment]:
         """
         局部整合 - 对应设计文档第5.2.3节
         段落级别的信息组织；保持局部逻辑的连贯性；处理代词指代等局部依赖
@@ -390,7 +428,9 @@ class ContextualIntegrator(SemanticEnhancementModule):
 
         return integrated_fragments
 
-    def _global_integration(self, fragments: list[MemoryFragment]) -> list[MemoryFragment]:
+    def _global_integration(
+        self, fragments: list[MemoryFragment]
+    ) -> list[MemoryFragment]:
         """
         全局整合
         跨段落的主题一致性；整体论述结构的合理性；前后观点的呼应关系
@@ -407,27 +447,36 @@ class ContextualIntegrator(SemanticEnhancementModule):
 
         return connected_fragments
 
-    def _cognitive_integration(self, fragments: list[MemoryFragment],
-                             context: dict[str, Any]) -> list[MemoryFragment]:
+    def _cognitive_integration(
+        self, fragments: list[MemoryFragment], context: dict[str, Any]
+    ) -> list[MemoryFragment]:
         """
         认知整合
         与用户认知框架的对接；新旧知识的有机结合；认知冲突的识别和处理
         """
-        user_profile = context.get('user_profile')
+        user_profile = context.get("user_profile")
 
         # TODO: 与用户认知框架对接
-        framework_aligned = self._align_with_cognitive_framework(fragments, user_profile)
+        framework_aligned = self._align_with_cognitive_framework(
+            fragments, user_profile
+        )
 
         # TODO: 新旧知识的有机结合
-        knowledge_integrated = self._integrate_new_old_knowledge(framework_aligned, user_profile)
+        knowledge_integrated = self._integrate_new_old_knowledge(
+            framework_aligned, user_profile
+        )
 
         # TODO: 认知冲突的识别和处理
-        conflict_resolved = self._resolve_cognitive_conflicts(knowledge_integrated, user_profile)
+        conflict_resolved = self._resolve_cognitive_conflicts(
+            knowledge_integrated, user_profile
+        )
 
         return conflict_resolved
 
     # Helper methods (TODO: implement)
-    def _group_similar_fragments(self, fragments: list[MemoryFragment]) -> list[list[MemoryFragment]]:
+    def _group_similar_fragments(
+        self, fragments: list[MemoryFragment]
+    ) -> list[list[MemoryFragment]]:
         # 处理空输入的情况
         if not fragments:
             return []
@@ -451,28 +500,35 @@ class ContextualIntegrator(SemanticEnhancementModule):
             source="integrated",
             relevance_score=merged_score,
             activation_strength=merged_score,
-            metadata={"merged_from": [f.fragment_id for f in group]}
+            metadata={"merged_from": [f.fragment_id for f in group]},
         )
 
-    def _reorder_for_logic_flow(self, fragments: list[MemoryFragment]) -> list[MemoryFragment]:
+    def _reorder_for_logic_flow(
+        self, fragments: list[MemoryFragment]
+    ) -> list[MemoryFragment]:
         return fragments
 
     def _add_connections(self, fragments: list[MemoryFragment]) -> list[MemoryFragment]:
         return fragments
 
-    def _align_with_cognitive_framework(self, fragments: list[MemoryFragment],
-                                      user_profile: Any) -> list[MemoryFragment]:
+    def _align_with_cognitive_framework(
+        self, fragments: list[MemoryFragment], user_profile: Any
+    ) -> list[MemoryFragment]:
         return fragments
 
-    def _integrate_new_old_knowledge(self, fragments: list[MemoryFragment],
-                                   user_profile: Any) -> list[MemoryFragment]:
+    def _integrate_new_old_knowledge(
+        self, fragments: list[MemoryFragment], user_profile: Any
+    ) -> list[MemoryFragment]:
         return fragments
 
-    def _resolve_cognitive_conflicts(self, fragments: list[MemoryFragment],
-                                   user_profile: Any) -> list[MemoryFragment]:
+    def _resolve_cognitive_conflicts(
+        self, fragments: list[MemoryFragment], user_profile: Any
+    ) -> list[MemoryFragment]:
         return fragments
 
-    def _calculate_integration_coherence(self, fragments: list[MemoryFragment]) -> float:
+    def _calculate_integration_coherence(
+        self, fragments: list[MemoryFragment]
+    ) -> float:
         return 0.9
 
 
@@ -484,8 +540,9 @@ class IntegratedSemanticEnhancer:
         self.bridge_builder = SemanticBridgeBuilder()
         self.contextual_integrator = ContextualIntegrator()
 
-    def enhance_comprehensive_semantics(self, fragments: list[MemoryFragment],
-                                      context: dict[str, Any]) -> IntegrationResult:
+    def enhance_comprehensive_semantics(
+        self, fragments: list[MemoryFragment], context: dict[str, Any]
+    ) -> IntegrationResult:
         """
         综合语义增强
         对应设计文档第5.2节：语义补充模块
@@ -494,10 +551,14 @@ class IntegratedSemanticEnhancer:
         gap_result = self.gap_identifier.enhance_semantics(fragments, context)
 
         # 第二步：构建语义桥接
-        bridge_result = self.bridge_builder.enhance_semantics(gap_result.enhanced_fragments, context)
+        bridge_result = self.bridge_builder.enhance_semantics(
+            gap_result.enhanced_fragments, context
+        )
 
         # 第三步：进行上下文整合
-        final_result = self.contextual_integrator.enhance_semantics(bridge_result.enhanced_fragments, context)
+        final_result = self.contextual_integrator.enhance_semantics(
+            bridge_result.enhanced_fragments, context
+        )
 
         # 合并所有桥接信息
         all_bridges = bridge_result.bridges
@@ -506,5 +567,5 @@ class IntegratedSemanticEnhancer:
             enhanced_fragments=final_result.enhanced_fragments,
             bridges=all_bridges,
             integration_level=IntegrationLevel.COGNITIVE,
-            coherence_score=final_result.coherence_score
+            coherence_score=final_result.coherence_score,
         )

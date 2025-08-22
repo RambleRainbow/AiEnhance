@@ -27,7 +27,7 @@ def test_gradio_attribute_access():
         memory_activation = MemoryActivation(
             activated_fragments=["fragment1", "fragment2", "fragment3"],
             activation_confidence=0.85,
-            activation_metadata={"source": "test", "timestamp": "2024-01-01"}
+            activation_metadata={"source": "test", "timestamp": "2024-01-01"},
         )
 
         # 模拟Gradio界面代码中的属性访问
@@ -44,7 +44,7 @@ def test_gradio_attribute_access():
         semantic_enhancement = SemanticEnhancement(
             enhanced_content=["enhanced1", "enhanced2"],
             semantic_gaps_filled=["gap1", "gap2", "gap3"],
-            enhancement_confidence=0.75
+            enhancement_confidence=0.75,
         )
 
         enhanced_count = len(semantic_enhancement.enhanced_content)
@@ -60,12 +60,14 @@ def test_gradio_attribute_access():
         analogy_reasoning = AnalogyReasoning(
             analogies=[{"source": "A", "target": "B"}, {"source": "C", "target": "D"}],
             reasoning_chains=[["step1", "step2"], ["step3", "step4", "step5"]],
-            confidence_scores=[0.8, 0.9]
+            confidence_scores=[0.8, 0.9],
         )
 
         analogy_count = len(analogy_reasoning.analogies)
         chain_count = len(analogy_reasoning.reasoning_chains)
-        avg_confidence = sum(analogy_reasoning.confidence_scores) / len(analogy_reasoning.confidence_scores)
+        avg_confidence = sum(analogy_reasoning.confidence_scores) / len(
+            analogy_reasoning.confidence_scores
+        )
 
         print("✅ AnalogyReasoning属性访问正确:")
         print(f"   - 类比数量: {analogy_count}")
@@ -79,10 +81,14 @@ def test_gradio_attribute_access():
             cognitive_load=0.6,
             information_density="medium",
             structure_type="hierarchical",
-            personalization_level=0.7
+            personalization_level=0.7,
         )
 
-        content_preview = adapted_content.content[:50] + "..." if len(adapted_content.content) > 50 else adapted_content.content
+        content_preview = (
+            adapted_content.content[:50] + "..."
+            if len(adapted_content.content) > 50
+            else adapted_content.content
+        )
         strategy = adapted_content.adaptation_strategy
         cog_load = adapted_content.cognitive_load
         info_density = adapted_content.information_density
@@ -100,10 +106,10 @@ def test_gradio_attribute_access():
             perspectives=[
                 {"type": "analytical", "content": "分析视角"},
                 {"type": "creative", "content": "创意视角"},
-                {"type": "critical", "content": "批判视角"}
+                {"type": "critical", "content": "批判视角"},
             ],
             perspective_diversity=0.8,
-            generation_metadata={"method": "dialectical", "time": "2024-01-01"}
+            generation_metadata={"method": "dialectical", "time": "2024-01-01"},
         )
 
         perspective_count = len(perspective_generation.perspectives)
@@ -119,10 +125,10 @@ def test_gradio_attribute_access():
         cognitive_challenge = CognitiveChallenge(
             challenges=[
                 {"type": "assumption", "content": "质疑假设"},
-                {"type": "alternative", "content": "替代方案"}
+                {"type": "alternative", "content": "替代方案"},
             ],
             challenge_intensity=0.7,
-            educational_value=0.9
+            educational_value=0.9,
         )
 
         challenge_count = len(cognitive_challenge.challenges)
@@ -142,8 +148,10 @@ def test_gradio_attribute_access():
     except Exception as e:
         print(f"❌ 属性访问测试失败: {e}")
         import traceback
+
         traceback.print_exc()
         return False
+
 
 def test_layer_output_construction():
     """测试层输出对象的构造"""
@@ -161,18 +169,18 @@ def test_layer_output_construction():
             memory_activation=MemoryActivation(
                 activated_fragments=["frag1", "frag2"],
                 activation_confidence=0.8,
-                activation_metadata={"test": "meta"}
+                activation_metadata={"test": "meta"},
             ),
             semantic_enhancement=SemanticEnhancement(
                 enhanced_content=["enhanced1"],
                 semantic_gaps_filled=["gap1"],
-                enhancement_confidence=0.7
+                enhancement_confidence=0.7,
             ),
             analogy_reasoning=AnalogyReasoning(
                 analogies=[{"source": "A", "target": "B"}],
                 reasoning_chains=[["step1", "step2"]],
-                confidence_scores=[0.85]
-            )
+                confidence_scores=[0.85],
+            ),
         )
 
         print("✅ CognitionOutput构造成功")
@@ -188,10 +196,10 @@ def test_layer_output_construction():
                 cognitive_load=0.5,
                 information_density="medium",
                 structure_type="linear",
-                personalization_level=0.6
+                personalization_level=0.6,
             ),
             generation_metadata={"method": "llm"},
-            quality_metrics={"fluency": 0.9, "relevance": 0.8}
+            quality_metrics={"fluency": 0.9, "relevance": 0.8},
         )
 
         print("✅ BehaviorOutput构造成功")
@@ -204,14 +212,14 @@ def test_layer_output_construction():
             perspective_generation=PerspectiveGeneration(
                 perspectives=[{"type": "test", "content": "test"}],
                 perspective_diversity=0.5,
-                generation_metadata={"test": "meta"}
+                generation_metadata={"test": "meta"},
             ),
             cognitive_challenge=CognitiveChallenge(
                 challenges=[{"type": "test", "content": "challenge"}],
                 challenge_intensity=0.6,
-                educational_value=0.8
+                educational_value=0.8,
             ),
-            enhanced_content="协作增强内容"
+            enhanced_content="协作增强内容",
         )
 
         print("✅ CollaborationOutput构造成功")
@@ -222,8 +230,10 @@ def test_layer_output_construction():
     except Exception as e:
         print(f"❌ 层输出构造测试失败: {e}")
         import traceback
+
         traceback.print_exc()
         return False
+
 
 if __name__ == "__main__":
     print("🧪 开始测试Gradio界面属性修复...")

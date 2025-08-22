@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class AnthropicLLMAdapter(LLMProvider):
     """
     Anthropic Claude LLM适配器
-    
+
     支持Claude-3 Haiku、Sonnet、Opus等模型
     """
 
@@ -43,16 +43,16 @@ class AnthropicLLMAdapter(LLMProvider):
             client_kwargs = {}
 
             if self.config.api_key:
-                client_kwargs['api_key'] = self.config.api_key
+                client_kwargs["api_key"] = self.config.api_key
 
             if self.config.api_base:
-                client_kwargs['base_url'] = self.config.api_base
+                client_kwargs["base_url"] = self.config.api_base
 
             if self.config.timeout:
-                client_kwargs['timeout'] = self.config.timeout
+                client_kwargs["timeout"] = self.config.timeout
 
             if self.config.max_retries:
-                client_kwargs['max_retries'] = self.config.max_retries
+                client_kwargs["max_retries"] = self.config.max_retries
 
             self.client = AsyncAnthropic(**client_kwargs)
 
@@ -71,7 +71,9 @@ class AnthropicLLMAdapter(LLMProvider):
 
         try:
             # 转换消息格式
-            anthropic_messages, system_prompt = self._convert_messages_to_anthropic(messages)
+            anthropic_messages, system_prompt = self._convert_messages_to_anthropic(
+                messages
+            )
 
             # 构建请求参数
             request_params = {
@@ -79,7 +81,7 @@ class AnthropicLLMAdapter(LLMProvider):
                 "messages": anthropic_messages,
                 "max_tokens": kwargs.get("max_tokens", self.config.max_tokens or 1000),
                 "temperature": kwargs.get("temperature", self.config.temperature),
-                "top_p": kwargs.get("top_p", self.config.top_p)
+                "top_p": kwargs.get("top_p", self.config.top_p),
             }
 
             # 添加系统提示
@@ -98,14 +100,18 @@ class AnthropicLLMAdapter(LLMProvider):
             logger.error(f"Anthropic聊天请求失败: {e}")
             raise
 
-    async def chat_stream(self, messages: list[ChatMessage], **kwargs) -> AsyncIterator[str]:
+    async def chat_stream(
+        self, messages: list[ChatMessage], **kwargs
+    ) -> AsyncIterator[str]:
         """Anthropic流式聊天接口"""
         if not self.is_initialized:
             raise RuntimeError("Anthropic LLM未初始化")
 
         try:
             # 转换消息格式
-            anthropic_messages, system_prompt = self._convert_messages_to_anthropic(messages)
+            anthropic_messages, system_prompt = self._convert_messages_to_anthropic(
+                messages
+            )
 
             # 构建请求参数
             request_params = {
@@ -113,7 +119,7 @@ class AnthropicLLMAdapter(LLMProvider):
                 "messages": anthropic_messages,
                 "max_tokens": kwargs.get("max_tokens", self.config.max_tokens or 1000),
                 "temperature": kwargs.get("temperature", self.config.temperature),
-                "stream": True
+                "stream": True,
             }
 
             # 添加系统提示
@@ -132,7 +138,9 @@ class AnthropicLLMAdapter(LLMProvider):
             logger.error(f"Anthropic流式聊天失败: {e}")
             raise
 
-    def _convert_messages_to_anthropic(self, messages: list[ChatMessage]) -> tuple[list[dict[str, str]], str | None]:
+    def _convert_messages_to_anthropic(
+        self, messages: list[ChatMessage]
+    ) -> tuple[list[dict[str, str]], str | None]:
         """将ChatMessage转换为Anthropic格式"""
         anthropic_messages = []
         system_prompt = None
@@ -143,10 +151,7 @@ class AnthropicLLMAdapter(LLMProvider):
                 system_prompt = message.content
                 continue
 
-            anthropic_message = {
-                "role": message.role.value,
-                "content": message.content
-            }
+            anthropic_message = {"role": message.role.value, "content": message.content}
 
             anthropic_messages.append(anthropic_message)
 
@@ -158,14 +163,23 @@ class AnthropicLLMAdapter(LLMProvider):
         content = ""
         if anthropic_response.content:
             for block in anthropic_response.content:
-                if hasattr(block, 'text'):
+                if hasattr(block, "text"):
                     content += block.text
 
         # 计算token使用量
         usage = {
-            "prompt_tokens": anthropic_response.usage.input_tokens if anthropic_response.usage else 0,
-            "completion_tokens": anthropic_response.usage.output_tokens if anthropic_response.usage else 0,
-            "total_tokens": (anthropic_response.usage.input_tokens + anthropic_response.usage.output_tokens) if anthropic_response.usage else 0
+            "prompt_tokens": anthropic_response.usage.input_tokens
+            if anthropic_response.usage
+            else 0,
+            "completion_tokens": anthropic_response.usage.output_tokens
+            if anthropic_response.usage
+            else 0,
+            "total_tokens": (
+                anthropic_response.usage.input_tokens
+                + anthropic_response.usage.output_tokens
+            )
+            if anthropic_response.usage
+            else 0,
         }
 
         return ChatResponse(
@@ -176,8 +190,8 @@ class AnthropicLLMAdapter(LLMProvider):
             created_at=datetime.datetime.now(),
             metadata={
                 "provider": "anthropic",
-                "stop_sequence": anthropic_response.stop_sequence
-            }
+                "stop_sequence": anthropic_response.stop_sequence,
+            },
         )
 
 

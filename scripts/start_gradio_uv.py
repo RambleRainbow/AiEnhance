@@ -16,7 +16,9 @@ logger = logging.getLogger(__name__)
 def check_uv_installation():
     """检查uv是否安装"""
     try:
-        result = subprocess.run(["uv", "--version"], capture_output=True, text=True, check=True)
+        result = subprocess.run(
+            ["uv", "--version"], capture_output=True, text=True, check=True
+        )
         logger.info(f"✅ UV已安装: {result.stdout.strip()}")
         return True
     except (subprocess.CalledProcessError, FileNotFoundError):
@@ -26,12 +28,7 @@ def check_uv_installation():
 
 def install_dependencies_with_uv():
     """使用uv安装依赖"""
-    dependencies = [
-        "gradio",
-        "plotly",
-        "pandas",
-        "requests"
-    ]
+    dependencies = ["gradio", "plotly", "pandas", "requests"]
 
     logger.info("🔍 使用UV安装依赖包...")
 
@@ -41,16 +38,20 @@ def install_dependencies_with_uv():
         logger.info(f"安装 {package}...")
         try:
             # 使用uv add安装
-            subprocess.check_call(["uv", "add", package],
-                                stdout=subprocess.DEVNULL,
-                                stderr=subprocess.DEVNULL)
+            subprocess.check_call(
+                ["uv", "add", package],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
             logger.info(f"✅ {package} 安装成功")
         except subprocess.CalledProcessError:
             # 如果uv add失败，尝试uv pip install
             try:
-                subprocess.check_call(["uv", "pip", "install", package],
-                                    stdout=subprocess.DEVNULL,
-                                    stderr=subprocess.DEVNULL)
+                subprocess.check_call(
+                    ["uv", "pip", "install", package],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
                 logger.info(f"✅ {package} 安装成功 (使用uv pip)")
             except subprocess.CalledProcessError:
                 logger.error(f"❌ {package} 安装失败")
@@ -65,6 +66,7 @@ def check_existing_dependencies():
         import gradio
         import pandas
         import plotly
+
         logger.info("✅ 主要依赖已安装")
         return True
     except ImportError as e:

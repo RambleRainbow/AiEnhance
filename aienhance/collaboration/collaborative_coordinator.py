@@ -26,17 +26,21 @@ logger = logging.getLogger(__name__)
 class CollaborativeCoordinator(CollaborationOrchestrator):
     """
     协作协调器
-    
+
     统筹辩证视角生成、认知挑战、用户建模等功能，
     实现人机之间的深度认知协作
     """
 
-    def __init__(self, llm_provider: LLMProvider, memory_system: MemorySystem | None = None):
+    def __init__(
+        self, llm_provider: LLMProvider, memory_system: MemorySystem | None = None
+    ):
         self.llm_provider = llm_provider
         self.memory_system = memory_system
 
         # 初始化协作模块
-        self.perspective_generator = DialecticalPerspectiveGenerator(llm_provider, memory_system)
+        self.perspective_generator = DialecticalPerspectiveGenerator(
+            llm_provider, memory_system
+        )
         self.cognitive_challenger = CognitiveChallenge(llm_provider, memory_system)
 
         # 协作配置
@@ -47,14 +51,15 @@ class CollaborativeCoordinator(CollaborationOrchestrator):
             "enable_adaptive_intensity": True,
             "max_perspectives": 3,
             "max_challenges": 3,
-            "default_challenge_intensity": "moderate"
+            "default_challenge_intensity": "moderate",
         }
 
         # 用户认知画像存储
         self.user_cognitive_profiles = {}
 
-    async def orchestrate_collaboration(self, content: str,
-                                       context: CollaborationContext) -> dict[str, Any]:
+    async def orchestrate_collaboration(
+        self, content: str, context: CollaborationContext
+    ) -> dict[str, Any]:
         """编排协作过程"""
         try:
             collaboration_result = {
@@ -66,7 +71,7 @@ class CollaborativeCoordinator(CollaborationOrchestrator):
                 "challenges": None,
                 "synthesis": None,
                 "collaboration_insights": None,
-                "next_collaboration_steps": None
+                "next_collaboration_steps": None,
             }
 
             # 1. 分析内容和用户上下文
@@ -107,11 +112,16 @@ class CollaborativeCoordinator(CollaborationOrchestrator):
             collaboration_result["next_collaboration_steps"] = next_steps
 
             # 8. 更新用户认知画像
-            await self.update_user_cognitive_profile(context, {
-                "interaction_content": content,
-                "collaboration_result": collaboration_result,
-                "engagement_level": content_analysis.get("complexity_level", "moderate")
-            })
+            await self.update_user_cognitive_profile(
+                context,
+                {
+                    "interaction_content": content,
+                    "collaboration_result": collaboration_result,
+                    "engagement_level": content_analysis.get(
+                        "complexity_level", "moderate"
+                    ),
+                },
+            )
 
             # 9. 保存协作记忆（如果有记忆系统）
             if self.memory_system:
@@ -124,11 +134,12 @@ class CollaborativeCoordinator(CollaborationOrchestrator):
             return {
                 "content": content,
                 "error": str(e),
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
-    async def _analyze_collaboration_needs(self, content: str,
-                                         context: CollaborationContext) -> dict[str, Any]:
+    async def _analyze_collaboration_needs(
+        self, content: str, context: CollaborationContext
+    ) -> dict[str, Any]:
         """分析协作需求"""
         prompt = f"""
 分析以下内容的协作需求：
@@ -146,6 +157,7 @@ class CollaborativeCoordinator(CollaborationOrchestrator):
 """
 
         from ..llm.interfaces import ChatMessage, MessageRole
+
         messages = [ChatMessage(role=MessageRole.USER, content=prompt)]
         response = await self.llm_provider.chat(messages)
 
@@ -159,24 +171,37 @@ class CollaborativeCoordinator(CollaborationOrchestrator):
             "needs_perspectives": True,
             "needs_challenges": True,
             "potential_blind_spots": [],
-            "collaboration_priorities": []
+            "collaboration_priorities": [],
         }
 
         # 简单的关键词分析
-        if any(word in response.lower() for word in ['复杂', 'complex', '困难', 'difficult']):
+        if any(
+            word in response.lower()
+            for word in ["复杂", "complex", "困难", "difficult"]
+        ):
             analysis["complexity_level"] = "complex"
-        elif any(word in response.lower() for word in ['简单', 'simple', '基本', 'basic']):
+        elif any(
+            word in response.lower() for word in ["简单", "simple", "基本", "basic"]
+        ):
             analysis["complexity_level"] = "simple"
 
-        if any(word in response.lower() for word in ['视角', 'perspective', '角度', 'angle']):
+        if any(
+            word in response.lower()
+            for word in ["视角", "perspective", "角度", "angle"]
+        ):
             analysis["needs_perspectives"] = True
 
-        if any(word in response.lower() for word in ['挑战', 'challenge', '质疑', 'question']):
+        if any(
+            word in response.lower()
+            for word in ["挑战", "challenge", "质疑", "question"]
+        ):
             analysis["needs_challenges"] = True
 
         return analysis
 
-    async def _get_user_cognitive_profile(self, context: CollaborationContext) -> dict[str, Any]:
+    async def _get_user_cognitive_profile(
+        self, context: CollaborationContext
+    ) -> dict[str, Any]:
         """获取用户认知画像"""
         user_id = context.user_id
 
@@ -193,73 +218,90 @@ class CollaborativeCoordinator(CollaborationOrchestrator):
                 "preferred_challenge_intensity": "moderate",
                 "openness_to_perspectives": 0.7,
                 "analytical_depth": 0.6,
-                "creativity_level": 0.5
+                "creativity_level": 0.5,
             },
             "interaction_history": [],
             "learning_patterns": {
                 "engagement_with_challenges": 0.5,
                 "perspective_adoption": 0.5,
-                "depth_of_reflection": 0.5
+                "depth_of_reflection": 0.5,
             },
             "collaboration_effectiveness": {
                 "total_interactions": 0,
                 "successful_collaborations": 0,
-                "growth_indicators": []
-            }
+                "growth_indicators": [],
+            },
         }
 
         # 如果有记忆系统，尝试从记忆中恢复画像
         if self.memory_system:
             try:
-                user_context = UserContext(user_id=user_id, session_id=context.session_id)
-                memories = await self.memory_system.get_user_memories(user_context, limit=50)
+                user_context = UserContext(
+                    user_id=user_id, session_id=context.session_id
+                )
+                memories = await self.memory_system.get_user_memories(
+                    user_context, limit=50
+                )
 
                 # 从记忆中分析用户的认知模式
                 if memories.memories:
-                    cognitive_analysis = await self._analyze_user_cognitive_patterns(memories.memories)
+                    cognitive_analysis = await self._analyze_user_cognitive_patterns(
+                        memories.memories
+                    )
                     default_profile["cognitive_preferences"].update(cognitive_analysis)
 
             except Exception as e:
-                logger.warning(f"Failed to load user cognitive profile from memory: {e}")
+                logger.warning(
+                    f"Failed to load user cognitive profile from memory: {e}"
+                )
 
         self.user_cognitive_profiles[user_id] = default_profile
         return default_profile
 
-    async def _analyze_user_cognitive_patterns(self, memories: list) -> dict[str, float]:
+    async def _analyze_user_cognitive_patterns(
+        self, memories: list
+    ) -> dict[str, float]:
         """从记忆中分析用户认知模式"""
         # 简化的认知模式分析
         patterns = {
             "openness_to_perspectives": 0.7,
             "analytical_depth": 0.6,
-            "creativity_level": 0.5
+            "creativity_level": 0.5,
         }
 
         # 基于记忆内容的简单分析
         total_content = " ".join([mem.content for mem in memories[:10]])
 
         # 分析开放性
-        if any(word in total_content.lower() for word in ['确实', '有趣', '思考', '可能']):
-            patterns["openness_to_perspectives"] = min(1.0, patterns["openness_to_perspectives"] + 0.2)
+        if any(
+            word in total_content.lower() for word in ["确实", "有趣", "思考", "可能"]
+        ):
+            patterns["openness_to_perspectives"] = min(
+                1.0, patterns["openness_to_perspectives"] + 0.2
+            )
 
         # 分析分析深度
         if len(total_content.split()) > 500:  # 用户倾向于详细表达
             patterns["analytical_depth"] = min(1.0, patterns["analytical_depth"] + 0.2)
 
         # 分析创意水平
-        if any(word in total_content.lower() for word in ['创新', '创意', '新', '不同']):
+        if any(
+            word in total_content.lower() for word in ["创新", "创意", "新", "不同"]
+        ):
             patterns["creativity_level"] = min(1.0, patterns["creativity_level"] + 0.2)
 
         return patterns
 
-    async def _determine_collaboration_strategy(self, content_analysis: dict[str, Any],
-                                              user_profile: dict[str, Any]) -> dict[str, Any]:
+    async def _determine_collaboration_strategy(
+        self, content_analysis: dict[str, Any], user_profile: dict[str, Any]
+    ) -> dict[str, Any]:
         """确定协作策略"""
         strategy = {
             "enable_perspectives": True,
             "enable_challenges": True,
             "perspective_types": [],
             "challenge_types": [],
-            "intensity_level": "moderate"
+            "intensity_level": "moderate",
         }
 
         # 基于内容复杂性调整策略
@@ -268,11 +310,11 @@ class CollaborativeCoordinator(CollaborationOrchestrator):
             strategy["perspective_types"] = [
                 PerspectiveType.OPPOSING,
                 PerspectiveType.MULTI_DISCIPLINARY,
-                PerspectiveType.STAKEHOLDER
+                PerspectiveType.STAKEHOLDER,
             ]
             strategy["challenge_types"] = [
                 ChallengeType.ASSUMPTION_QUESTIONING,
-                ChallengeType.COMPLEXITY_EXPANSION
+                ChallengeType.COMPLEXITY_EXPANSION,
             ]
         elif complexity == "simple":
             strategy["perspective_types"] = [PerspectiveType.ALTERNATIVE]
@@ -280,16 +322,18 @@ class CollaborativeCoordinator(CollaborationOrchestrator):
         else:  # moderate
             strategy["perspective_types"] = [
                 PerspectiveType.OPPOSING,
-                PerspectiveType.MULTI_DISCIPLINARY
+                PerspectiveType.MULTI_DISCIPLINARY,
             ]
             strategy["challenge_types"] = [
                 ChallengeType.ASSUMPTION_QUESTIONING,
-                ChallengeType.BLIND_SPOT_DETECTION
+                ChallengeType.BLIND_SPOT_DETECTION,
             ]
 
         # 基于用户画像调整强度
         user_prefs = user_profile.get("cognitive_preferences", {})
-        preferred_intensity = user_prefs.get("preferred_challenge_intensity", "moderate")
+        preferred_intensity = user_prefs.get(
+            "preferred_challenge_intensity", "moderate"
+        )
         openness = user_prefs.get("openness_to_perspectives", 0.7)
 
         if openness < 0.5:
@@ -301,20 +345,24 @@ class CollaborativeCoordinator(CollaborationOrchestrator):
 
         return strategy
 
-    async def _generate_collaborative_perspectives(self, content: str,
-                                                 context: CollaborationContext,
-                                                 strategy: dict[str, Any]) -> dict[str, Any]:
+    async def _generate_collaborative_perspectives(
+        self, content: str, context: CollaborationContext, strategy: dict[str, Any]
+    ) -> dict[str, Any]:
         """生成协作视角"""
         try:
             perspective_request = PerspectiveRequest(
                 content=content,
-                perspective_types=strategy.get("perspective_types", [PerspectiveType.OPPOSING]),
+                perspective_types=strategy.get(
+                    "perspective_types", [PerspectiveType.OPPOSING]
+                ),
                 max_perspectives=self.collaboration_config["max_perspectives"],
-                depth_level=strategy.get("intensity_level", "moderate")
+                depth_level=strategy.get("intensity_level", "moderate"),
             )
 
-            perspectives_result = await self.perspective_generator.generate_perspectives(
-                perspective_request, context
+            perspectives_result = (
+                await self.perspective_generator.generate_perspectives(
+                    perspective_request, context
+                )
             )
 
             return {
@@ -325,28 +373,30 @@ class CollaborativeCoordinator(CollaborationOrchestrator):
                         "description": p.description,
                         "key_arguments": p.key_arguments,
                         "supporting_evidence": p.supporting_evidence,
-                        "relevance_score": p.relevance_score
+                        "relevance_score": p.relevance_score,
                     }
                     for p in perspectives_result.perspectives
                 ],
                 "synthesis": perspectives_result.synthesis,
                 "dialectical_tensions": perspectives_result.dialectical_tensions,
-                "integration_suggestions": perspectives_result.integration_suggestions
+                "integration_suggestions": perspectives_result.integration_suggestions,
             }
 
         except Exception as e:
             logger.error(f"Failed to generate collaborative perspectives: {e}")
             return {"error": str(e)}
 
-    async def _generate_collaborative_challenges(self, content: str,
-                                               context: CollaborationContext,
-                                               strategy: dict[str, Any]) -> dict[str, Any]:
+    async def _generate_collaborative_challenges(
+        self, content: str, context: CollaborationContext, strategy: dict[str, Any]
+    ) -> dict[str, Any]:
         """生成协作挑战"""
         try:
             challenge_request = ChallengeRequest(
                 content=content,
-                challenge_types=strategy.get("challenge_types", [ChallengeType.ASSUMPTION_QUESTIONING]),
-                intensity_level=strategy.get("intensity_level", "moderate")
+                challenge_types=strategy.get(
+                    "challenge_types", [ChallengeType.ASSUMPTION_QUESTIONING]
+                ),
+                intensity_level=strategy.get("intensity_level", "moderate"),
             )
 
             challenges_result = await self.cognitive_challenger.generate_challenges(
@@ -361,28 +411,29 @@ class CollaborativeCoordinator(CollaborationOrchestrator):
                         "description": c.description,
                         "questions": c.questions,
                         "alternative_frameworks": c.alternative_frameworks,
-                        "expansion_directions": c.expansion_directions
+                        "expansion_directions": c.expansion_directions,
                     }
                     for c in challenges_result.challenges
                 ],
                 "meta_reflection": challenges_result.meta_reflection,
                 "growth_opportunities": challenges_result.growth_opportunities,
-                "next_steps": challenges_result.next_steps
+                "next_steps": challenges_result.next_steps,
             }
 
         except Exception as e:
             logger.error(f"Failed to generate collaborative challenges: {e}")
             return {"error": str(e)}
 
-    async def _synthesize_collaboration_insights(self, collaboration_result: dict[str, Any],
-                                               user_profile: dict[str, Any]) -> dict[str, Any]:
+    async def _synthesize_collaboration_insights(
+        self, collaboration_result: dict[str, Any], user_profile: dict[str, Any]
+    ) -> dict[str, Any]:
         """综合协作洞察"""
         insights = {
             "collaboration_effectiveness": "moderate",
             "user_engagement_prediction": 0.7,
             "learning_opportunities": [],
             "cognitive_growth_indicators": [],
-            "personalized_recommendations": []
+            "personalized_recommendations": [],
         }
 
         # 分析视角和挑战的质量
@@ -404,12 +455,15 @@ class CollaborativeCoordinator(CollaborationOrchestrator):
             insights["personalized_recommendations"].append("尝试更多创意性思维练习")
 
         if user_prefs.get("analytical_depth", 0.6) < 0.7:
-            insights["personalized_recommendations"].append("深入分析论证结构和逻辑关系")
+            insights["personalized_recommendations"].append(
+                "深入分析论证结构和逻辑关系"
+            )
 
         return insights
 
-    async def _generate_collaboration_next_steps(self, collaboration_result: dict[str, Any],
-                                               user_profile: dict[str, Any]) -> list[str]:
+    async def _generate_collaboration_next_steps(
+        self, collaboration_result: dict[str, Any], user_profile: dict[str, Any]
+    ) -> list[str]:
         """生成协作下一步建议"""
         next_steps = []
 
@@ -438,15 +492,13 @@ class CollaborativeCoordinator(CollaborationOrchestrator):
             next_steps.append("花更多时间进行深度反思")
 
         # 通用建议
-        next_steps.extend([
-            "记录思考过程的变化",
-            "将新的思维方式应用到其他问题"
-        ])
+        next_steps.extend(["记录思考过程的变化", "将新的思维方式应用到其他问题"])
 
         return list(set(next_steps))[:5]  # 去重并限制数量
 
-    async def update_user_cognitive_profile(self, context: CollaborationContext,
-                                          interaction_data: dict[str, Any]) -> bool:
+    async def update_user_cognitive_profile(
+        self, context: CollaborationContext, interaction_data: dict[str, Any]
+    ) -> bool:
         """更新用户认知画像"""
         try:
             user_id = context.user_id
@@ -461,14 +513,23 @@ class CollaborativeCoordinator(CollaborationOrchestrator):
             # 更新交互历史
             interaction_summary = {
                 "timestamp": datetime.now().isoformat(),
-                "content_preview": interaction_data.get("interaction_content", "")[:100],
-                "engagement_level": interaction_data.get("engagement_level", "moderate"),
+                "content_preview": interaction_data.get("interaction_content", "")[
+                    :100
+                ],
+                "engagement_level": interaction_data.get(
+                    "engagement_level", "moderate"
+                ),
                 "collaboration_success": not any(
-                    result.get("error") for result in [
-                        interaction_data.get("collaboration_result", {}).get("perspectives", {}),
-                        interaction_data.get("collaboration_result", {}).get("challenges", {})
+                    result.get("error")
+                    for result in [
+                        interaction_data.get("collaboration_result", {}).get(
+                            "perspectives", {}
+                        ),
+                        interaction_data.get("collaboration_result", {}).get(
+                            "challenges", {}
+                        ),
                     ]
-                )
+                ),
             }
 
             profile["interaction_history"].append(interaction_summary)
@@ -485,7 +546,8 @@ class CollaborativeCoordinator(CollaborationOrchestrator):
             engagement = interaction_data.get("engagement_level", "moderate")
             if engagement == "high":
                 profile["cognitive_preferences"]["openness_to_perspectives"] = min(
-                    1.0, profile["cognitive_preferences"]["openness_to_perspectives"] + 0.1
+                    1.0,
+                    profile["cognitive_preferences"]["openness_to_perspectives"] + 0.1,
                 )
 
             return True
@@ -494,8 +556,9 @@ class CollaborativeCoordinator(CollaborationOrchestrator):
             logger.error(f"Failed to update user cognitive profile: {e}")
             return False
 
-    async def _save_collaboration_memory(self, collaboration_result: dict[str, Any],
-                                       context: CollaborationContext) -> bool:
+    async def _save_collaboration_memory(
+        self, collaboration_result: dict[str, Any], context: CollaborationContext
+    ) -> bool:
         """保存协作记忆"""
         try:
             if not self.memory_system:
@@ -505,8 +568,7 @@ class CollaborativeCoordinator(CollaborationOrchestrator):
             memory_content = f"协作会话：{collaboration_result['content'][:200]}..."
 
             user_context = UserContext(
-                user_id=context.user_id,
-                session_id=context.session_id
+                user_id=context.user_id, session_id=context.session_id
             )
 
             memory_entry = MemoryEntry(
@@ -517,10 +579,18 @@ class CollaborativeCoordinator(CollaborationOrchestrator):
                 confidence=0.9,
                 metadata={
                     "collaboration_type": "cognitive_enhancement",
-                    "perspectives_generated": len(collaboration_result.get("perspectives", {}).get("perspectives", [])),
-                    "challenges_generated": len(collaboration_result.get("challenges", {}).get("challenges", [])),
-                    "collaboration_insights": collaboration_result.get("collaboration_insights", {})
-                }
+                    "perspectives_generated": len(
+                        collaboration_result.get("perspectives", {}).get(
+                            "perspectives", []
+                        )
+                    ),
+                    "challenges_generated": len(
+                        collaboration_result.get("challenges", {}).get("challenges", [])
+                    ),
+                    "collaboration_insights": collaboration_result.get(
+                        "collaboration_insights", {}
+                    ),
+                },
             )
 
             await self.memory_system.add_memory(memory_entry)

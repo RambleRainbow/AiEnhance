@@ -18,7 +18,7 @@ async def test_service_health():
     services = {
         "AiEnhance主应用": "http://localhost:8080/health",
         "MIRIX后端": "http://localhost:8000/health",
-        "Ollama": "http://localhost:11434/api/tags"
+        "Ollama": "http://localhost:11434/api/tags",
     }
 
     async with httpx.AsyncClient(timeout=10.0) as client:
@@ -47,12 +47,14 @@ async def test_mirix_api():
                 "session_id": "test_session_001",
                 "metadata": {
                     "source": "docker_test",
-                    "timestamp": datetime.now().isoformat()
-                }
+                    "timestamp": datetime.now().isoformat(),
+                },
             }
 
             print("📝 添加测试记忆...")
-            response = await client.post("http://localhost:8000/api/memory/add", json=memory_data)
+            response = await client.post(
+                "http://localhost:8000/api/memory/add", json=memory_data
+            )
 
             if response.status_code == 200:
                 result = response.json()
@@ -65,10 +67,12 @@ async def test_mirix_api():
                     "query": "人工智能",
                     "user_id": "test_user_001",
                     "limit": 5,
-                    "similarity_threshold": 0.5
+                    "similarity_threshold": 0.5,
                 }
 
-                search_response = await client.post("http://localhost:8000/api/memory/search", json=search_data)
+                search_response = await client.post(
+                    "http://localhost:8000/api/memory/search", json=search_data
+                )
 
                 if search_response.status_code == 200:
                     search_result = search_response.json()
@@ -99,13 +103,13 @@ async def test_aienhance_api():
                 "query": "什么是机器学习？请简要解释。",
                 "user_id": "test_user_002",
                 "session_id": "test_session_002",
-                "context": {
-                    "source": "docker_integration_test"
-                }
+                "context": {"source": "docker_integration_test"},
             }
 
             print("💭 发送查询请求...")
-            response = await client.post("http://localhost:8080/api/query", json=query_data)
+            response = await client.post(
+                "http://localhost:8080/api/query", json=query_data
+            )
 
             if response.status_code == 200:
                 result = response.json()
@@ -116,12 +120,16 @@ async def test_aienhance_api():
                 print("✅ 查询处理成功")
                 print(f"📄 响应内容: {content[:200]}...")
                 print(f"🔧 处理步骤: {processing_metadata.get('processing_steps', [])}")
-                print(f"🧠 激活记忆数: {system_info.get('activated_memories_count', 0)}")
+                print(
+                    f"🧠 激活记忆数: {system_info.get('activated_memories_count', 0)}"
+                )
                 print(f"🤖 LLM生成: {system_info.get('llm_generated', False)}")
 
                 # 测试系统状态
                 print("\n📊 获取系统状态...")
-                status_response = await client.get("http://localhost:8080/api/system/status")
+                status_response = await client.get(
+                    "http://localhost:8080/api/system/status"
+                )
 
                 if status_response.status_code == 200:
                     status = status_response.json()
@@ -130,11 +138,13 @@ async def test_aienhance_api():
                     print(f"   - 用户数: {status.get('user_count', 0)}")
                     print(f"   - 会话数: {status.get('session_count', 0)}")
 
-                    memory_system = status.get('memory_system', {})
+                    memory_system = status.get("memory_system", {})
                     if memory_system:
-                        print(f"   - 记忆系统: {memory_system.get('system_type', 'none')}")
+                        print(
+                            f"   - 记忆系统: {memory_system.get('system_type', 'none')}"
+                        )
 
-                    llm_provider = status.get('llm_provider', {})
+                    llm_provider = status.get("llm_provider", {})
                     if llm_provider:
                         print(f"   - LLM提供商: {llm_provider.get('provider', 'none')}")
                 else:
@@ -164,7 +174,7 @@ async def test_ollama_integration():
                 for model in models[:3]:
                     name = model.get("name", "unknown")
                     size = model.get("size", 0)
-                    print(f"   - {name} ({size // (1024*1024*1024):.1f}GB)")
+                    print(f"   - {name} ({size // (1024 * 1024 * 1024):.1f}GB)")
 
                 # 测试简单生成（如果有模型）
                 if models:
@@ -172,10 +182,12 @@ async def test_ollama_integration():
                     generate_data = {
                         "model": models[0].get("name"),
                         "prompt": "Hello, how are you?",
-                        "stream": False
+                        "stream": False,
                     }
 
-                    gen_response = await client.post("http://localhost:11434/api/generate", json=generate_data)
+                    gen_response = await client.post(
+                        "http://localhost:11434/api/generate", json=generate_data
+                    )
 
                     if gen_response.status_code == 200:
                         result = gen_response.json()
@@ -205,12 +217,14 @@ async def test_end_to_end():
                 "config": {
                     "memory_api_base": "http://localhost:8000",
                     "llm_api_base": "http://localhost:11434",
-                    "llm_model_name": "qwen3:8b"
-                }
+                    "llm_model_name": "qwen3:8b",
+                },
             }
 
             print("🛠️ 创建测试系统...")
-            create_response = await client.post("http://localhost:8080/api/system/create", json=system_config)
+            create_response = await client.post(
+                "http://localhost:8080/api/system/create", json=system_config
+            )
 
             if create_response.status_code == 200:
                 system_info = create_response.json()
@@ -221,7 +235,7 @@ async def test_end_to_end():
                 conversations = [
                     "请介绍一下深度学习的基本概念",
                     "深度学习和传统机器学习有什么区别？",
-                    "能举个神经网络的具体例子吗？"
+                    "能举个神经网络的具体例子吗？",
                 ]
 
                 user_id = "e2e_test_user"
@@ -234,10 +248,12 @@ async def test_end_to_end():
                         "query": query,
                         "user_id": user_id,
                         "session_id": session_id,
-                        "system_type": "educational"
+                        "system_type": "educational",
                     }
 
-                    response = await client.post("http://localhost:8080/api/query", json=query_data)
+                    response = await client.post(
+                        "http://localhost:8080/api/query", json=query_data
+                    )
 
                     if response.status_code == 200:
                         result = response.json()
@@ -245,13 +261,17 @@ async def test_end_to_end():
                         metadata = result.get("processing_metadata", {})
 
                         print(f"✅ 响应: {content[:150]}...")
-                        print(f"🔧 处理时间: {len(metadata.get('processing_steps', []))} 步骤")
+                        print(
+                            f"🔧 处理时间: {len(metadata.get('processing_steps', []))} 步骤"
+                        )
                     else:
                         print(f"❌ 对话失败: {response.status_code}")
 
                 # 检查用户画像
                 print("\n👤 检查用户画像...")
-                profile_response = await client.get(f"http://localhost:8080/api/user/{user_id}/profile")
+                profile_response = await client.get(
+                    f"http://localhost:8080/api/user/{user_id}/profile"
+                )
 
                 if profile_response.status_code == 200:
                     profile = profile_response.json()

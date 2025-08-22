@@ -15,11 +15,11 @@ import redis.asyncio as redis
 
 async def wait_for_postgres():
     """等待PostgreSQL准备就绪"""
-    host = os.getenv('POSTGRES_HOST', 'postgres')
-    port = int(os.getenv('POSTGRES_PORT', '5432'))
-    user = os.getenv('POSTGRES_USER', 'mirix')
-    password = os.getenv('POSTGRES_PASSWORD', 'mirix_password')
-    database = os.getenv('POSTGRES_DB', 'mirix_memory')
+    host = os.getenv("POSTGRES_HOST", "postgres")
+    port = int(os.getenv("POSTGRES_PORT", "5432"))
+    user = os.getenv("POSTGRES_USER", "mirix")
+    password = os.getenv("POSTGRES_PASSWORD", "mirix_password")
+    database = os.getenv("POSTGRES_DB", "mirix_memory")
 
     max_attempts = 30
     attempt = 0
@@ -34,7 +34,7 @@ async def wait_for_postgres():
                 user=user,
                 password=password,
                 database=database,
-                command_timeout=5
+                command_timeout=5,
             )
             await conn.close()
             print("✅ PostgreSQL is ready!")
@@ -50,8 +50,8 @@ async def wait_for_postgres():
 
 async def wait_for_redis():
     """等待Redis准备就绪"""
-    host = os.getenv('REDIS_HOST', 'redis')
-    port = int(os.getenv('REDIS_PORT', '6379'))
+    host = os.getenv("REDIS_HOST", "redis")
+    port = int(os.getenv("REDIS_PORT", "6379"))
 
     max_attempts = 30
     attempt = 0
@@ -77,26 +77,22 @@ async def wait_for_redis():
 
 async def setup_database():
     """设置数据库扩展和表结构"""
-    host = os.getenv('POSTGRES_HOST', 'postgres')
-    port = int(os.getenv('POSTGRES_PORT', '5432'))
-    user = os.getenv('POSTGRES_USER', 'mirix')
-    password = os.getenv('POSTGRES_PASSWORD', 'mirix_password')
-    database = os.getenv('POSTGRES_DB', 'mirix_memory')
+    host = os.getenv("POSTGRES_HOST", "postgres")
+    port = int(os.getenv("POSTGRES_PORT", "5432"))
+    user = os.getenv("POSTGRES_USER", "mirix")
+    password = os.getenv("POSTGRES_PASSWORD", "mirix_password")
+    database = os.getenv("POSTGRES_DB", "mirix_memory")
 
     print("Setting up database...")
 
     try:
         conn = await asyncpg.connect(
-            host=host,
-            port=port,
-            user=user,
-            password=password,
-            database=database
+            host=host, port=port, user=user, password=password, database=database
         )
 
         # 创建vector扩展
         try:
-            await conn.execute('CREATE EXTENSION IF NOT EXISTS vector;')
+            await conn.execute("CREATE EXTENSION IF NOT EXISTS vector;")
             print("✅ Vector extension created successfully")
         except Exception as e:
             print(f"⚠️  Vector extension setup: {e}")

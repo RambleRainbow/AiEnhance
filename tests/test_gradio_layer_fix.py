@@ -15,7 +15,9 @@ async def test_gradio_layer_processing():
         print("🔍 测试Gradio分层处理修复...")
 
         # 初始化系统
-        result = await visualizer.initialize_system("educational", "ollama", "qwen3:8b", 0.7)
+        result = await visualizer.initialize_system(
+            "educational", "ollama", "qwen3:8b", 0.7
+        )
         if "✅" in result:
             print("✅ 系统初始化成功")
         else:
@@ -23,7 +25,9 @@ async def test_gradio_layer_processing():
             return False
 
         # 测试查询处理
-        final_response, layer_outputs = await visualizer.process_query_with_layers("什么是人工智能？")
+        final_response, layer_outputs = await visualizer.process_query_with_layers(
+            "什么是人工智能？"
+        )
 
         if "❌" not in final_response:
             print("✅ 分层查询处理成功")
@@ -45,8 +49,10 @@ async def test_gradio_layer_processing():
     except Exception as e:
         print(f"❌ 测试异常: {e}")
         import traceback
+
         traceback.print_exc()
         return False
+
 
 if __name__ == "__main__":
     result = asyncio.run(test_gradio_layer_processing())

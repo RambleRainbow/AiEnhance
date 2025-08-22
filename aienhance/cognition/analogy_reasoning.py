@@ -11,6 +11,7 @@ from typing import Any
 
 class SimilarityType(Enum):
     """相似性类型"""
+
     SURFACE = "surface"  # 表面相似
     STRUCTURAL = "structural"  # 结构相似
     FUNCTIONAL = "functional"  # 功能相似
@@ -19,6 +20,7 @@ class SimilarityType(Enum):
 
 class FrameworkType(Enum):
     """思维框架类型"""
+
     ANALYTICAL = "analytical"  # 分析框架
     CREATIVE = "creative"  # 创造框架
     PROBLEM_SOLVING = "problem_solving"  # 问题解决框架
@@ -27,6 +29,7 @@ class FrameworkType(Enum):
 
 class AssociationType(Enum):
     """联想类型"""
+
     DISTANT = "distant"  # 远距离联想
     RANDOM_WALK = "random_walk"  # 随机游走
     COMBINATORIAL = "combinatorial"  # 组合创新
@@ -35,6 +38,7 @@ class AssociationType(Enum):
 @dataclass
 class AnalogyMapping:
     """类比映射"""
+
     source_domain: str
     target_domain: str
     mapping_elements: dict[str, str]  # source -> target mappings
@@ -46,6 +50,7 @@ class AnalogyMapping:
 @dataclass
 class ThinkingFramework:
     """思维框架"""
+
     framework_id: str
     framework_type: FrameworkType
     name: str
@@ -58,6 +63,7 @@ class ThinkingFramework:
 @dataclass
 class CreativeAssociation:
     """创新联想"""
+
     concept_a: str
     concept_b: str
     association_type: AssociationType
@@ -71,7 +77,9 @@ class AnalogyReasoningModule(ABC):
     """类比推理模块基类"""
 
     @abstractmethod
-    def generate_analogies(self, query: str, context: dict[str, Any]) -> list[AnalogyMapping]:
+    def generate_analogies(
+        self, query: str, context: dict[str, Any]
+    ) -> list[AnalogyMapping]:
         """生成类比"""
         pass
 
@@ -83,7 +91,9 @@ class AnalogyRetriever(AnalogyReasoningModule):
         self.domain_knowledge = {}  # TODO: 加载领域知识库
         self.similarity_calculator = None  # TODO: 初始化相似度计算器
 
-    def generate_analogies(self, query: str, context: dict[str, Any]) -> list[AnalogyMapping]:
+    def generate_analogies(
+        self, query: str, context: dict[str, Any]
+    ) -> list[AnalogyMapping]:
         """
         类比检索机制
         对应设计文档第5.3.1节：相似性识别和类比源选择策略
@@ -108,20 +118,21 @@ class AnalogyRetriever(AnalogyReasoningModule):
         # TODO: 识别实体、关系、约束等核心要素
 
         structure = {
-            'entities': self._extract_entities(query),
-            'relations': self._extract_relations(query),
-            'constraints': self._extract_constraints(query),
-            'patterns': self._extract_patterns(query)
+            "entities": self._extract_entities(query),
+            "relations": self._extract_relations(query),
+            "constraints": self._extract_constraints(query),
+            "patterns": self._extract_patterns(query),
         }
 
         return structure
 
-    def _find_structural_matches(self, core_structure: dict[str, Any],
-                               context: dict[str, Any]) -> list[AnalogyMapping]:
+    def _find_structural_matches(
+        self, core_structure: dict[str, Any], context: dict[str, Any]
+    ) -> list[AnalogyMapping]:
         """
         跨域映射：在不同领域中寻找相同的关系模式
         """
-        user_profile = context.get('user_profile')
+        user_profile = context.get("user_profile")
         familiar_domains = self._get_familiar_domains(user_profile)
 
         candidate_mappings = []
@@ -130,31 +141,40 @@ class AnalogyRetriever(AnalogyReasoningModule):
             domain_structures = self._get_domain_structures(domain)
 
             for structure in domain_structures:
-                similarity_score = self._calculate_structural_similarity(core_structure, structure)
+                similarity_score = self._calculate_structural_similarity(
+                    core_structure, structure
+                )
 
                 if similarity_score > 0.3:  # 阈值可调
                     mapping = AnalogyMapping(
                         source_domain=domain,
                         target_domain="current_query",
-                        mapping_elements=self._create_element_mapping(core_structure, structure),
+                        mapping_elements=self._create_element_mapping(
+                            core_structure, structure
+                        ),
                         similarity_type=SimilarityType.STRUCTURAL,
                         confidence=similarity_score,
-                        cognitive_distance=self._calculate_cognitive_distance(domain, context)
+                        cognitive_distance=self._calculate_cognitive_distance(
+                            domain, context
+                        ),
                     )
                     candidate_mappings.append(mapping)
 
         return candidate_mappings
 
-    def _rank_analogies(self, analogies: list[AnalogyMapping],
-                       context: dict[str, Any]) -> list[AnalogyMapping]:
+    def _rank_analogies(
+        self, analogies: list[AnalogyMapping], context: dict[str, Any]
+    ) -> list[AnalogyMapping]:
         """
         类比源选择策略
         对应设计文档第5.3.1节：认知距离优化、创新度平衡、多样性保证
         """
-        user_profile = context.get('user_profile')
+        user_profile = context.get("user_profile")
 
         # 认知距离优化：选择用户容易理解但又有启发性的类比源
-        distance_scores = [self._evaluate_cognitive_distance(a, user_profile) for a in analogies]
+        distance_scores = [
+            self._evaluate_cognitive_distance(a, user_profile) for a in analogies
+        ]
 
         # 创新度平衡：在熟悉性和新颖性之间找到平衡
         novelty_scores = [self._evaluate_novelty(a, user_profile) for a in analogies]
@@ -165,10 +185,10 @@ class AnalogyRetriever(AnalogyReasoningModule):
         # 综合评分
         for i, analogy in enumerate(analogies):
             combined_score = (
-                analogy.confidence * 0.4 +
-                distance_scores[i] * 0.3 +
-                novelty_scores[i] * 0.2 +
-                diversity_scores[i] * 0.1
+                analogy.confidence * 0.4
+                + distance_scores[i] * 0.3
+                + novelty_scores[i] * 0.2
+                + diversity_scores[i] * 0.1
             )
             analogy.confidence = combined_score
 
@@ -195,16 +215,24 @@ class AnalogyRetriever(AnalogyReasoningModule):
     def _get_domain_structures(self, domain: str) -> list[dict[str, Any]]:
         return [{}]
 
-    def _calculate_structural_similarity(self, struct1: dict[str, Any], struct2: dict[str, Any]) -> float:
+    def _calculate_structural_similarity(
+        self, struct1: dict[str, Any], struct2: dict[str, Any]
+    ) -> float:
         return 0.5
 
-    def _create_element_mapping(self, source: dict[str, Any], target: dict[str, Any]) -> dict[str, str]:
+    def _create_element_mapping(
+        self, source: dict[str, Any], target: dict[str, Any]
+    ) -> dict[str, str]:
         return {}
 
-    def _calculate_cognitive_distance(self, domain: str, context: dict[str, Any]) -> float:
+    def _calculate_cognitive_distance(
+        self, domain: str, context: dict[str, Any]
+    ) -> float:
         return 0.5
 
-    def _evaluate_cognitive_distance(self, analogy: AnalogyMapping, user_profile: Any) -> float:
+    def _evaluate_cognitive_distance(
+        self, analogy: AnalogyMapping, user_profile: Any
+    ) -> float:
         return 1.0 - analogy.cognitive_distance
 
     def _evaluate_novelty(self, analogy: AnalogyMapping, user_profile: Any) -> float:
@@ -221,13 +249,17 @@ class ThinkingFrameworkMatcher(AnalogyReasoningModule):
         self.framework_library = self._load_framework_library()
         self.matcher_algorithm = None  # TODO: 初始化匹配算法
 
-    def generate_analogies(self, query: str, context: dict[str, Any]) -> list[AnalogyMapping]:
+    def generate_analogies(
+        self, query: str, context: dict[str, Any]
+    ) -> list[AnalogyMapping]:
         """通过思维框架生成类比"""
         suitable_frameworks = self.match_thinking_frameworks(query, context)
         framework_analogies = self._convert_frameworks_to_analogies(suitable_frameworks)
         return framework_analogies
 
-    def match_thinking_frameworks(self, query: str, context: dict[str, Any]) -> list[ThinkingFramework]:
+    def match_thinking_frameworks(
+        self, query: str, context: dict[str, Any]
+    ) -> list[ThinkingFramework]:
         """
         思维框架匹配
         对应设计文档第5.3.2节：框架识别与选择、框架适配与定制
@@ -236,14 +268,20 @@ class ThinkingFrameworkMatcher(AnalogyReasoningModule):
         candidate_frameworks = self._identify_candidate_frameworks(query)
 
         # 考虑用户框架偏好
-        user_profile = context.get('user_profile')
-        user_preferred = self._filter_by_user_preference(candidate_frameworks, user_profile)
+        user_profile = context.get("user_profile")
+        user_preferred = self._filter_by_user_preference(
+            candidate_frameworks, user_profile
+        )
 
         # 基于效用最大化选择最合适的框架
-        optimal_frameworks = self._select_optimal_frameworks(user_preferred, query, context)
+        optimal_frameworks = self._select_optimal_frameworks(
+            user_preferred, query, context
+        )
 
         # 框架适配与定制
-        customized_frameworks = self._customize_frameworks(optimal_frameworks, query, context)
+        customized_frameworks = self._customize_frameworks(
+            optimal_frameworks, query, context
+        )
 
         return customized_frameworks
 
@@ -260,8 +298,9 @@ class ThinkingFrameworkMatcher(AnalogyReasoningModule):
 
         return candidate_frameworks
 
-    def _filter_by_user_preference(self, frameworks: list[ThinkingFramework],
-                                 user_profile: Any) -> list[ThinkingFramework]:
+    def _filter_by_user_preference(
+        self, frameworks: list[ThinkingFramework], user_profile: Any
+    ) -> list[ThinkingFramework]:
         """根据用户偏好过滤框架"""
         # TODO: 考虑用户的认知风格和领域背景
 
@@ -269,7 +308,11 @@ class ThinkingFrameworkMatcher(AnalogyReasoningModule):
             return frameworks
 
         # 基于用户认知风格过滤
-        user_style = user_profile.cognitive_characteristics.get('thinking_mode') if user_profile else None
+        user_style = (
+            user_profile.cognitive_characteristics.get("thinking_mode")
+            if user_profile
+            else None
+        )
         filtered_frameworks = []
 
         for framework in frameworks:
@@ -278,8 +321,9 @@ class ThinkingFrameworkMatcher(AnalogyReasoningModule):
 
         return filtered_frameworks if filtered_frameworks else frameworks
 
-    def _select_optimal_frameworks(self, frameworks: list[ThinkingFramework],
-                                 query: str, context: dict[str, Any]) -> list[ThinkingFramework]:
+    def _select_optimal_frameworks(
+        self, frameworks: list[ThinkingFramework], query: str, context: dict[str, Any]
+    ) -> list[ThinkingFramework]:
         """选择最优框架"""
         # TODO: 基于效用最大化选择最合适的框架
 
@@ -290,11 +334,14 @@ class ThinkingFrameworkMatcher(AnalogyReasoningModule):
             scored_frameworks.append(framework)
 
         # 排序并返回前3个
-        sorted_frameworks = sorted(scored_frameworks, key=lambda x: x.effectiveness_score, reverse=True)
+        sorted_frameworks = sorted(
+            scored_frameworks, key=lambda x: x.effectiveness_score, reverse=True
+        )
         return sorted_frameworks[:3]
 
-    def _customize_frameworks(self, frameworks: list[ThinkingFramework],
-                            query: str, context: dict[str, Any]) -> list[ThinkingFramework]:
+    def _customize_frameworks(
+        self, frameworks: list[ThinkingFramework], query: str, context: dict[str, Any]
+    ) -> list[ThinkingFramework]:
         """定制框架"""
         customized = []
 
@@ -306,7 +353,9 @@ class ThinkingFrameworkMatcher(AnalogyReasoningModule):
             mapped_framework = self._map_query_elements(adjusted_framework, query)
 
             # 边界处理：识别框架适用性的边界条件
-            bounded_framework = self._set_framework_boundaries(mapped_framework, context)
+            bounded_framework = self._set_framework_boundaries(
+                mapped_framework, context
+            )
 
             customized.append(bounded_framework)
 
@@ -324,7 +373,7 @@ class ThinkingFrameworkMatcher(AnalogyReasoningModule):
                 description="分析优势、劣势、机会、威胁",
                 steps=["识别优势", "识别劣势", "识别机会", "识别威胁", "综合分析"],
                 applicable_contexts=["战略分析", "决策制定"],
-                effectiveness_score=0.8
+                effectiveness_score=0.8,
             ),
             ThinkingFramework(
                 framework_id="design_thinking",
@@ -333,7 +382,7 @@ class ThinkingFrameworkMatcher(AnalogyReasoningModule):
                 description="人本位的创新方法",
                 steps=["共情", "定义", "构思", "原型", "测试"],
                 applicable_contexts=["产品设计", "问题解决", "创新"],
-                effectiveness_score=0.9
+                effectiveness_score=0.9,
             ),
             ThinkingFramework(
                 framework_id="scientific_method",
@@ -342,8 +391,8 @@ class ThinkingFrameworkMatcher(AnalogyReasoningModule):
                 description="系统性的研究方法",
                 steps=["观察", "假设", "实验", "分析", "结论"],
                 applicable_contexts=["研究", "实验", "验证"],
-                effectiveness_score=0.85
-            )
+                effectiveness_score=0.85,
+            ),
         ]
 
         return frameworks
@@ -352,25 +401,39 @@ class ThinkingFrameworkMatcher(AnalogyReasoningModule):
     def _analyze_query_characteristics(self, query: str) -> dict[str, Any]:
         return {}
 
-    def _framework_matches_query(self, framework: ThinkingFramework, characteristics: dict[str, Any]) -> bool:
+    def _framework_matches_query(
+        self, framework: ThinkingFramework, characteristics: dict[str, Any]
+    ) -> bool:
         return True
 
-    def _framework_suits_user_style(self, framework: ThinkingFramework, user_style: Any) -> bool:
+    def _framework_suits_user_style(
+        self, framework: ThinkingFramework, user_style: Any
+    ) -> bool:
         return True
 
-    def _calculate_framework_utility(self, framework: ThinkingFramework, query: str, context: dict[str, Any]) -> float:
+    def _calculate_framework_utility(
+        self, framework: ThinkingFramework, query: str, context: dict[str, Any]
+    ) -> float:
         return framework.effectiveness_score
 
-    def _adjust_framework_parameters(self, framework: ThinkingFramework, query: str) -> ThinkingFramework:
+    def _adjust_framework_parameters(
+        self, framework: ThinkingFramework, query: str
+    ) -> ThinkingFramework:
         return framework
 
-    def _map_query_elements(self, framework: ThinkingFramework, query: str) -> ThinkingFramework:
+    def _map_query_elements(
+        self, framework: ThinkingFramework, query: str
+    ) -> ThinkingFramework:
         return framework
 
-    def _set_framework_boundaries(self, framework: ThinkingFramework, context: dict[str, Any]) -> ThinkingFramework:
+    def _set_framework_boundaries(
+        self, framework: ThinkingFramework, context: dict[str, Any]
+    ) -> ThinkingFramework:
         return framework
 
-    def _convert_frameworks_to_analogies(self, frameworks: list[ThinkingFramework]) -> list[AnalogyMapping]:
+    def _convert_frameworks_to_analogies(
+        self, frameworks: list[ThinkingFramework]
+    ) -> list[AnalogyMapping]:
         """将思维框架转换为类比映射"""
         analogies = []
 
@@ -381,7 +444,7 @@ class ThinkingFrameworkMatcher(AnalogyReasoningModule):
                 mapping_elements={"framework": framework.description},
                 similarity_type=SimilarityType.STRUCTURAL,
                 confidence=framework.effectiveness_score,
-                cognitive_distance=0.3
+                cognitive_distance=0.3,
             )
             analogies.append(analogy)
 
@@ -395,13 +458,17 @@ class CreativeAssociationGenerator(AnalogyReasoningModule):
         self.concept_network = None  # TODO: 初始化概念网络
         self.association_engine = None  # TODO: 初始化联想引擎
 
-    def generate_analogies(self, query: str, context: dict[str, Any]) -> list[AnalogyMapping]:
+    def generate_analogies(
+        self, query: str, context: dict[str, Any]
+    ) -> list[AnalogyMapping]:
         """通过创新联想生成类比"""
         associations = self.generate_creative_associations(query, context)
         association_analogies = self._convert_associations_to_analogies(associations)
         return association_analogies
 
-    def generate_creative_associations(self, query: str, context: dict[str, Any]) -> list[CreativeAssociation]:
+    def generate_creative_associations(
+        self, query: str, context: dict[str, Any]
+    ) -> list[CreativeAssociation]:
         """
         创新联想生成
         对应设计文档第5.3.3节：联想触发机制和创新性评估
@@ -426,7 +493,9 @@ class CreativeAssociationGenerator(AnalogyReasoningModule):
 
         return evaluated_associations
 
-    def _generate_distant_associations(self, concepts: list[str]) -> list[CreativeAssociation]:
+    def _generate_distant_associations(
+        self, concepts: list[str]
+    ) -> list[CreativeAssociation]:
         """生成远距离联想"""
         # TODO: 连接概念空间中距离较远的节点
         associations = []
@@ -442,13 +511,17 @@ class CreativeAssociationGenerator(AnalogyReasoningModule):
                     novelty_score=0.8,
                     relevance_score=0.4,
                     feasibility_score=0.6,
-                    connection_path=self._find_connection_path(concept, distant_concept)
+                    connection_path=self._find_connection_path(
+                        concept, distant_concept
+                    ),
                 )
                 associations.append(association)
 
         return associations
 
-    def _random_walk_associations(self, concepts: list[str]) -> list[CreativeAssociation]:
+    def _random_walk_associations(
+        self, concepts: list[str]
+    ) -> list[CreativeAssociation]:
         """随机游走联想"""
         # TODO: 在概念网络中进行受控的随机探索
         associations = []
@@ -464,13 +537,15 @@ class CreativeAssociationGenerator(AnalogyReasoningModule):
                     novelty_score=0.7,
                     relevance_score=0.5,
                     feasibility_score=0.7,
-                    connection_path=walk_result
+                    connection_path=walk_result,
                 )
                 associations.append(association)
 
         return associations
 
-    def _combinatorial_innovation(self, concepts: list[str]) -> list[CreativeAssociation]:
+    def _combinatorial_innovation(
+        self, concepts: list[str]
+    ) -> list[CreativeAssociation]:
         """组合创新"""
         # TODO: 系统性地组合不同领域的概念
         associations = []
@@ -486,13 +561,15 @@ class CreativeAssociationGenerator(AnalogyReasoningModule):
                 novelty_score=0.9,
                 relevance_score=0.6,
                 feasibility_score=0.5,
-                connection_path=[combination[0], "组合", combination[1]]
+                connection_path=[combination[0], "组合", combination[1]],
             )
             associations.append(association)
 
         return associations
 
-    def _evaluate_creativity(self, associations: list[CreativeAssociation]) -> list[CreativeAssociation]:
+    def _evaluate_creativity(
+        self, associations: list[CreativeAssociation]
+    ) -> list[CreativeAssociation]:
         """
         创新性评估
         对应设计文档第5.3.3节：新颖度度量、相关度保证、可行性检验
@@ -513,7 +590,7 @@ class CreativeAssociationGenerator(AnalogyReasoningModule):
             association.feasibility_score = feasibility
 
             # 综合评分筛选
-            overall_score = (novelty * 0.4 + relevance * 0.4 + feasibility * 0.2)
+            overall_score = novelty * 0.4 + relevance * 0.4 + feasibility * 0.2
             if overall_score > 0.5:  # 阈值可调
                 evaluated.append(association)
 
@@ -532,7 +609,9 @@ class CreativeAssociationGenerator(AnalogyReasoningModule):
     def _perform_random_walk(self, start_concept: str, steps: int) -> list[str]:
         return [start_concept, "step1", "step2", "end_concept"]
 
-    def _generate_cross_domain_combinations(self, concepts: list[str]) -> list[tuple[str, str]]:
+    def _generate_cross_domain_combinations(
+        self, concepts: list[str]
+    ) -> list[tuple[str, str]]:
         return [("concept1", "cross_domain_concept")]
 
     def _measure_novelty(self, association: CreativeAssociation) -> float:
@@ -544,7 +623,9 @@ class CreativeAssociationGenerator(AnalogyReasoningModule):
     def _verify_feasibility(self, association: CreativeAssociation) -> float:
         return 0.6
 
-    def _convert_associations_to_analogies(self, associations: list[CreativeAssociation]) -> list[AnalogyMapping]:
+    def _convert_associations_to_analogies(
+        self, associations: list[CreativeAssociation]
+    ) -> list[AnalogyMapping]:
         """将创新联想转换为类比映射"""
         analogies = []
 
@@ -555,7 +636,7 @@ class CreativeAssociationGenerator(AnalogyReasoningModule):
                 mapping_elements={association.concept_a: association.concept_b},
                 similarity_type=SimilarityType.FUNCTIONAL,
                 confidence=association.relevance_score,
-                cognitive_distance=1.0 - association.feasibility_score
+                cognitive_distance=1.0 - association.feasibility_score,
             )
             analogies.append(analogy)
 
@@ -570,7 +651,9 @@ class IntegratedAnalogyReasoner:
         self.framework_matcher = ThinkingFrameworkMatcher()
         self.association_generator = CreativeAssociationGenerator()
 
-    def comprehensive_analogy_reasoning(self, query: str, context: dict[str, Any]) -> dict[str, Any]:
+    def comprehensive_analogy_reasoning(
+        self, query: str, context: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         综合类比推理
         对应设计文档第5.3节：类比推理与跨域激活模块
@@ -582,7 +665,9 @@ class IntegratedAnalogyReasoner:
         framework_analogies = self.framework_matcher.generate_analogies(query, context)
 
         # 创新联想生成：生成创新性联想
-        creative_analogies = self.association_generator.generate_analogies(query, context)
+        creative_analogies = self.association_generator.generate_analogies(
+            query, context
+        )
 
         # 综合结果
         all_analogies = retrieved_analogies + framework_analogies + creative_analogies
@@ -592,13 +677,19 @@ class IntegratedAnalogyReasoner:
         ranked_analogies = self._rank_by_utility(deduplicated_analogies, context)
 
         return {
-            'analogies': ranked_analogies,
-            'thinking_frameworks': self.framework_matcher.match_thinking_frameworks(query, context),
-            'creative_associations': self.association_generator.generate_creative_associations(query, context),
-            'reasoning_quality': self._assess_reasoning_quality(ranked_analogies)
+            "analogies": ranked_analogies,
+            "thinking_frameworks": self.framework_matcher.match_thinking_frameworks(
+                query, context
+            ),
+            "creative_associations": self.association_generator.generate_creative_associations(
+                query, context
+            ),
+            "reasoning_quality": self._assess_reasoning_quality(ranked_analogies),
         }
 
-    def _deduplicate_analogies(self, analogies: list[AnalogyMapping]) -> list[AnalogyMapping]:
+    def _deduplicate_analogies(
+        self, analogies: list[AnalogyMapping]
+    ) -> list[AnalogyMapping]:
         """去重类比"""
         # TODO: 基于相似度去重
         seen_mappings = set()
@@ -612,7 +703,9 @@ class IntegratedAnalogyReasoner:
 
         return unique_analogies
 
-    def _rank_by_utility(self, analogies: list[AnalogyMapping], context: dict[str, Any]) -> list[AnalogyMapping]:
+    def _rank_by_utility(
+        self, analogies: list[AnalogyMapping], context: dict[str, Any]
+    ) -> list[AnalogyMapping]:
         """按效用排序"""
         # TODO: 综合考虑置信度、认知距离、创新性等因素
         return sorted(analogies, key=lambda x: x.confidence, reverse=True)

@@ -11,18 +11,14 @@ import sys
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def main():
     """安装UV环境依赖"""
     print("📦 为UV环境安装Gradio界面依赖...")
     print("=" * 50)
 
     # 需要安装的包
-    dependencies = [
-        "gradio",
-        "plotly",
-        "pandas",
-        "requests"
-    ]
+    dependencies = ["gradio", "plotly", "pandas", "requests"]
 
     failed_packages = []
 
@@ -31,10 +27,7 @@ def main():
         try:
             # 使用uv add命令
             result = subprocess.run(
-                ["uv", "add", package],
-                capture_output=True,
-                text=True,
-                check=True
+                ["uv", "add", package], capture_output=True, text=True, check=True
             )
             print(f"✅ {package} 安装成功")
         except subprocess.CalledProcessError:
@@ -44,7 +37,7 @@ def main():
                     ["uv", "pip", "install", package],
                     capture_output=True,
                     text=True,
-                    check=True
+                    check=True,
                 )
                 print(f"✅ {package} 安装成功 (uv pip)")
             except subprocess.CalledProcessError as e2:
@@ -64,6 +57,7 @@ def main():
         print("\n🚀 现在可以运行:")
         print("  uv run demo_gradio.py        # 演示版本")
         print("  uv run gradio_interface.py   # 完整版本")
+
 
 if __name__ == "__main__":
     main()

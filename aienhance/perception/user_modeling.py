@@ -11,6 +11,7 @@ from typing import Any
 
 class CognitiveStyle(Enum):
     """认知风格枚举"""
+
     LINEAR = "linear"  # 线性思维
     NETWORK = "network"  # 网状思维
     HIERARCHICAL = "hierarchical"  # 层次思维
@@ -18,6 +19,7 @@ class CognitiveStyle(Enum):
 
 class ThinkingMode(Enum):
     """思维模式枚举"""
+
     ANALYTICAL = "analytical"  # 分析型
     INTUITIVE = "intuitive"  # 直觉型
     CREATIVE = "creative"  # 创造型
@@ -26,6 +28,7 @@ class ThinkingMode(Enum):
 @dataclass
 class CognitiveProfile:
     """认知能力画像 - 对应设计文档第4.1.1节"""
+
     thinking_mode: ThinkingMode
     cognitive_complexity: float  # 认知复杂度评估 (0-1)
     abstraction_level: float  # 抽象思维能力 (0-1)
@@ -36,6 +39,7 @@ class CognitiveProfile:
 @dataclass
 class KnowledgeProfile:
     """知识结构画像 - 对应设计文档第4.1.2节"""
+
     core_domains: list[str]  # 核心专业领域
     edge_domains: list[str]  # 边缘接触领域
     knowledge_depth: dict[str, float]  # 各领域知识深度 (0-1)
@@ -46,6 +50,7 @@ class KnowledgeProfile:
 @dataclass
 class InteractionProfile:
     """交互模式画像 - 对应设计文档第4.1.3节"""
+
     cognitive_style: CognitiveStyle
     information_density_preference: float  # 信息密度偏好 (0-1)
     processing_speed: float  # 信息处理速度 (0-1)
@@ -56,6 +61,7 @@ class InteractionProfile:
 @dataclass
 class UserProfile:
     """完整用户画像"""
+
     user_id: str
     cognitive: CognitiveProfile
     knowledge: KnowledgeProfile
@@ -78,12 +84,16 @@ class UserModelingModule(ABC):
         pass
 
     @abstractmethod
-    def build_interaction_profile(self, user_data: dict[str, Any]) -> InteractionProfile:
+    def build_interaction_profile(
+        self, user_data: dict[str, Any]
+    ) -> InteractionProfile:
         """构建交互模式维度画像"""
         pass
 
     @abstractmethod
-    def update_profile(self, user_id: str, interaction_data: dict[str, Any]) -> UserProfile:
+    def update_profile(
+        self, user_id: str, interaction_data: dict[str, Any]
+    ) -> UserProfile:
         """动态更新用户画像"""
         pass
 
@@ -94,27 +104,31 @@ class CognitiveProfileBuilder(UserModelingModule):
     def build_cognitive_profile(self, user_data: dict[str, Any]) -> CognitiveProfile:
         """
         评估用户的抽象思维能力、逻辑推理偏好、概念联想习惯等认知特征
-        
+
         基于记忆数据和当前查询分析用户的认知特征
         """
         # 基于查询复杂度评估认知复杂度
-        query_complexity = user_data.get('query_complexity', 0.5)
-        complexity_evolution = user_data.get('complexity_evolution', 'stable_complexity')
+        query_complexity = user_data.get("query_complexity", 0.5)
+        complexity_evolution = user_data.get(
+            "complexity_evolution", "stable_complexity"
+        )
 
         # 评估认知复杂度
         cognitive_complexity = query_complexity
-        if complexity_evolution == 'increasing_complexity':
+        if complexity_evolution == "increasing_complexity":
             cognitive_complexity = min(1.0, cognitive_complexity + 0.2)
-        elif complexity_evolution == 'decreasing_complexity':
+        elif complexity_evolution == "decreasing_complexity":
             cognitive_complexity = max(0.1, cognitive_complexity - 0.1)
 
         # 基于表达偏好推断思维模式
-        expressed_preferences = user_data.get('expressed_preferences', [])
+        expressed_preferences = user_data.get("expressed_preferences", [])
         thinking_mode = self._infer_thinking_mode(expressed_preferences, user_data)
 
         # 基于历史领域评估抽象水平
-        historical_domains = user_data.get('historical_domains', {})
-        abstraction_level = self._assess_abstraction_level(historical_domains, query_complexity)
+        historical_domains = user_data.get("historical_domains", {})
+        abstraction_level = self._assess_abstraction_level(
+            historical_domains, query_complexity
+        )
 
         # 基于交互模式评估创造性倾向
         creativity_tendency = self._assess_creativity_tendency(user_data)
@@ -127,24 +141,28 @@ class CognitiveProfileBuilder(UserModelingModule):
             cognitive_complexity=cognitive_complexity,
             abstraction_level=abstraction_level,
             creativity_tendency=creativity_tendency,
-            reasoning_preference=reasoning_preference
+            reasoning_preference=reasoning_preference,
         )
 
-    def _infer_thinking_mode(self, preferences: list[str], user_data: dict[str, Any]) -> ThinkingMode:
+    def _infer_thinking_mode(
+        self, preferences: list[str], user_data: dict[str, Any]
+    ) -> ThinkingMode:
         """基于偏好推断思维模式"""
-        if 'step_by_step' in preferences:
+        if "step_by_step" in preferences:
             return ThinkingMode.ANALYTICAL
-        elif 'example_based' in preferences:
+        elif "example_based" in preferences:
             return ThinkingMode.INTUITIVE
-        elif user_data.get('communication_style') == 'creative':
+        elif user_data.get("communication_style") == "creative":
             return ThinkingMode.CREATIVE
         else:
             return ThinkingMode.ANALYTICAL
 
-    def _assess_abstraction_level(self, domains: dict[str, int], complexity: float) -> float:
+    def _assess_abstraction_level(
+        self, domains: dict[str, int], complexity: float
+    ) -> float:
         """评估抽象思维水平"""
         # 技术领域需要更高抽象思维
-        tech_domains = ['artificial_intelligence', 'programming', 'data_science']
+        tech_domains = ["artificial_intelligence", "programming", "data_science"]
         tech_score = sum(domains.get(domain, 0) for domain in tech_domains)
 
         base_level = complexity
@@ -155,27 +173,29 @@ class CognitiveProfileBuilder(UserModelingModule):
 
     def _assess_creativity_tendency(self, user_data: dict[str, Any]) -> float:
         """评估创造性思维倾向"""
-        communication_style = user_data.get('communication_style', 'direct')
-        interaction_depth = user_data.get('interaction_depth_preference', 'light_engagement')
+        communication_style = user_data.get("communication_style", "direct")
+        interaction_depth = user_data.get(
+            "interaction_depth_preference", "light_engagement"
+        )
 
         creativity = 0.5  # 基础值
 
-        if communication_style == 'verbose':
+        if communication_style == "verbose":
             creativity += 0.2
-        if interaction_depth == 'deep_engagement':
+        if interaction_depth == "deep_engagement":
             creativity += 0.2
 
         return min(1.0, creativity)
 
     def _analyze_reasoning_preference(self, user_data: dict[str, Any]) -> str:
         """分析推理偏好"""
-        preferences = user_data.get('expressed_preferences', [])
+        preferences = user_data.get("expressed_preferences", [])
 
-        if 'detailed_explanation' in preferences:
+        if "detailed_explanation" in preferences:
             return "演绎推理为主，偏好详细论证"
-        elif 'example_based' in preferences:
+        elif "example_based" in preferences:
             return "归纳推理为主，偏好实例说明"
-        elif 'step_by_step' in preferences:
+        elif "step_by_step" in preferences:
             return "逻辑推理为主，偏好步骤分解"
         else:
             return "混合推理模式"
@@ -187,25 +207,31 @@ class CognitiveProfileBuilder(UserModelingModule):
             edge_domains=[],
             knowledge_depth={"general": 0.5},
             cross_domain_ability=0.5,
-            knowledge_boundaries=[]
+            knowledge_boundaries=[],
         )
 
-    def build_interaction_profile(self, user_data: dict[str, Any]) -> InteractionProfile:
+    def build_interaction_profile(
+        self, user_data: dict[str, Any]
+    ) -> InteractionProfile:
         """构建交互模式维度画像"""
         return InteractionProfile(
             cognitive_style=CognitiveStyle.LINEAR,
             information_density_preference=0.5,
             processing_speed=0.5,
             feedback_preference="balanced",
-            learning_style="visual"
+            learning_style="visual",
         )
 
-    def update_profile(self, user_id: str, interaction_data: dict[str, Any]) -> UserProfile:
+    def update_profile(
+        self, user_id: str, interaction_data: dict[str, Any]
+    ) -> UserProfile:
         """动态更新用户画像"""
         # TODO: 实现动态更新逻辑
         pass
 
-    def analyze_thinking_patterns(self, dialogue_history: list[str]) -> dict[str, float]:
+    def analyze_thinking_patterns(
+        self, dialogue_history: list[str]
+    ) -> dict[str, float]:
         """分析用户思维模式"""
         # TODO: 分析问题表述方式、论证结构、概念使用习惯
         return {}
@@ -222,11 +248,11 @@ class KnowledgeProfileBuilder(UserModelingModule):
     def build_knowledge_profile(self, user_data: dict[str, Any]) -> KnowledgeProfile:
         """
         获取用户的专业背景、身份、能力等信息，分析经验深度、知识框架
-        
+
         基于记忆数据和当前查询分析用户的知识结构特征
         """
         # 从历史领域分析核心专业领域
-        historical_domains = user_data.get('historical_domains', {})
+        historical_domains = user_data.get("historical_domains", {})
         core_domains = self._identify_core_domains(historical_domains, user_data)
 
         # 识别边缘接触领域
@@ -246,10 +272,12 @@ class KnowledgeProfileBuilder(UserModelingModule):
             edge_domains=edge_domains,
             knowledge_depth=knowledge_depth,
             cross_domain_ability=cross_domain_ability,
-            knowledge_boundaries=knowledge_boundaries
+            knowledge_boundaries=knowledge_boundaries,
         )
 
-    def _identify_core_domains(self, historical_domains: dict[str, int], user_data: dict[str, Any]) -> list[str]:
+    def _identify_core_domains(
+        self, historical_domains: dict[str, int], user_data: dict[str, Any]
+    ) -> list[str]:
         """识别用户的核心专业领域"""
         core_domains = []
 
@@ -261,7 +289,7 @@ class KnowledgeProfileBuilder(UserModelingModule):
                     core_domains.append(domain)
 
         # 基于当前查询中的专业术语判断
-        domain_indicators = user_data.get('domain_indicators', [])
+        domain_indicators = user_data.get("domain_indicators", [])
         for domain in domain_indicators:
             if domain not in core_domains:
                 core_domains.append(domain)
@@ -272,7 +300,9 @@ class KnowledgeProfileBuilder(UserModelingModule):
 
         return core_domains
 
-    def _identify_edge_domains(self, historical_domains: dict[str, int], user_data: dict[str, Any]) -> list[str]:
+    def _identify_edge_domains(
+        self, historical_domains: dict[str, int], user_data: dict[str, Any]
+    ) -> list[str]:
         """识别边缘接触领域"""
         edge_domains = []
 
@@ -280,17 +310,21 @@ class KnowledgeProfileBuilder(UserModelingModule):
             total_queries = sum(historical_domains.values())
             for domain, count in historical_domains.items():
                 # 有接触但不是核心领域的算作边缘领域
-                if 1 <= count < 3 and (total_queries == 0 or count / total_queries < 0.3):
+                if 1 <= count < 3 and (
+                    total_queries == 0 or count / total_queries < 0.3
+                ):
                     edge_domains.append(domain)
 
         return edge_domains
 
-    def _assess_knowledge_depth(self, historical_domains: dict[str, int], user_data: dict[str, Any]) -> dict[str, float]:
+    def _assess_knowledge_depth(
+        self, historical_domains: dict[str, int], user_data: dict[str, Any]
+    ) -> dict[str, float]:
         """评估各领域知识深度"""
         knowledge_depth = {}
 
         # 基于查询复杂度和历史频率评估深度
-        query_complexity = user_data.get('query_complexity', 0.5)
+        query_complexity = user_data.get("query_complexity", 0.5)
 
         for domain, count in historical_domains.items():
             # 基础深度基于查询频率
@@ -302,7 +336,7 @@ class KnowledgeProfileBuilder(UserModelingModule):
             knowledge_depth[domain] = min(1.0, adjusted_depth)
 
         # 为当前查询涉及的领域设置深度
-        domain_indicators = user_data.get('domain_indicators', [])
+        domain_indicators = user_data.get("domain_indicators", [])
         for domain in domain_indicators:
             if domain not in knowledge_depth:
                 knowledge_depth[domain] = query_complexity
@@ -311,14 +345,14 @@ class KnowledgeProfileBuilder(UserModelingModule):
 
     def _assess_cross_domain_ability(self, user_data: dict[str, Any]) -> float:
         """评估跨域知识连接能力"""
-        historical_domains = user_data.get('historical_domains', {})
+        historical_domains = user_data.get("historical_domains", {})
         domain_count = len(historical_domains)
 
         # 基于涉及领域数量评估跨域能力
         cross_domain_base = min(0.8, domain_count * 0.15)
 
         # 基于查询复杂度调整
-        query_complexity = user_data.get('query_complexity', 0.5)
+        query_complexity = user_data.get("query_complexity", 0.5)
         if query_complexity > 0.7:  # 复杂查询通常需要跨域思考
             cross_domain_base += 0.2
 
@@ -330,12 +364,18 @@ class KnowledgeProfileBuilder(UserModelingModule):
 
         # 基于用户未涉及的主要技术领域推断知识边界
         all_tech_domains = [
-            'artificial_intelligence', 'programming', 'data_science',
-            'machine_learning', 'web_development', 'mobile_development',
-            'database_systems', 'network_security', 'cloud_computing'
+            "artificial_intelligence",
+            "programming",
+            "data_science",
+            "machine_learning",
+            "web_development",
+            "mobile_development",
+            "database_systems",
+            "network_security",
+            "cloud_computing",
         ]
 
-        historical_domains = user_data.get('historical_domains', {})
+        historical_domains = user_data.get("historical_domains", {})
         covered_domains = set(historical_domains.keys())
 
         for domain in all_tech_domains:
@@ -352,20 +392,24 @@ class KnowledgeProfileBuilder(UserModelingModule):
             cognitive_complexity=0.7,
             abstraction_level=0.6,
             creativity_tendency=0.5,
-            reasoning_preference="演绎推理为主"
+            reasoning_preference="演绎推理为主",
         )
 
-    def build_interaction_profile(self, user_data: dict[str, Any]) -> InteractionProfile:
+    def build_interaction_profile(
+        self, user_data: dict[str, Any]
+    ) -> InteractionProfile:
         """构建交互模式维度画像"""
         return InteractionProfile(
             cognitive_style=CognitiveStyle.LINEAR,
             information_density_preference=0.5,
             processing_speed=0.5,
             feedback_preference="balanced",
-            learning_style="visual"
+            learning_style="visual",
         )
 
-    def update_profile(self, user_id: str, interaction_data: dict[str, Any]) -> UserProfile:
+    def update_profile(
+        self, user_id: str, interaction_data: dict[str, Any]
+    ) -> UserProfile:
         """动态更新用户画像"""
         # TODO: 实现动态更新逻辑
         pass
@@ -384,10 +428,12 @@ class KnowledgeProfileBuilder(UserModelingModule):
 class InteractionProfileBuilder(UserModelingModule):
     """交互模式画像构建器 - 实现设计文档第4.1.3节功能"""
 
-    def build_interaction_profile(self, user_data: dict[str, Any]) -> InteractionProfile:
+    def build_interaction_profile(
+        self, user_data: dict[str, Any]
+    ) -> InteractionProfile:
         """
         了解用户的思维节奏、信息接受偏好、认知负荷阈值
-        
+
         基于记忆数据和当前查询分析用户的交互模式特征
         """
         # 分析认知风格
@@ -410,44 +456,46 @@ class InteractionProfileBuilder(UserModelingModule):
             information_density_preference=info_density_preference,
             processing_speed=processing_speed,
             feedback_preference=feedback_preference,
-            learning_style=learning_style
+            learning_style=learning_style,
         )
 
     def _analyze_cognitive_style(self, user_data: dict[str, Any]) -> CognitiveStyle:
         """分析认知风格"""
-        expressed_preferences = user_data.get('expressed_preferences', [])
-        query_complexity = user_data.get('query_complexity', 0.5)
-        interaction_depth = user_data.get('interaction_depth_preference', 'light_engagement')
+        expressed_preferences = user_data.get("expressed_preferences", [])
+        query_complexity = user_data.get("query_complexity", 0.5)
+        interaction_depth = user_data.get(
+            "interaction_depth_preference", "light_engagement"
+        )
 
         # 基于偏好和复杂度推断认知风格
-        if 'step_by_step' in expressed_preferences:
+        if "step_by_step" in expressed_preferences:
             return CognitiveStyle.LINEAR
-        elif query_complexity > 0.7 and interaction_depth == 'deep_engagement':
+        elif query_complexity > 0.7 and interaction_depth == "deep_engagement":
             return CognitiveStyle.NETWORK  # 复杂问题需要网状思维
-        elif len(user_data.get('historical_domains', {})) > 3:
+        elif len(user_data.get("historical_domains", {})) > 3:
             return CognitiveStyle.HIERARCHICAL  # 多领域用户倾向层次思维
         else:
             return CognitiveStyle.LINEAR
 
     def _assess_info_density_preference(self, user_data: dict[str, Any]) -> float:
         """评估信息密度偏好"""
-        communication_style = user_data.get('communication_style', 'direct')
-        expressed_preferences = user_data.get('expressed_preferences', [])
-        query_complexity = user_data.get('query_complexity', 0.5)
+        communication_style = user_data.get("communication_style", "direct")
+        expressed_preferences = user_data.get("expressed_preferences", [])
+        query_complexity = user_data.get("query_complexity", 0.5)
 
         # 基础信息密度偏好
         density_preference = 0.5
 
         # 根据交流风格调整
-        if communication_style == 'verbose':
+        if communication_style == "verbose":
             density_preference += 0.2  # 详细表达者喜欢高密度信息
-        elif communication_style == 'direct':
+        elif communication_style == "direct":
             density_preference += 0.1  # 直接表达者适度偏好高密度
 
         # 根据明确偏好调整
-        if 'detailed_explanation' in expressed_preferences:
+        if "detailed_explanation" in expressed_preferences:
             density_preference += 0.3
-        elif 'simple_explanation' in expressed_preferences:
+        elif "simple_explanation" in expressed_preferences:
             density_preference -= 0.2
 
         # 根据查询复杂度调整
@@ -458,9 +506,11 @@ class InteractionProfileBuilder(UserModelingModule):
 
     def _assess_processing_speed(self, user_data: dict[str, Any]) -> float:
         """评估信息处理速度"""
-        query_complexity = user_data.get('query_complexity', 0.5)
-        memory_count = user_data.get('memory_count', 0)
-        complexity_evolution = user_data.get('complexity_evolution', 'stable_complexity')
+        query_complexity = user_data.get("query_complexity", 0.5)
+        memory_count = user_data.get("memory_count", 0)
+        complexity_evolution = user_data.get(
+            "complexity_evolution", "stable_complexity"
+        )
 
         # 基础处理速度
         processing_speed = 0.5
@@ -475,36 +525,38 @@ class InteractionProfileBuilder(UserModelingModule):
             processing_speed += 0.1
 
         # 基于复杂度演化趋势调整
-        if complexity_evolution == 'increasing_complexity':
+        if complexity_evolution == "increasing_complexity":
             processing_speed += 0.1  # 逐渐提高复杂度说明处理能力强
 
         return min(1.0, max(0.2, processing_speed))
 
     def _determine_feedback_preference(self, user_data: dict[str, Any]) -> str:
         """确定反馈偏好"""
-        expressed_preferences = user_data.get('expressed_preferences', [])
-        communication_style = user_data.get('communication_style', 'direct')
+        expressed_preferences = user_data.get("expressed_preferences", [])
+        communication_style = user_data.get("communication_style", "direct")
 
-        if 'detailed_explanation' in expressed_preferences:
+        if "detailed_explanation" in expressed_preferences:
             return "详细反馈"
-        elif 'example_based' in expressed_preferences:
+        elif "example_based" in expressed_preferences:
             return "示例导向反馈"
-        elif communication_style == 'direct':
+        elif communication_style == "direct":
             return "简洁反馈"
         else:
             return "平衡反馈"
 
     def _identify_learning_style(self, user_data: dict[str, Any]) -> str:
         """识别学习风格"""
-        expressed_preferences = user_data.get('expressed_preferences', [])
-        domain_indicators = user_data.get('domain_indicators', [])
+        expressed_preferences = user_data.get("expressed_preferences", [])
+        domain_indicators = user_data.get("domain_indicators", [])
 
         # 基于偏好识别学习风格
-        if 'example_based' in expressed_preferences:
+        if "example_based" in expressed_preferences:
             return "实例学习"
-        elif 'step_by_step' in expressed_preferences:
+        elif "step_by_step" in expressed_preferences:
             return "结构化学习"
-        elif any(domain in ['programming', 'data_science'] for domain in domain_indicators):
+        elif any(
+            domain in ["programming", "data_science"] for domain in domain_indicators
+        ):
             return "实践导向学习"
         else:
             return "概念导向学习"
@@ -516,7 +568,7 @@ class InteractionProfileBuilder(UserModelingModule):
             cognitive_complexity=0.7,
             abstraction_level=0.6,
             creativity_tendency=0.5,
-            reasoning_preference="演绎推理为主"
+            reasoning_preference="演绎推理为主",
         )
 
     def build_knowledge_profile(self, user_data: dict[str, Any]) -> KnowledgeProfile:
@@ -526,10 +578,12 @@ class InteractionProfileBuilder(UserModelingModule):
             edge_domains=[],
             knowledge_depth={"general": 0.5},
             cross_domain_ability=0.5,
-            knowledge_boundaries=[]
+            knowledge_boundaries=[],
         )
 
-    def update_profile(self, user_id: str, interaction_data: dict[str, Any]) -> UserProfile:
+    def update_profile(
+        self, user_id: str, interaction_data: dict[str, Any]
+    ) -> UserProfile:
         """动态更新用户画像"""
         # TODO: 实现动态更新逻辑
         pass
@@ -554,10 +608,12 @@ class DynamicUserModeler:
         self.interaction_builder = InteractionProfileBuilder()
         self.user_profiles: dict[str, UserProfile] = {}
 
-    def create_user_profile(self, user_id: str, initial_data: dict[str, Any]) -> UserProfile:
+    def create_user_profile(
+        self, user_id: str, initial_data: dict[str, Any]
+    ) -> UserProfile:
         """
         创建完整的用户画像
-        
+
         Args:
             user_id: 用户ID
             initial_data: 初始数据，包含：
@@ -580,13 +636,15 @@ class DynamicUserModeler:
             knowledge=knowledge,
             interaction=interaction,
             created_at=datetime.now().isoformat(),
-            updated_at=datetime.now().isoformat()
+            updated_at=datetime.now().isoformat(),
         )
 
         self.user_profiles[user_id] = profile
         return profile
 
-    def update_user_profile(self, user_id: str, interaction_data: dict[str, Any]) -> UserProfile:
+    def update_user_profile(
+        self, user_id: str, interaction_data: dict[str, Any]
+    ) -> UserProfile:
         """动态更新用户画像"""
         if user_id not in self.user_profiles:
             return self.create_user_profile(user_id, interaction_data)
@@ -602,19 +660,21 @@ class DynamicUserModeler:
         """获取用户画像"""
         return self.user_profiles.get(user_id)
 
-    def _enhance_with_memory_analysis(self, initial_data: dict[str, Any]) -> dict[str, Any]:
+    def _enhance_with_memory_analysis(
+        self, initial_data: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         基于记忆数据增强用户信息分析
-        
+
         Args:
             initial_data: 包含query和memory_context的初始数据
-            
+
         Returns:
             增强后的用户数据，包含从记忆中提取的用户特征
         """
         enhanced_data = initial_data.copy()
-        memory_context = initial_data.get('memory_context', [])
-        current_query = initial_data.get('query', '')
+        memory_context = initial_data.get("memory_context", [])
+        current_query = initial_data.get("query", "")
 
         # 从当前问句中提取用户信息
         query_insights = self._extract_user_info_from_query(current_query)
@@ -630,21 +690,23 @@ class DynamicUserModeler:
     def _extract_user_info_from_query(self, query: str) -> dict[str, Any]:
         """
         从用户问句中提取用户信息和偏好
-        
+
         分析用户的表达方式、询问类型、语言复杂度等
         """
         insights = {
-            'query_complexity': self._assess_query_complexity(query),
-            'expressed_preferences': self._extract_preferences(query),
-            'domain_indicators': self._identify_domain_knowledge(query),
-            'communication_style': self._analyze_communication_style(query)
+            "query_complexity": self._assess_query_complexity(query),
+            "expressed_preferences": self._extract_preferences(query),
+            "domain_indicators": self._identify_domain_knowledge(query),
+            "communication_style": self._analyze_communication_style(query),
         }
         return insights
 
-    def _analyze_memory_patterns(self, memories: list[dict[str, Any]]) -> dict[str, Any]:
+    def _analyze_memory_patterns(
+        self, memories: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """
         分析用户的历史记忆模式，提取用户特征
-        
+
         从用户的历史交互中分析：
         - 兴趣领域和专业背景
         - 认知偏好和思维模式
@@ -654,7 +716,9 @@ class DynamicUserModeler:
             return {}
 
         # 分析查询历史中的领域分布
-        query_memories = [m for m in memories if m.get('metadata', {}).get('type') == 'user_query']
+        query_memories = [
+            m for m in memories if m.get("metadata", {}).get("type") == "user_query"
+        ]
         domain_pattern = self._extract_domain_pattern(query_memories)
 
         # 分析交互频率和深度
@@ -664,10 +728,10 @@ class DynamicUserModeler:
         complexity_evolution = self._track_complexity_evolution(query_memories)
 
         return {
-            'historical_domains': domain_pattern,
-            'interaction_depth_preference': interaction_pattern,
-            'complexity_evolution': complexity_evolution,
-            'memory_count': len(memories)
+            "historical_domains": domain_pattern,
+            "interaction_depth_preference": interaction_pattern,
+            "complexity_evolution": complexity_evolution,
+            "memory_count": len(memories),
         }
 
     def _assess_query_complexity(self, query: str) -> float:
@@ -680,12 +744,12 @@ class DynamicUserModeler:
         complexity = min(1.0, word_count / 50.0)  # 基础长度评估
 
         # 检查复杂句式
-        complex_indicators = ['因为', '但是', '然而', '尽管', '虽然', '如果', '因此']
+        complex_indicators = ["因为", "但是", "然而", "尽管", "虽然", "如果", "因此"]
         if any(indicator in query for indicator in complex_indicators):
             complexity += 0.2
 
         # 检查专业术语（简化版）
-        technical_terms = ['算法', '机器学习', '人工智能', '深度学习', '神经网络']
+        technical_terms = ["算法", "机器学习", "人工智能", "深度学习", "神经网络"]
         if any(term in query for term in technical_terms):
             complexity += 0.3
 
@@ -696,14 +760,14 @@ class DynamicUserModeler:
         preferences = []
 
         # 检查明确的偏好表达
-        if '简单' in query or '简明' in query:
-            preferences.append('simple_explanation')
-        if '详细' in query or '深入' in query:
-            preferences.append('detailed_explanation')
-        if '例子' in query or '举例' in query:
-            preferences.append('example_based')
-        if '步骤' in query or '流程' in query:
-            preferences.append('step_by_step')
+        if "简单" in query or "简明" in query:
+            preferences.append("simple_explanation")
+        if "详细" in query or "深入" in query:
+            preferences.append("detailed_explanation")
+        if "例子" in query or "举例" in query:
+            preferences.append("example_based")
+        if "步骤" in query or "流程" in query:
+            preferences.append("step_by_step")
 
         return preferences
 
@@ -712,32 +776,34 @@ class DynamicUserModeler:
         domains = []
 
         # 技术领域
-        if any(term in query for term in ['编程', '代码', '算法', '数据结构']):
-            domains.append('programming')
-        if any(term in query for term in ['机器学习', 'AI', '人工智能', '深度学习']):
-            domains.append('artificial_intelligence')
-        if any(term in query for term in ['数据库', 'SQL', '数据分析']):
-            domains.append('data_science')
+        if any(term in query for term in ["编程", "代码", "算法", "数据结构"]):
+            domains.append("programming")
+        if any(term in query for term in ["机器学习", "AI", "人工智能", "深度学习"]):
+            domains.append("artificial_intelligence")
+        if any(term in query for term in ["数据库", "SQL", "数据分析"]):
+            domains.append("data_science")
 
         return domains
 
     def _analyze_communication_style(self, query: str) -> str:
         """分析交流风格"""
         if len(query) > 100:
-            return 'verbose'
-        elif '?' in query or '？' in query:
-            return 'questioning'
-        elif any(word in query for word in ['请', '麻烦', '谢谢']):
-            return 'polite'
+            return "verbose"
+        elif "?" in query or "？" in query:
+            return "questioning"
+        elif any(word in query for word in ["请", "麻烦", "谢谢"]):
+            return "polite"
         else:
-            return 'direct'
+            return "direct"
 
-    def _extract_domain_pattern(self, query_memories: list[dict[str, Any]]) -> dict[str, int]:
+    def _extract_domain_pattern(
+        self, query_memories: list[dict[str, Any]]
+    ) -> dict[str, int]:
         """从历史查询中提取领域模式"""
         domain_count = {}
 
         for memory in query_memories:
-            content = memory.get('content', '')
+            content = memory.get("content", "")
             domains = self._identify_domain_knowledge(content)
             for domain in domains:
                 domain_count[domain] = domain_count.get(domain, 0) + 1
@@ -747,24 +813,27 @@ class DynamicUserModeler:
     def _analyze_interaction_depth(self, memories: list[dict[str, Any]]) -> str:
         """分析交互深度偏好"""
         if len(memories) > 20:
-            return 'deep_engagement'
+            return "deep_engagement"
         elif len(memories) > 5:
-            return 'moderate_engagement'
+            return "moderate_engagement"
         else:
-            return 'light_engagement'
+            return "light_engagement"
 
     def _track_complexity_evolution(self, query_memories: list[dict[str, Any]]) -> str:
         """跟踪复杂度演化趋势"""
         if len(query_memories) < 3:
-            return 'insufficient_data'
+            return "insufficient_data"
 
-        complexities = [self._assess_query_complexity(m.get('content', '')) for m in query_memories[-5:]]
+        complexities = [
+            self._assess_query_complexity(m.get("content", ""))
+            for m in query_memories[-5:]
+        ]
 
         if len(complexities) >= 2:
             trend = complexities[-1] - complexities[0]
             if trend > 0.2:
-                return 'increasing_complexity'
+                return "increasing_complexity"
             elif trend < -0.2:
-                return 'decreasing_complexity'
+                return "decreasing_complexity"
 
-        return 'stable_complexity'
+        return "stable_complexity"

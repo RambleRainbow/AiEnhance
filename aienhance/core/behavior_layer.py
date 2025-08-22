@@ -24,11 +24,14 @@ logger = logging.getLogger(__name__)
 class BehaviorLayer(IBehaviorLayer):
     """行为层具体实现"""
 
-    def __init__(self, config: dict[str, Any] | None = None,
-                 llm_provider: LLMProvider | None = None):
+    def __init__(
+        self,
+        config: dict[str, Any] | None = None,
+        llm_provider: LLMProvider | None = None,
+    ):
         """
         初始化行为层
-        
+
         Args:
             config: 行为层配置
             llm_provider: 大语言模型提供商
@@ -79,10 +82,10 @@ class BehaviorLayer(IBehaviorLayer):
     async def process(self, input_data: BehaviorInput) -> BehaviorOutput:
         """
         处理行为层输入，生成适配内容
-        
+
         Args:
             input_data: 行为层输入数据
-            
+
         Returns:
             BehaviorOutput: 行为层处理结果
         """
@@ -91,28 +94,30 @@ class BehaviorLayer(IBehaviorLayer):
 
         start_time = datetime.now()
         processing_metadata = {
-            'input_query': input_data.query,
-            'user_id': input_data.user_profile.user_id,
-            'processing_id': f"behavior_{self.processing_count}",
-            'steps': [],
-            'llm_available': self.llm_initialized
+            "input_query": input_data.query,
+            "user_id": input_data.user_profile.user_id,
+            "processing_id": f"behavior_{self.processing_count}",
+            "steps": [],
+            "llm_available": self.llm_initialized,
         }
 
         try:
-            logger.info(f"Processing behavior input for user: {input_data.user_profile.user_id}")
-            processing_metadata['steps'].append('started')
+            logger.info(
+                f"Processing behavior input for user: {input_data.user_profile.user_id}"
+            )
+            processing_metadata["steps"].append("started")
 
             # 1. 内容适配
             adapted_content = await self.adapt_content(
                 input_data.query,
                 input_data.user_profile,
                 {
-                    'context_profile': input_data.context_profile,
-                    'cognition_output': input_data.cognition_output,
-                    'generation_requirements': input_data.generation_requirements
-                }
+                    "context_profile": input_data.context_profile,
+                    "cognition_output": input_data.cognition_output,
+                    "generation_requirements": input_data.generation_requirements,
+                },
             )
-            processing_metadata['steps'].append('content_adaptation_completed')
+            processing_metadata["steps"].append("content_adaptation_completed")
 
             # 2. 生成响应内容
             if self.llm_initialized:
@@ -120,24 +125,24 @@ class BehaviorLayer(IBehaviorLayer):
                     generated_content = await self.generate_response(input_data)
                     adapted_content.content = generated_content
                     adapted_content.adaptation_strategy += " + llm_generated"
-                    processing_metadata['steps'].append('llm_generation_completed')
+                    processing_metadata["steps"].append("llm_generation_completed")
                 except Exception as e:
                     logger.warning(f"LLM generation failed, using adapted content: {e}")
-                    processing_metadata['llm_generation_error'] = str(e)
+                    processing_metadata["llm_generation_error"] = str(e)
             else:
-                processing_metadata['steps'].append('llm_generation_skipped')
+                processing_metadata["steps"].append("llm_generation_skipped")
 
             # 3. 生成质量指标
             quality_metrics = await self._assess_quality_metrics(
                 adapted_content, input_data
             )
-            processing_metadata['steps'].append('quality_assessment_completed')
+            processing_metadata["steps"].append("quality_assessment_completed")
 
             # 4. 生成元数据
             generation_metadata = await self._generate_metadata(
                 input_data, adapted_content, quality_metrics
             )
-            processing_metadata['steps'].append('metadata_generation_completed')
+            processing_metadata["steps"].append("metadata_generation_completed")
 
             # 计算处理时间
             end_time = datetime.now()
@@ -150,16 +155,16 @@ class BehaviorLayer(IBehaviorLayer):
                 layer_name="behavior",
                 status=ProcessingStatus.COMPLETED,
                 data={
-                    'adapted_content': adapted_content,
-                    'generation_metadata': generation_metadata,
-                    'quality_metrics': quality_metrics
+                    "adapted_content": adapted_content,
+                    "generation_metadata": generation_metadata,
+                    "quality_metrics": quality_metrics,
                 },
                 metadata=processing_metadata,
                 timestamp=end_time.isoformat(),
                 processing_time=processing_time,
                 adapted_content=adapted_content,
                 generation_metadata=generation_metadata,
-                quality_metrics=quality_metrics
+                quality_metrics=quality_metrics,
             )
 
             logger.info(f"Behavior processing completed in {processing_time:.3f}s")
@@ -170,8 +175,8 @@ class BehaviorLayer(IBehaviorLayer):
             processing_time = (end_time - start_time).total_seconds()
 
             logger.error(f"Behavior processing failed: {e}")
-            processing_metadata['error'] = str(e)
-            processing_metadata['steps'].append('error')
+            processing_metadata["error"] = str(e)
+            processing_metadata["steps"].append("error")
 
             # 返回错误状态的输出
             return BehaviorOutput(
@@ -188,29 +193,27 @@ class BehaviorLayer(IBehaviorLayer):
                     cognitive_load=0.0,
                     information_density="low",
                     structure_type="simple",
-                    personalization_level=0.0
+                    personalization_level=0.0,
                 ),
                 generation_metadata={},
-                quality_metrics={}
+                quality_metrics={},
             )
 
-    async def adapt_content(self, content: str, user_profile,
-                          context: dict[str, Any]) -> AdaptedContent:
+    async def adapt_content(
+        self, content: str, user_profile, context: dict[str, Any]
+    ) -> AdaptedContent:
         """内容适配"""
         try:
             logger.info("Adapting content to user profile...")
 
             # 构建适配上下文
-            adaptation_context = {
-                'user_profile': user_profile,
-                **context
-            }
+            adaptation_context = {"user_profile": user_profile, **context}
 
             # 使用集成适配输出组件
-            if hasattr(context, 'cognition_output') and context['cognition_output']:
+            if hasattr(context, "cognition_output") and context["cognition_output"]:
                 # 如果有认知层输出，使用增强的片段
-                cognition_output = context['cognition_output']
-                if hasattr(cognition_output, 'semantic_enhancement'):
+                cognition_output = context["cognition_output"]
+                if hasattr(cognition_output, "semantic_enhancement"):
                     fragments = cognition_output.semantic_enhancement.enhanced_content
                 else:
                     fragments = []
@@ -225,14 +228,22 @@ class BehaviorLayer(IBehaviorLayer):
                 )
 
             # 转换为接口格式
-            if hasattr(adapted_result, 'content'):
+            if hasattr(adapted_result, "content"):
                 return AdaptedContent(
                     content=adapted_result.content,
-                    adaptation_strategy=getattr(adapted_result, 'adaptation_strategy', 'comprehensive'),
-                    cognitive_load=getattr(adapted_result, 'cognitive_load', 0.5),
-                    information_density=getattr(adapted_result, 'density_level', 'medium'),
-                    structure_type=getattr(adapted_result, 'structure_type', 'hierarchical'),
-                    personalization_level=getattr(adapted_result, 'adaptation_confidence', 0.7)
+                    adaptation_strategy=getattr(
+                        adapted_result, "adaptation_strategy", "comprehensive"
+                    ),
+                    cognitive_load=getattr(adapted_result, "cognitive_load", 0.5),
+                    information_density=getattr(
+                        adapted_result, "density_level", "medium"
+                    ),
+                    structure_type=getattr(
+                        adapted_result, "structure_type", "hierarchical"
+                    ),
+                    personalization_level=getattr(
+                        adapted_result, "adaptation_confidence", 0.7
+                    ),
                 )
             else:
                 # 处理其他格式的适配结果
@@ -242,7 +253,7 @@ class BehaviorLayer(IBehaviorLayer):
                     cognitive_load=0.5,
                     information_density="medium",
                     structure_type="simple",
-                    personalization_level=0.5
+                    personalization_level=0.5,
                 )
 
         except Exception as e:
@@ -253,15 +264,20 @@ class BehaviorLayer(IBehaviorLayer):
                 cognitive_load=0.5,
                 information_density="medium",
                 structure_type="simple",
-                personalization_level=0.0
+                personalization_level=0.0,
             )
 
-    async def _basic_content_adaptation(self, content: str, user_profile,
-                                      context: dict[str, Any]) -> AdaptedContent:
+    async def _basic_content_adaptation(
+        self, content: str, user_profile, context: dict[str, Any]
+    ) -> AdaptedContent:
         """基础内容适配（当没有认知层输出时的回退方案）"""
         # 基于用户画像进行简单适配
-        cognitive_complexity = user_profile.cognitive_characteristics.get('cognitive_complexity', 0.5)
-        thinking_mode = user_profile.cognitive_characteristics.get('thinking_mode', 'linear')
+        cognitive_complexity = user_profile.cognitive_characteristics.get(
+            "cognitive_complexity", 0.5
+        )
+        thinking_mode = user_profile.cognitive_characteristics.get(
+            "thinking_mode", "linear"
+        )
 
         # 调整信息密度
         if cognitive_complexity > 0.7:
@@ -275,9 +291,9 @@ class BehaviorLayer(IBehaviorLayer):
             cognitive_load = 0.5
 
         # 调整结构类型
-        if thinking_mode == 'creative':
+        if thinking_mode == "creative":
             structure = "associative"
-        elif thinking_mode == 'analytical':
+        elif thinking_mode == "analytical":
             structure = "hierarchical"
         else:
             structure = "linear"
@@ -295,7 +311,7 @@ class BehaviorLayer(IBehaviorLayer):
             cognitive_load=cognitive_load,
             information_density=density,
             structure_type=structure,
-            personalization_level=0.6
+            personalization_level=0.6,
         )
 
     async def generate_response(self, input_data: BehaviorInput) -> str:
@@ -319,7 +335,9 @@ class BehaviorLayer(IBehaviorLayer):
             logger.error(f"Failed to generate response: {e}")
             raise
 
-    async def generate_response_stream(self, input_data: BehaviorInput) -> AsyncIterator[str]:
+    async def generate_response_stream(
+        self, input_data: BehaviorInput
+    ) -> AsyncIterator[str]:
         """流式生成响应内容"""
         try:
             if not self.llm_initialized:
@@ -338,7 +356,9 @@ class BehaviorLayer(IBehaviorLayer):
             logger.error(f"Failed to generate streaming response: {e}")
             yield f"生成响应时出错: {e}"
 
-    async def _build_chat_messages(self, input_data: BehaviorInput) -> list[ChatMessage]:
+    async def _build_chat_messages(
+        self, input_data: BehaviorInput
+    ) -> list[ChatMessage]:
         """构建LLM对话消息"""
         messages = []
 
@@ -348,9 +368,13 @@ class BehaviorLayer(IBehaviorLayer):
 
         # 添加认知上下文
         if input_data.cognition_output:
-            context_info = await self._build_cognitive_context(input_data.cognition_output)
+            context_info = await self._build_cognitive_context(
+                input_data.cognition_output
+            )
             if context_info:
-                messages.append(create_chat_message("system", f"认知上下文:\n{context_info}"))
+                messages.append(
+                    create_chat_message("system", f"认知上下文:\n{context_info}")
+                )
 
         # 用户查询
         messages.append(create_chat_message("user", input_data.query))
@@ -363,19 +387,19 @@ class BehaviorLayer(IBehaviorLayer):
             "你是一个智能的记忆-认知协同系统助手。",
             f"用户认知特征: {input_data.user_profile.cognitive_characteristics}",
             f"任务特征: 类型={input_data.context_profile.task_type}, 复杂度={input_data.context_profile.complexity_level}",
-            "请基于用户的认知特征和任务需求，提供个性化的回答。"
+            "请基于用户的认知特征和任务需求，提供个性化的回答。",
         ]
 
         # 根据生成要求调整提示
         generation_reqs = input_data.generation_requirements
-        if generation_reqs.get('style') == 'educational':
+        if generation_reqs.get("style") == "educational":
             prompt_parts.append("请采用教育导向的解释方式，注重循序渐进和概念建构。")
-        elif generation_reqs.get('style') == 'research':
+        elif generation_reqs.get("style") == "research":
             prompt_parts.append("请提供深度分析和跨领域关联，支持学术研究需求。")
 
         # 根据用户偏好调整
         info_density = input_data.user_profile.interaction_preferences.get(
-            'information_density_preference', 0.5
+            "information_density_preference", 0.5
         )
         if info_density > 0.7:
             prompt_parts.append("用户偏好详细信息，请提供充分的细节和解释。")
@@ -389,67 +413,72 @@ class BehaviorLayer(IBehaviorLayer):
         context_parts = []
 
         # 记忆激活信息
-        if hasattr(cognition_output, 'memory_activation'):
+        if hasattr(cognition_output, "memory_activation"):
             activation = cognition_output.memory_activation
             fragment_count = len(activation.activated_fragments)
             if fragment_count > 0:
                 context_parts.append(f"激活记忆片段: {fragment_count}个")
 
         # 语义增强信息
-        if hasattr(cognition_output, 'semantic_enhancement'):
+        if hasattr(cognition_output, "semantic_enhancement"):
             enhancement = cognition_output.semantic_enhancement
             if enhancement.semantic_gaps_filled:
-                context_parts.append(f"识别知识缺口: {', '.join(enhancement.semantic_gaps_filled[:3])}")
+                context_parts.append(
+                    f"识别知识缺口: {', '.join(enhancement.semantic_gaps_filled[:3])}"
+                )
 
         # 类比推理信息
-        if hasattr(cognition_output, 'analogy_reasoning'):
+        if hasattr(cognition_output, "analogy_reasoning"):
             reasoning = cognition_output.analogy_reasoning
             if reasoning.analogies:
                 analogy_count = len(reasoning.analogies)
                 context_parts.append(f"生成类比: {analogy_count}个")
 
         # 认知洞察
-        if hasattr(cognition_output, 'cognitive_insights'):
+        if hasattr(cognition_output, "cognitive_insights"):
             insights = cognition_output.cognitive_insights
-            cognitive_load = insights.get('cognitive_load', 0.5)
+            cognitive_load = insights.get("cognitive_load", 0.5)
             context_parts.append(f"预估认知负荷: {cognitive_load:.2f}")
 
         return "\n".join(context_parts)
 
-    async def _assess_quality_metrics(self, adapted_content: AdaptedContent,
-                                    input_data: BehaviorInput) -> dict[str, float]:
+    async def _assess_quality_metrics(
+        self, adapted_content: AdaptedContent, input_data: BehaviorInput
+    ) -> dict[str, float]:
         """评估质量指标"""
         try:
             metrics = {
-                'content_length_score': self._assess_content_length(adapted_content.content),
-                'personalization_score': adapted_content.personalization_level,
-                'cognitive_load_balance': self._assess_cognitive_load_balance(
+                "content_length_score": self._assess_content_length(
+                    adapted_content.content
+                ),
+                "personalization_score": adapted_content.personalization_level,
+                "cognitive_load_balance": self._assess_cognitive_load_balance(
                     adapted_content, input_data.user_profile
                 ),
-                'information_density_match': self._assess_density_match(
+                "information_density_match": self._assess_density_match(
                     adapted_content, input_data.user_profile
                 ),
-                'structure_appropriateness': self._assess_structure_match(
+                "structure_appropriateness": self._assess_structure_match(
                     adapted_content, input_data.user_profile
                 ),
-                'overall_quality': 0.0  # 将在最后计算
+                "overall_quality": 0.0,  # 将在最后计算
             }
 
             # 计算总体质量得分
-            quality_scores = [v for k, v in metrics.items() if k != 'overall_quality']
-            metrics['overall_quality'] = sum(quality_scores) / len(quality_scores)
+            quality_scores = [v for k, v in metrics.items() if k != "overall_quality"]
+            metrics["overall_quality"] = sum(quality_scores) / len(quality_scores)
 
             return metrics
 
         except Exception as e:
             logger.error(f"Failed to assess quality metrics: {e}")
             return {
-                'content_length_score': 0.5,
-                'personalization_score': 0.5,
-                'cognitive_load_balance': 0.5,
-                'information_density_match': 0.5,
-                'structure_appropriateness': 0.5,
-                'overall_quality': 0.5
+                "content_length_score": 0.5,
+                "personalization_score": 0.5,
+                "cognitive_load_balance": 0.5,
+                "information_density_match": 0.5,
+                "structure_appropriateness": 0.5,
+                "overall_quality": 0.5,
             }
 
     def _assess_content_length(self, content: str) -> float:
@@ -464,10 +493,13 @@ class BehaviorLayer(IBehaviorLayer):
         else:
             return 0.6
 
-    def _assess_cognitive_load_balance(self, adapted_content: AdaptedContent,
-                                     user_profile) -> float:
+    def _assess_cognitive_load_balance(
+        self, adapted_content: AdaptedContent, user_profile
+    ) -> float:
         """评估认知负荷平衡性"""
-        user_capacity = user_profile.cognitive_characteristics.get('cognitive_complexity', 0.5)
+        user_capacity = user_profile.cognitive_characteristics.get(
+            "cognitive_complexity", 0.5
+        )
         content_load = adapted_content.cognitive_load
 
         # 理想情况是内容负荷略低于用户能力
@@ -480,62 +512,75 @@ class BehaviorLayer(IBehaviorLayer):
 
         return balance_score
 
-    def _assess_density_match(self, adapted_content: AdaptedContent,
-                            user_profile) -> float:
+    def _assess_density_match(
+        self, adapted_content: AdaptedContent, user_profile
+    ) -> float:
         """评估信息密度匹配度"""
         user_preference = user_profile.interaction_preferences.get(
-            'information_density_preference', 0.5
+            "information_density_preference", 0.5
         )
 
         content_density = adapted_content.information_density
-        density_map = {'low': 0.2, 'medium': 0.5, 'high': 0.8}
+        density_map = {"low": 0.2, "medium": 0.5, "high": 0.8}
         content_density_value = density_map.get(content_density, 0.5)
 
         # 计算匹配度
         match_score = 1.0 - abs(user_preference - content_density_value)
         return max(0.0, match_score)
 
-    def _assess_structure_match(self, adapted_content: AdaptedContent,
-                              user_profile) -> float:
+    def _assess_structure_match(
+        self, adapted_content: AdaptedContent, user_profile
+    ) -> float:
         """评估结构匹配度"""
-        user_style = user_profile.interaction_preferences.get('cognitive_style', 'structured')
+        user_style = user_profile.interaction_preferences.get(
+            "cognitive_style", "structured"
+        )
         content_structure = adapted_content.structure_type
 
         # 结构匹配映射
         structure_compatibility = {
-            'structured': ['hierarchical', 'linear'],
-            'flexible': ['associative', 'hierarchical'],
-            'creative': ['associative', 'creative']
+            "structured": ["hierarchical", "linear"],
+            "flexible": ["associative", "hierarchical"],
+            "creative": ["associative", "creative"],
         }
 
-        compatible_structures = structure_compatibility.get(user_style, ['hierarchical'])
+        compatible_structures = structure_compatibility.get(
+            user_style, ["hierarchical"]
+        )
 
         if content_structure in compatible_structures:
             return 1.0
         else:
             return 0.5
 
-    async def _generate_metadata(self, input_data: BehaviorInput,
-                               adapted_content: AdaptedContent,
-                               quality_metrics: dict[str, float]) -> dict[str, Any]:
+    async def _generate_metadata(
+        self,
+        input_data: BehaviorInput,
+        adapted_content: AdaptedContent,
+        quality_metrics: dict[str, float],
+    ) -> dict[str, Any]:
         """生成生成元数据"""
         metadata = {
-            'adaptation_strategy': adapted_content.adaptation_strategy,
-            'personalization_applied': adapted_content.personalization_level > 0.3,
-            'cognitive_load_adjustment': adapted_content.cognitive_load,
-            'structure_optimization': adapted_content.structure_type,
-            'quality_assessment': quality_metrics,
-            'generation_timestamp': datetime.now().isoformat(),
-            'user_profile_utilized': {
-                'cognitive_characteristics': True,
-                'knowledge_profile': len(input_data.user_profile.knowledge_profile) > 0,
-                'interaction_preferences': True
+            "adaptation_strategy": adapted_content.adaptation_strategy,
+            "personalization_applied": adapted_content.personalization_level > 0.3,
+            "cognitive_load_adjustment": adapted_content.cognitive_load,
+            "structure_optimization": adapted_content.structure_type,
+            "quality_assessment": quality_metrics,
+            "generation_timestamp": datetime.now().isoformat(),
+            "user_profile_utilized": {
+                "cognitive_characteristics": True,
+                "knowledge_profile": len(input_data.user_profile.knowledge_profile) > 0,
+                "interaction_preferences": True,
             },
-            'context_factors': {
-                'task_complexity': input_data.context_profile.complexity_level,
-                'domain_match': input_data.context_profile.domain_characteristics.get('primary_domain', 'general'),
-                'cognitive_insights_used': hasattr(input_data.cognition_output, 'cognitive_insights')
-            }
+            "context_factors": {
+                "task_complexity": input_data.context_profile.complexity_level,
+                "domain_match": input_data.context_profile.domain_characteristics.get(
+                    "primary_domain", "general"
+                ),
+                "cognitive_insights_used": hasattr(
+                    input_data.cognition_output, "cognitive_insights"
+                ),
+            },
         }
 
         return metadata
@@ -549,7 +594,7 @@ class BehaviorLayer(IBehaviorLayer):
             self.generation_cache.clear()
 
             # 清理LLM连接
-            if self.llm_provider and hasattr(self.llm_provider, 'session'):
+            if self.llm_provider and hasattr(self.llm_provider, "session"):
                 if self.llm_provider.session:
                     await self.llm_provider.session.close()
 
@@ -568,15 +613,17 @@ class BehaviorLayer(IBehaviorLayer):
     def get_status(self) -> dict[str, Any]:
         """获取行为层状态"""
         return {
-            'layer_name': 'behavior',
-            'initialized': self.is_initialized,
-            'llm_initialized': self.llm_initialized,
-            'processing_count': self.processing_count,
-            'last_processing_time': self.last_processing_time,
-            'cache_size': len(self.generation_cache),
-            'components': {
-                'adaptive_output': self.adaptive_output is not None,
-                'llm_provider': self.llm_provider is not None
+            "layer_name": "behavior",
+            "initialized": self.is_initialized,
+            "llm_initialized": self.llm_initialized,
+            "processing_count": self.processing_count,
+            "last_processing_time": self.last_processing_time,
+            "cache_size": len(self.generation_cache),
+            "components": {
+                "adaptive_output": self.adaptive_output is not None,
+                "llm_provider": self.llm_provider is not None,
             },
-            'llm_info': self.llm_provider.get_model_info() if self.llm_provider else None
+            "llm_info": self.llm_provider.get_model_info()
+            if self.llm_provider
+            else None,
         }

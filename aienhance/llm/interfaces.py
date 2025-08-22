@@ -13,6 +13,7 @@ from typing import Any
 
 class MessageRole(Enum):
     """消息角色枚举"""
+
     SYSTEM = "system"
     USER = "user"
     ASSISTANT = "assistant"
@@ -22,6 +23,7 @@ class MessageRole(Enum):
 
 class ModelType(Enum):
     """模型类型枚举"""
+
     CHAT = "chat"
     COMPLETION = "completion"
     EMBEDDING = "embedding"
@@ -31,6 +33,7 @@ class ModelType(Enum):
 @dataclass
 class ChatMessage:
     """聊天消息数据结构"""
+
     role: MessageRole
     content: str
     name: str | None = None
@@ -42,6 +45,7 @@ class ChatMessage:
 @dataclass
 class ChatResponse:
     """聊天响应数据结构"""
+
     content: str
     finish_reason: str
     usage: dict[str, int]
@@ -55,6 +59,7 @@ class ChatResponse:
 @dataclass
 class EmbeddingRequest:
     """嵌入请求数据结构"""
+
     texts: list[str]
     model: str
     encoding_format: str = "float"
@@ -66,6 +71,7 @@ class EmbeddingRequest:
 @dataclass
 class EmbeddingResponse:
     """嵌入响应数据结构"""
+
     embeddings: list[list[float]]
     model: str
     usage: dict[str, int]
@@ -76,6 +82,7 @@ class EmbeddingResponse:
 @dataclass
 class ModelConfig:
     """模型配置数据结构"""
+
     provider: str  # "ollama", "openai", "anthropic", etc.
     model_name: str
     api_key: str | None = None
@@ -95,7 +102,7 @@ class ModelConfig:
 class LLMProvider(ABC):
     """
     大语言模型提供商抽象基类
-    
+
     定义所有LLM提供商必须实现的核心接口
     支持同步和异步调用、流式响应、函数调用等高级功能
     """
@@ -113,25 +120,27 @@ class LLMProvider(ABC):
     async def chat(self, messages: list[ChatMessage], **kwargs) -> ChatResponse:
         """
         聊天完成接口
-        
+
         Args:
             messages: 聊天消息列表
             **kwargs: 额外参数
-            
+
         Returns:
             ChatResponse: 聊天响应
         """
         pass
 
     @abstractmethod
-    async def chat_stream(self, messages: list[ChatMessage], **kwargs) -> AsyncIterator[str]:
+    async def chat_stream(
+        self, messages: list[ChatMessage], **kwargs
+    ) -> AsyncIterator[str]:
         """
         流式聊天完成接口
-        
+
         Args:
             messages: 聊天消息列表
             **kwargs: 额外参数
-            
+
         Yields:
             str: 流式响应片段
         """
@@ -140,11 +149,11 @@ class LLMProvider(ABC):
     async def completion(self, prompt: str, **kwargs) -> str:
         """
         文本完成接口 (可选实现)
-        
+
         Args:
             prompt: 输入提示
             **kwargs: 额外参数
-            
+
         Returns:
             str: 完成的文本
         """
@@ -153,21 +162,22 @@ class LLMProvider(ABC):
         response = await self.chat(messages, **kwargs)
         return response.content
 
-    async def function_call(self, messages: list[ChatMessage],
-                          functions: list[dict[str, Any]], **kwargs) -> ChatResponse:
+    async def function_call(
+        self, messages: list[ChatMessage], functions: list[dict[str, Any]], **kwargs
+    ) -> ChatResponse:
         """
         函数调用接口 (可选实现)
-        
+
         Args:
             messages: 聊天消息列表
             functions: 可用函数列表
             **kwargs: 额外参数
-            
+
         Returns:
             ChatResponse: 包含函数调用的响应
         """
         # 默认实现：添加函数到kwargs中
-        kwargs['functions'] = functions
+        kwargs["functions"] = functions
         return await self.chat(messages, **kwargs)
 
     def get_model_info(self) -> dict[str, Any]:
@@ -176,7 +186,7 @@ class LLMProvider(ABC):
             "provider": self.config.provider,
             "model": self.config.model_name,
             "initialized": self.is_initialized,
-            "config": self.config.custom_config or {}
+            "config": self.config.custom_config or {},
         }
 
     def validate_config(self) -> bool:
@@ -189,7 +199,7 @@ class LLMProvider(ABC):
 class EmbeddingProvider(ABC):
     """
     嵌入模型提供商抽象基类
-    
+
     定义所有嵌入模型提供商必须实现的核心接口
     """
 
@@ -206,10 +216,10 @@ class EmbeddingProvider(ABC):
     async def embed(self, request: EmbeddingRequest) -> EmbeddingResponse:
         """
         生成嵌入向量
-        
+
         Args:
             request: 嵌入请求
-            
+
         Returns:
             EmbeddingResponse: 嵌入响应
         """
@@ -218,38 +228,30 @@ class EmbeddingProvider(ABC):
     async def embed_single(self, text: str, **kwargs) -> list[float]:
         """
         单文本嵌入便捷接口
-        
+
         Args:
             text: 输入文本
             **kwargs: 额外参数
-            
+
         Returns:
             List[float]: 嵌入向量
         """
-        request = EmbeddingRequest(
-            texts=[text],
-            model=self.config.model_name,
-            **kwargs
-        )
+        request = EmbeddingRequest(texts=[text], model=self.config.model_name, **kwargs)
         response = await self.embed(request)
         return response.embeddings[0] if response.embeddings else []
 
     async def embed_batch(self, texts: list[str], **kwargs) -> list[list[float]]:
         """
         批量文本嵌入便捷接口
-        
+
         Args:
             texts: 输入文本列表
             **kwargs: 额外参数
-            
+
         Returns:
             List[List[float]]: 嵌入向量列表
         """
-        request = EmbeddingRequest(
-            texts=texts,
-            model=self.config.model_name,
-            **kwargs
-        )
+        request = EmbeddingRequest(texts=texts, model=self.config.model_name, **kwargs)
         response = await self.embed(request)
         return response.embeddings
 
@@ -259,7 +261,7 @@ class EmbeddingProvider(ABC):
             "provider": self.config.provider,
             "model": self.config.model_name,
             "initialized": self.is_initialized,
-            "config": self.config.custom_config or {}
+            "config": self.config.custom_config or {},
         }
 
     def validate_config(self) -> bool:
@@ -283,10 +285,10 @@ class LLMProviderFactory:
     def create_provider(cls, config: ModelConfig) -> LLMProvider:
         """
         创建LLM提供商实例
-        
+
         Args:
             config: 模型配置
-            
+
         Returns:
             LLMProvider: LLM提供商实例
         """
@@ -318,10 +320,10 @@ class EmbeddingProviderFactory:
     def create_provider(cls, config: ModelConfig) -> EmbeddingProvider:
         """
         创建嵌入提供商实例
-        
+
         Args:
             config: 模型配置
-            
+
         Returns:
             EmbeddingProvider: 嵌入提供商实例
         """
@@ -342,29 +344,19 @@ class EmbeddingProviderFactory:
 # 便捷函数
 def create_chat_message(role: str, content: str, **kwargs) -> ChatMessage:
     """创建聊天消息的便捷函数"""
-    return ChatMessage(
-        role=MessageRole(role),
-        content=content,
-        **kwargs
-    )
+    return ChatMessage(role=MessageRole(role), content=content, **kwargs)
 
 
 def create_model_config(provider: str, model_name: str, **kwargs) -> ModelConfig:
     """创建模型配置的便捷函数"""
-    return ModelConfig(
-        provider=provider,
-        model_name=model_name,
-        **kwargs
-    )
+    return ModelConfig(provider=provider, model_name=model_name, **kwargs)
 
 
-def create_embedding_request(texts: str | list[str], model: str, **kwargs) -> EmbeddingRequest:
+def create_embedding_request(
+    texts: str | list[str], model: str, **kwargs
+) -> EmbeddingRequest:
     """创建嵌入请求的便捷函数"""
     if isinstance(texts, str):
         texts = [texts]
 
-    return EmbeddingRequest(
-        texts=texts,
-        model=model,
-        **kwargs
-    )
+    return EmbeddingRequest(texts=texts, model=model, **kwargs)

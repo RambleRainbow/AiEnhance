@@ -22,10 +22,10 @@ from aienhance import create_system
 
 # 配置日志
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
 
 # 数据模型
 class QueryRequest(BaseModel):
@@ -35,12 +35,14 @@ class QueryRequest(BaseModel):
     context: dict[str, Any] | None = None
     system_type: str | None = None
 
+
 class QueryResponse(BaseModel):
     content: str
     user_id: str
     session_id: str | None = None
     processing_metadata: dict[str, Any]
     system_info: dict[str, Any]
+
 
 class SystemCreateRequest(BaseModel):
     system_type: str = "default"
@@ -49,16 +51,19 @@ class SystemCreateRequest(BaseModel):
     embedding_provider: str | None = None
     config: dict[str, Any] | None = None
 
+
 class HealthResponse(BaseModel):
     status: str
     timestamp: datetime
     services: dict[str, str]
     system_info: dict[str, Any]
 
+
 # 全局变量
 systems_cache = {}
 default_system = None
 mirix_client = None
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -72,7 +77,7 @@ async def lifespan(app: FastAPI):
         # 初始化HTTP客户端
         mirix_client = httpx.AsyncClient(
             base_url=os.getenv("MIRIX_API_URL", "http://mirix-backend:8000"),
-            timeout=30.0
+            timeout=30.0,
         )
 
         # 等待MIRIX服务可用
@@ -85,7 +90,7 @@ async def lifespan(app: FastAPI):
             llm_provider=os.getenv("DEFAULT_LLM_PROVIDER", "ollama"),
             memory_api_base=os.getenv("MIRIX_API_URL", "http://mirix-backend:8000"),
             llm_api_base=os.getenv("OLLAMA_API_URL", "http://ollama:11434"),
-            llm_model_name=os.getenv("DEFAULT_LLM_MODEL", "qwen3:8b")
+            llm_model_name=os.getenv("DEFAULT_LLM_MODEL", "qwen3:8b"),
         )
 
         logger.info("AiEnhance application initialized successfully")
@@ -101,6 +106,7 @@ async def lifespan(app: FastAPI):
         await mirix_client.aclose()
     logger.info("AiEnhance application cleaned up")
 
+
 async def wait_for_mirix(max_retries=30, delay=2):
     """等待MIRIX服务可用"""
     for i in range(max_retries):
@@ -110,17 +116,18 @@ async def wait_for_mirix(max_retries=30, delay=2):
                 logger.info("MIRIX service is ready")
                 return
         except Exception:
-            logger.info(f"Waiting for MIRIX service... ({i+1}/{max_retries})")
+            logger.info(f"Waiting for MIRIX service... ({i + 1}/{max_retries})")
             await asyncio.sleep(delay)
 
     raise RuntimeError("MIRIX service not available after waiting")
+
 
 # 创建FastAPI应用
 app = FastAPI(
     title="AiEnhance API",
     description="Memory-Cognitive Collaborative System API",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # 配置CORS
@@ -131,6 +138,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 def get_system(system_type: str = "default"):
     """获取或创建系统实例"""
@@ -148,13 +156,14 @@ def get_system(system_type: str = "default"):
             llm_provider=os.getenv("DEFAULT_LLM_PROVIDER", "ollama"),
             memory_api_base=os.getenv("MIRIX_API_URL", "http://mirix-backend:8000"),
             llm_api_base=os.getenv("OLLAMA_API_URL", "http://ollama:11434"),
-            llm_model_name=os.getenv("DEFAULT_LLM_MODEL", "qwen3:8b")
+            llm_model_name=os.getenv("DEFAULT_LLM_MODEL", "qwen3:8b"),
         )
         systems_cache[system_type] = system
         return system
     except Exception as e:
         logger.error(f"Failed to create system {system_type}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to create system: {e}")
+
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
@@ -203,6 +212,7 @@ async def root():
     </html>
     """
 
+
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
     """健康检查"""
@@ -220,7 +230,9 @@ async def health_check():
         ollama_url = os.getenv("OLLAMA_API_URL", "http://ollama:11434")
         async with httpx.AsyncClient() as client:
             response = await client.get(f"{ollama_url}/api/tags")
-            services["ollama"] = "healthy" if response.status_code == 200 else "unhealthy"
+            services["ollama"] = (
+                "healthy" if response.status_code == 200 else "unhealthy"
+            )
     except:
         services["ollama"] = "unhealthy"
 
@@ -233,15 +245,18 @@ async def health_check():
             "user_count": status.get("user_count", 0),
             "session_count": status.get("session_count", 0),
             "memory_system": status.get("memory_system", {}).get("system_type", "none"),
-            "llm_provider": status.get("llm_provider", {}).get("provider", "none")
+            "llm_provider": status.get("llm_provider", {}).get("provider", "none"),
         }
 
     return HealthResponse(
-        status="healthy" if all(s == "healthy" for s in services.values()) else "degraded",
+        status="healthy"
+        if all(s == "healthy" for s in services.values())
+        else "degraded",
         timestamp=datetime.now(),
         services=services,
-        system_info=system_info
+        system_info=system_info,
     )
+
 
 @app.post("/api/query", response_model=QueryResponse)
 async def process_query(request: QueryRequest):
@@ -252,9 +267,7 @@ async def process_query(request: QueryRequest):
 
         # 处理查询
         response = await system.process_query(
-            query=request.query,
-            user_id=request.user_id,
-            context=request.context or {}
+            query=request.query, user_id=request.user_id, context=request.context or {}
         )
 
         # 获取系统信息
@@ -267,15 +280,23 @@ async def process_query(request: QueryRequest):
             processing_metadata=response.processing_metadata,
             system_info={
                 "system_type": request.system_type or "default",
-                "processing_steps": response.processing_metadata.get("processing_steps", []),
+                "processing_steps": response.processing_metadata.get(
+                    "processing_steps", []
+                ),
                 "activated_memories_count": len(response.activated_memories),
-                "llm_generated": response.adaptation_info.metadata.get("llm_generated", False) if hasattr(response.adaptation_info, 'metadata') and response.adaptation_info.metadata else False
-            }
+                "llm_generated": response.adaptation_info.metadata.get(
+                    "llm_generated", False
+                )
+                if hasattr(response.adaptation_info, "metadata")
+                and response.adaptation_info.metadata
+                else False,
+            },
         )
 
     except Exception as e:
         logger.error(f"Query processing failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/api/system/create")
 async def create_new_system(request: SystemCreateRequest):
@@ -285,10 +306,14 @@ async def create_new_system(request: SystemCreateRequest):
         config_params = request.config or {}
 
         # 添加服务URL配置
-        config_params.update({
-            "memory_api_base": os.getenv("MIRIX_API_URL", "http://mirix-backend:8000"),
-            "llm_api_base": os.getenv("OLLAMA_API_URL", "http://ollama:11434")
-        })
+        config_params.update(
+            {
+                "memory_api_base": os.getenv(
+                    "MIRIX_API_URL", "http://mirix-backend:8000"
+                ),
+                "llm_api_base": os.getenv("OLLAMA_API_URL", "http://ollama:11434"),
+            }
+        )
 
         # 创建系统
         system = create_system(
@@ -296,11 +321,13 @@ async def create_new_system(request: SystemCreateRequest):
             memory_system_type=request.memory_system_type,
             llm_provider=request.llm_provider,
             embedding_provider=request.embedding_provider,
-            **config_params
+            **config_params,
         )
 
         # 缓存系统实例
-        cache_key = f"{request.system_type}_{request.memory_system_type}_{request.llm_provider}"
+        cache_key = (
+            f"{request.system_type}_{request.memory_system_type}_{request.llm_provider}"
+        )
         systems_cache[cache_key] = system
 
         return {
@@ -310,13 +337,14 @@ async def create_new_system(request: SystemCreateRequest):
                 "system_type": request.system_type,
                 "memory_system_type": request.memory_system_type,
                 "llm_provider": request.llm_provider,
-                "embedding_provider": request.embedding_provider
-            }
+                "embedding_provider": request.embedding_provider,
+            },
         }
 
     except Exception as e:
         logger.error(f"System creation failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/api/system/status")
 async def get_system_status(system_type: str = "default"):
@@ -327,6 +355,7 @@ async def get_system_status(system_type: str = "default"):
         return status
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/api/user/{user_id}/profile")
 async def get_user_profile(user_id: str, system_type: str = "default"):
@@ -341,6 +370,7 @@ async def get_user_profile(user_id: str, system_type: str = "default"):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/api/system/reset")
 async def reset_system_session(system_type: str = "default"):
     """重置系统会话"""
@@ -350,6 +380,7 @@ async def reset_system_session(system_type: str = "default"):
         return {"status": "session_reset", "system_type": system_type}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/api/info")
 async def get_api_info():
@@ -363,7 +394,7 @@ async def get_api_info():
             "memory_systems": ["mirix", "mem0", "graphiti"],
             "llm_providers": ["ollama", "openai", "anthropic"],
             "real_time_processing": True,
-            "user_personalization": True
+            "user_personalization": True,
         },
         "endpoints": {
             "query": "/api/query",
@@ -371,9 +402,10 @@ async def get_api_info():
             "system_status": "/api/system/status",
             "user_profile": "/api/user/{user_id}/profile",
             "health": "/health",
-            "docs": "/docs"
-        }
+            "docs": "/docs",
+        },
     }
+
 
 if __name__ == "__main__":
     # 获取配置
@@ -382,10 +414,4 @@ if __name__ == "__main__":
     log_level = os.getenv("LOG_LEVEL", "info")
 
     # 启动服务
-    uvicorn.run(
-        "app:app",
-        host=host,
-        port=port,
-        log_level=log_level,
-        reload=False
-    )
+    uvicorn.run("app:app", host=host, port=port, log_level=log_level, reload=False)

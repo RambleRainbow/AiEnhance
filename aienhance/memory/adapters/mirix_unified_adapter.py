@@ -27,16 +27,18 @@ logger = logging.getLogger(__name__)
 class MirixUnifiedAdapter(MemorySystem):
     """
     MIRIX统一适配器
-    
+
     支持两种模式：
     1. 标准模式：使用MIRIX默认的大模型配置
     2. 统一模式：使用项目的LLM抽象层（推荐）
     """
 
-    def __init__(self, config: MemorySystemConfig, llm_provider: LLMProvider | None = None):
+    def __init__(
+        self, config: MemorySystemConfig, llm_provider: LLMProvider | None = None
+    ):
         """
         初始化MIRIX统一适配器
-        
+
         Args:
             config: 记忆系统配置
             llm_provider: 可选的LLM提供商，如果提供则使用统一模式
@@ -54,7 +56,7 @@ class MirixUnifiedAdapter(MemorySystem):
             MemoryType.SEMANTIC: "semantic_memory",
             MemoryType.PROCEDURAL: "procedural_memory",
             MemoryType.RESOURCE: "resource_memory",
-            MemoryType.KNOWLEDGE: "knowledge_vault"
+            MemoryType.KNOWLEDGE: "knowledge_vault",
         }
 
     async def initialize(self) -> bool:
@@ -92,10 +94,10 @@ class MirixUnifiedAdapter(MemorySystem):
     async def _initialize_unified_mode(self, Mirix) -> bool:
         """
         初始化统一模式
-        
+
         Args:
             Mirix: MIRIX SDK类
-            
+
         Returns:
             bool: 初始化是否成功
         """
@@ -119,7 +121,9 @@ class MirixUnifiedAdapter(MemorySystem):
             # 初始化MIRIX SDK
             self._mirix = Mirix(**init_params)
 
-            logger.info(f"统一模式初始化成功，使用LLM: {self._llm_provider.config.provider}/{self._llm_provider.config.model_name}")
+            logger.info(
+                f"统一模式初始化成功，使用LLM: {self._llm_provider.config.provider}/{self._llm_provider.config.model_name}"
+            )
             return True
 
         except Exception as e:
@@ -129,10 +133,10 @@ class MirixUnifiedAdapter(MemorySystem):
     async def _initialize_standard_mode(self, Mirix) -> bool:
         """
         初始化标准模式
-        
+
         Args:
             Mirix: MIRIX SDK类
-            
+
         Returns:
             bool: 初始化是否成功
         """
@@ -158,8 +162,7 @@ class MirixUnifiedAdapter(MemorySystem):
         try:
             # 发送一个测试记忆
             test_response = await asyncio.to_thread(
-                self._mirix.add,
-                "AiEnhance MIRIX connection test"
+                self._mirix.add, "AiEnhance MIRIX connection test"
             )
             logger.debug(f"MIRIX连接测试成功: {test_response}")
         except Exception as e:
@@ -175,10 +178,7 @@ class MirixUnifiedAdapter(MemorySystem):
             memory_message = self._build_memory_message(memory)
 
             # 使用MIRIX SDK添加记忆
-            response = await asyncio.to_thread(
-                self._mirix.add,
-                memory_message
-            )
+            response = await asyncio.to_thread(self._mirix.add, memory_message)
 
             # 生成记忆ID
             memory_id = self._generate_memory_id(memory, response)
@@ -202,10 +202,7 @@ class MirixUnifiedAdapter(MemorySystem):
             search_query = self._build_search_query(query)
 
             # 使用MIRIX SDK进行聊天搜索
-            response = await asyncio.to_thread(
-                self._mirix.chat,
-                search_query
-            )
+            response = await asyncio.to_thread(self._mirix.chat, search_query)
 
             query_time = (datetime.datetime.now() - start_time).total_seconds()
 
@@ -216,24 +213,27 @@ class MirixUnifiedAdapter(MemorySystem):
             filtered_memories = self._apply_filters(memories, query)
 
             return MemoryResult(
-                memories=filtered_memories[:query.limit],
+                memories=filtered_memories[: query.limit],
                 total_count=len(filtered_memories),
                 query_time=query_time,
                 metadata={
                     "system": "mirix_unified",
                     "mode": "unified" if self._use_unified_llm else "standard",
-                    "llm_provider": self._llm_provider.config.provider if self._llm_provider else "mirix_default",
+                    "llm_provider": self._llm_provider.config.provider
+                    if self._llm_provider
+                    else "mirix_default",
                     "original_response": str(response),
-                    "search_query": search_query
-                }
+                    "search_query": search_query,
+                },
             )
 
         except Exception as e:
             logger.error(f"搜索MIRIX记忆失败: {e}")
             raise
 
-    async def chat_with_memory(self, message: str, user_context: UserContext,
-                             save_interaction: bool = True) -> str:
+    async def chat_with_memory(
+        self, message: str, user_context: UserContext, save_interaction: bool = True
+    ) -> str:
         """使用MIRIX的对话功能"""
         if not self.is_initialized:
             raise RuntimeError("MIRIX适配器未初始化")
@@ -243,10 +243,7 @@ class MirixUnifiedAdapter(MemorySystem):
             contextual_message = self._build_contextual_message(message, user_context)
 
             # 使用MIRIX SDK进行对话
-            response = await asyncio.to_thread(
-                self._mirix.chat,
-                contextual_message
-            )
+            response = await asyncio.to_thread(self._mirix.chat, contextual_message)
 
             if save_interaction:
                 # 保存交互记忆
@@ -259,8 +256,8 @@ class MirixUnifiedAdapter(MemorySystem):
                         "interaction_type": "chat",
                         "user_message": message,
                         "ai_response": str(response),
-                        "llm_mode": "unified" if self._use_unified_llm else "standard"
-                    }
+                        "llm_mode": "unified" if self._use_unified_llm else "standard",
+                    },
                 )
                 await self.add_memory(interaction_memory)
 
@@ -284,21 +281,21 @@ class MirixUnifiedAdapter(MemorySystem):
                 "real_time": True,
                 "sdk_based": True,
                 "cloud_api": True,
-                "unified_llm": self._use_unified_llm
-            }
+                "unified_llm": self._use_unified_llm,
+            },
         }
 
         if self._use_unified_llm and self._llm_provider:
             info["llm_provider"] = {
                 "provider": self._llm_provider.config.provider,
                 "model": self._llm_provider.config.model_name,
-                "initialized": self._llm_provider.is_initialized
+                "initialized": self._llm_provider.is_initialized,
             }
         else:
             info["llm_provider"] = {
                 "provider": "mirix_default",
                 "model": "gemini-2.0-flash",
-                "initialized": self.is_initialized
+                "initialized": self.is_initialized,
             }
 
         return info
@@ -314,12 +311,12 @@ class MirixUnifiedAdapter(MemorySystem):
         logger.info("MIRIX统一适配器已清理")
 
     # 继承原有的辅助方法
-    async def get_memory(self, memory_id: str, user_context: UserContext) -> MemoryEntry | None:
+    async def get_memory(
+        self, memory_id: str, user_context: UserContext
+    ) -> MemoryEntry | None:
         """获取特定记忆"""
         query = MemoryQuery(
-            query=f"记忆ID: {memory_id}",
-            user_context=user_context,
-            limit=1
+            query=f"记忆ID: {memory_id}", user_context=user_context, limit=1
         )
 
         result = await self.search_memories(query)
@@ -339,20 +336,25 @@ class MirixUnifiedAdapter(MemorySystem):
         logger.warning("MIRIX不支持删除记忆操作")
         return True
 
-    async def get_user_memories(self, user_context: UserContext,
-                              memory_types: list[MemoryType] | None = None,
-                              limit: int = 100) -> MemoryResult:
+    async def get_user_memories(
+        self,
+        user_context: UserContext,
+        memory_types: list[MemoryType] | None = None,
+        limit: int = 100,
+    ) -> MemoryResult:
         """获取用户的所有记忆"""
         type_filter = ""
         if memory_types:
-            type_names = [self._memory_type_mapping.get(mt, mt.value) for mt in memory_types]
+            type_names = [
+                self._memory_type_mapping.get(mt, mt.value) for mt in memory_types
+            ]
             type_filter = f" 记忆类型: {', '.join(type_names)}"
 
         query = MemoryQuery(
             query=f"用户 {user_context.user_id} 的所有记忆{type_filter}",
             user_context=user_context,
             memory_types=memory_types,
-            limit=limit
+            limit=limit,
         )
 
         return await self.search_memories(query)
@@ -368,7 +370,9 @@ class MirixUnifiedAdapter(MemorySystem):
         message_parts = [memory.content]
 
         # 添加记忆类型标识
-        mirix_type = self._memory_type_mapping.get(memory.memory_type, "episodic_memory")
+        mirix_type = self._memory_type_mapping.get(
+            memory.memory_type, "episodic_memory"
+        )
         message_parts.append(f"[记忆类型: {mirix_type}]")
 
         # 添加用户上下文
@@ -396,13 +400,17 @@ class MirixUnifiedAdapter(MemorySystem):
 
         # 添加记忆类型过滤
         if query.memory_types:
-            type_names = [self._memory_type_mapping.get(mt, mt.value) for mt in query.memory_types]
+            type_names = [
+                self._memory_type_mapping.get(mt, mt.value) for mt in query.memory_types
+            ]
             search_parts.append(f"记忆类型: {', '.join(type_names)}")
 
         # 添加时间范围过滤
         if query.time_range:
             start_time, end_time = query.time_range
-            search_parts.append(f"时间范围: {start_time.isoformat()} 到 {end_time.isoformat()}")
+            search_parts.append(
+                f"时间范围: {start_time.isoformat()} 到 {end_time.isoformat()}"
+            )
 
         return " | ".join(search_parts)
 
@@ -439,14 +447,16 @@ class MirixUnifiedAdapter(MemorySystem):
                 "source": "mirix_unified_search",
                 "query": query.query,
                 "mode": "unified" if self._use_unified_llm else "standard",
-                "response_type": "chat_based_search"
-            }
+                "response_type": "chat_based_search",
+            },
         )
         memories.append(memory)
 
         return memories
 
-    def _apply_filters(self, memories: list[MemoryEntry], query: MemoryQuery) -> list[MemoryEntry]:
+    def _apply_filters(
+        self, memories: list[MemoryEntry], query: MemoryQuery
+    ) -> list[MemoryEntry]:
         """应用查询过滤器"""
         filtered = memories
 
@@ -465,8 +475,9 @@ class MirixUnifiedAdapter(MemorySystem):
         # 元数据过滤
         if query.metadata_filters:
             for key, value in query.metadata_filters.items():
-                filtered = [m for m in filtered
-                          if m.metadata and m.metadata.get(key) == value]
+                filtered = [
+                    m for m in filtered if m.metadata and m.metadata.get(key) == value
+                ]
 
         return filtered
 

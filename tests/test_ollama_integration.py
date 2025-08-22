@@ -22,12 +22,15 @@ async def test_ollama_integration():
     # 1. 检查Ollama服务
     print("1️⃣ 检查Ollama服务状态...")
     import httpx
+
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get("http://localhost:11434/api/tags", timeout=5.0)
             if response.status_code == 200:
                 models_data = response.json()
-                available_models = [model['name'] for model in models_data.get('models', [])]
+                available_models = [
+                    model["name"] for model in models_data.get("models", [])
+                ]
                 print(f"   ✅ Ollama服务正常，可用模型: {', '.join(available_models)}")
 
                 # 检查必需模型
@@ -54,7 +57,7 @@ async def test_ollama_integration():
             llm_model_name="qwen3:8b",
             llm_api_base="http://localhost:11434",
             llm_temperature=0.7,
-            llm_max_tokens=500
+            llm_max_tokens=500,
         )
         print("   ✅ 系统创建成功")
 
@@ -68,20 +71,14 @@ async def test_ollama_integration():
 
     # 3. 测试基础查询
     print("\n3️⃣ 测试基础查询功能...")
-    test_queries = [
-        "你好",
-        "什么是人工智能？",
-        "请用一句话解释机器学习"
-    ]
+    test_queries = ["你好", "什么是人工智能？", "请用一句话解释机器学习"]
 
     successful_tests = 0
     for i, query in enumerate(test_queries, 1):
         print(f"\n   测试 {i}: {query}")
         try:
             response = await system.process_query(
-                query=query,
-                user_id="test_user",
-                context={"test_number": i}
+                query=query, user_id="test_user", context={"test_number": i}
             )
 
             if response.content:
@@ -90,15 +87,17 @@ async def test_ollama_integration():
                 successful_tests += 1
 
                 # 显示处理信息
-                if hasattr(response, 'processing_metadata'):
+                if hasattr(response, "processing_metadata"):
                     metadata = response.processing_metadata
-                    steps = ' → '.join(metadata.get('processing_steps', []))
+                    steps = " → ".join(metadata.get("processing_steps", []))
                     print(f"      处理步骤: {steps}")
 
                 # 显示适配信息
-                if hasattr(response, 'adaptation_info'):
+                if hasattr(response, "adaptation_info"):
                     adapt = response.adaptation_info
-                    print(f"      适配参数: {adapt.density_level.value}密度, 负荷={adapt.cognitive_load:.2f}")
+                    print(
+                        f"      适配参数: {adapt.density_level.value}密度, 负荷={adapt.cognitive_load:.2f}"
+                    )
 
             else:
                 print("   ⚠️ 无内容生成")
@@ -133,8 +132,8 @@ async def test_system_configurations():
                 "system_type": "default",
                 "llm_provider": "ollama",
                 "llm_model_name": "qwen3:8b",
-                "llm_temperature": 0.5
-            }
+                "llm_temperature": 0.5,
+            },
         },
         {
             "name": "教育系统",
@@ -142,8 +141,8 @@ async def test_system_configurations():
                 "system_type": "educational",
                 "llm_provider": "ollama",
                 "llm_model_name": "qwen3:8b",
-                "llm_temperature": 0.3
-            }
+                "llm_temperature": 0.3,
+            },
         },
         {
             "name": "研究系统",
@@ -151,9 +150,9 @@ async def test_system_configurations():
                 "system_type": "research",
                 "llm_provider": "ollama",
                 "llm_model_name": "qwen3:8b",
-                "llm_temperature": 0.8
-            }
-        }
+                "llm_temperature": 0.8,
+            },
+        },
     ]
 
     test_query = "请解释深度学习"
@@ -162,17 +161,16 @@ async def test_system_configurations():
     for config_info in configurations:
         print(f"\n🧪 测试 {config_info['name']}")
         try:
-            system = aienhance.create_system(**config_info['config'])
+            system = aienhance.create_system(**config_info["config"])
             response = await system.process_query(
-                query=test_query,
-                user_id="config_test_user"
+                query=test_query, user_id="config_test_user"
             )
 
             if response.content:
                 print("   ✅ 配置工作正常")
                 print(f"   📏 响应长度: {len(response.content)}字符")
 
-                if hasattr(response, 'adaptation_info'):
+                if hasattr(response, "adaptation_info"):
                     adapt = response.adaptation_info
                     print(f"   ⚙️ 适配: {adapt.density_level.value}密度")
 
@@ -219,6 +217,7 @@ async def main():
     except Exception as e:
         print(f"\n❌ 测试过程出现错误: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
