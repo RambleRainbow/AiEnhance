@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class MirixLLMBridge:
     """
     MIRIX LLM桥接器
-    
+
     将项目的LLM提供商适配到MIRIX使用的配置格式
     实现非侵入式集成，让MIRIX使用项目统一的LLM抽象
     """
@@ -26,7 +26,7 @@ class MirixLLMBridge:
     def __init__(self, llm_provider: LLMProvider):
         """
         初始化LLM桥接器
-        
+
         Args:
             llm_provider: 项目中的LLM提供商实例
         """
@@ -36,10 +36,10 @@ class MirixLLMBridge:
     def create_mirix_config(self, agent_name: str = "aienhance_mirix") -> str:
         """
         为MIRIX创建兼容的配置文件
-        
+
         Args:
             agent_name: MIRIX智能体名称
-            
+
         Returns:
             str: 临时配置文件路径
         """
@@ -47,10 +47,7 @@ class MirixLLMBridge:
 
         # 创建临时配置文件
         temp_file = tempfile.NamedTemporaryFile(
-            mode='w',
-            suffix='.yaml',
-            delete=False,
-            encoding='utf-8'
+            mode="w", suffix=".yaml", delete=False, encoding="utf-8"
         )
 
         yaml.dump(config, temp_file, default_flow_style=False, allow_unicode=True)
@@ -65,10 +62,10 @@ class MirixLLMBridge:
     def _generate_mirix_config(self, agent_name: str) -> dict[str, Any]:
         """
         生成MIRIX兼容的配置
-        
+
         Args:
             agent_name: 智能体名称
-            
+
         Returns:
             Dict: MIRIX配置字典
         """
@@ -76,10 +73,7 @@ class MirixLLMBridge:
         provider = llm_config.provider.lower()
 
         # 基础配置
-        config = {
-            "agent_name": agent_name,
-            "model_name": llm_config.model_name
-        }
+        config = {"agent_name": agent_name, "model_name": llm_config.model_name}
 
         # 根据提供商类型适配配置
         if provider == "ollama":
@@ -94,9 +88,13 @@ class MirixLLMBridge:
 
         # 生成配置
         if llm_config.temperature is not None:
-            config.setdefault("generation_config", {})["temperature"] = llm_config.temperature
+            config.setdefault("generation_config", {})["temperature"] = (
+                llm_config.temperature
+            )
         if llm_config.max_tokens is not None:
-            config.setdefault("generation_config", {})["max_tokens"] = llm_config.max_tokens
+            config.setdefault("generation_config", {})["max_tokens"] = (
+                llm_config.max_tokens
+            )
 
         return config
 
@@ -177,7 +175,7 @@ class MirixLLMBridge:
     def get_mirix_model_provider(self) -> str:
         """
         获取MIRIX兼容的模型提供商名称
-        
+
         Returns:
             str: MIRIX格式的提供商名称
         """
@@ -186,7 +184,7 @@ class MirixLLMBridge:
             "openai": "openai",
             "anthropic": "anthropic",
             "google_ai": "google_ai",
-            "azure": "azure_openai"
+            "azure": "azure_openai",
         }
 
         provider = self.llm_provider.config.provider.lower()
@@ -195,20 +193,28 @@ class MirixLLMBridge:
     def get_initialization_params(self) -> dict[str, Any]:
         """
         获取MIRIX SDK初始化参数
-        
+
         Returns:
             Dict: 初始化参数字典
         """
         llm_config = self.llm_provider.config
+        provider = llm_config.provider.lower()
 
         params = {
             "model_provider": self.get_mirix_model_provider(),
-            "model": llm_config.model_name
+            "model": llm_config.model_name,
         }
 
-        # 添加API密钥
-        if llm_config.api_key:
+        # 根据提供商类型决定是否需要API密钥
+        if provider == "ollama":
+            # Ollama通常不需要API密钥，使用占位符或空字符串
+            params["api_key"] = "ollama_local_placeholder"
+        elif llm_config.api_key:
+            # 其他提供商使用实际API密钥
             params["api_key"] = llm_config.api_key
+        else:
+            # 对于需要API密钥但未提供的情况，使用占位符
+            params["api_key"] = "not_required_for_local_llm"
 
         # 添加配置文件路径
         if self.temp_config_path:
@@ -235,10 +241,10 @@ class MirixLLMBridge:
 def create_mirix_bridge(llm_provider: LLMProvider) -> MirixLLMBridge:
     """
     创建MIRIX LLM桥接器的便捷函数
-    
+
     Args:
         llm_provider: LLM提供商实例
-        
+
     Returns:
         MirixLLMBridge: 桥接器实例
     """
