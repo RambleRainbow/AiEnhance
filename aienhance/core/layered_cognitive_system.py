@@ -100,6 +100,7 @@ class LayeredCognitiveSystem(ICognitiveLayers):
             self.perception_layer = PerceptionLayer(
                 config=self.config.get("perception", {}),
                 memory_system=self.memory_system,
+                llm_provider=self.llm_provider,
             )
             perception_success = await self.perception_layer.initialize()
             self.layers_initialized["perception"] = perception_success

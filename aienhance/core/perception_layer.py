@@ -25,7 +25,10 @@ class PerceptionLayer(IPerceptionLayer):
     """感知层具体实现"""
 
     def __init__(
-        self, config: dict[str, Any] | None = None, memory_system: Any | None = None
+        self,
+        config: dict[str, Any] | None = None,
+        memory_system: Any | None = None,
+        llm_provider: Any | None = None,
     ):
         """
         初始化感知层
@@ -33,9 +36,11 @@ class PerceptionLayer(IPerceptionLayer):
         Args:
             config: 感知层配置
             memory_system: 记忆系统（用于获取用户历史数据）
+            llm_provider: LLM提供商（用于语义分析）
         """
         self.config = config or {}
         self.memory_system = memory_system
+        self.llm_provider = llm_provider
         self.is_initialized = False
 
         # 核心组件
@@ -51,9 +56,17 @@ class PerceptionLayer(IPerceptionLayer):
         try:
             logger.info("Initializing Perception Layer...")
 
-            # 初始化用户建模器
-            self.user_modeler = DynamicUserModeler()
-            logger.info("User modeler initialized")
+            # 初始化用户建模器（支持LLM语义分析）
+            modeler_type = "semantic"  # Always use semantic modeling
+            self.user_modeler = DynamicUserModeler(
+                llm_provider=self.llm_provider,
+                modeler_type=modeler_type,
+            )
+            logger.info(
+                "User modeler initialized with LLM support"
+                if self.llm_provider
+                else "User modeler initialized"
+            )
 
             # 初始化情境分析器
             self.context_analyzer = IntegratedContextAnalyzer()
@@ -228,7 +241,7 @@ class PerceptionLayer(IPerceptionLayer):
                     except Exception as e:
                         logger.warning(f"Failed to get user memories: {e}")
 
-                new_profile = self.user_modeler.create_user_profile(
+                new_profile = await self.user_modeler.create_user_profile(
                     user_id, initial_data
                 )
 
@@ -501,7 +514,7 @@ class PerceptionLayer(IPerceptionLayer):
             if not self.user_modeler:
                 return False
 
-            self.user_modeler.update_user_profile(user_id, interaction_data)
+            await self.user_modeler.update_user_profile(user_id, interaction_data)
             logger.info(f"Updated user profile for: {user_id}")
             return True
 
