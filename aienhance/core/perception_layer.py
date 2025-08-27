@@ -309,16 +309,16 @@ class PerceptionLayer(IPerceptionLayer):
             # 转换为接口格式
             return ContextProfile(
                 task_type=context_result.task_characteristics.task_type.value,
-                complexity_level=context_result.task_characteristics.complexity_level,
+                complexity_level=context_result.contextual_elements.complexity_level,
                 domain_characteristics={
-                    "primary_domain": context_result.domain_characteristics.primary_domain,
-                    "secondary_domains": context_result.domain_characteristics.secondary_domains,
-                    "interdisciplinary_score": context_result.domain_characteristics.interdisciplinary_score,
+                    "primary_domain": context_result.contextual_elements.domain_scope[0] if context_result.contextual_elements.domain_scope else "general",
+                    "secondary_domains": context_result.contextual_elements.domain_scope[1:] if len(context_result.contextual_elements.domain_scope) > 1 else [],
+                    "interdisciplinary_score": context_result.task_characteristics.cross_domain_level,
                 },
                 environmental_factors={
-                    "urgency_level": context_result.environmental_factors.urgency_level,
-                    "resource_constraints": context_result.environmental_factors.resource_constraints,
-                    "social_context": context_result.environmental_factors.social_context,
+                    "urgency_level": context_result.contextual_elements.urgency_level,
+                    "resource_constraints": {"time": 1.0, "resources": 1.0},  # Default values
+                    "social_context": {"collaboration_level": 0.0},  # Default values
                 },
             )
 

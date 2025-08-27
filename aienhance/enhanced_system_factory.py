@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 def create_layered_system(
     system_type: str = "educational",
-    memory_system_type: str = "mirix_unified",
+    memory_system_type: str = "graphiti",
     llm_provider: str = "ollama",
     llm_model_name: str = "qwen3:8b",
     llm_api_key: str | None = None,
@@ -91,7 +91,7 @@ def create_educational_layered_system(
     """
 
     return LayeredSystemFactory.create_educational_layered_system(
-        memory_config=MemorySystemConfig(system_type="mirix_unified"),
+        memory_config=MemorySystemConfig(system_type="graphiti"),
         llm_config=ModelConfig(
             provider="ollama",
             model_name=model_name,
@@ -122,7 +122,7 @@ def create_research_layered_system(
     """
 
     return LayeredSystemFactory.create_research_layered_system(
-        memory_config=MemorySystemConfig(system_type="mirix_unified"),
+        memory_config=MemorySystemConfig(system_type="graphiti"),
         llm_config=ModelConfig(
             provider="ollama",
             model_name=model_name,
@@ -153,7 +153,7 @@ def create_creative_layered_system(
     """
 
     return LayeredSystemFactory.create_creative_layered_system(
-        memory_config=MemorySystemConfig(system_type="mirix_unified"),
+        memory_config=MemorySystemConfig(system_type="graphiti"),
         llm_config=ModelConfig(
             provider="ollama",
             model_name=model_name,
@@ -223,7 +223,7 @@ def get_system_info() -> dict[str, Any]:
             "layered_architecture": True,
             "recommended_architecture": "layered",
         },
-        "supported_memory_systems": ["mirix_unified", "mem0", "graphiti"],
+        "supported_memory_systems": ["graphiti", "mem0"],
         "supported_llm_providers": ["ollama", "openai", "anthropic", "azure"],
         "available_system_types": LayeredSystemFactory.get_available_system_types(),
         "features": {

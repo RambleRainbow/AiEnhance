@@ -1,6 +1,6 @@
 """
-Graphiti记忆系统适配器
-将Graphiti知识图谱记忆系统适配到统一接口
+Graphiti原生客户端适配器
+专门用于通过原生Python客户端直接访问Graphiti
 """
 
 import datetime
@@ -20,12 +20,12 @@ from ..interfaces import (
 logger = logging.getLogger(__name__)
 
 
-class GraphitiAdapter(MemorySystem):
+class GraphitiNativeAdapter(MemorySystem):
     """
-    Graphiti记忆系统适配器
-
-    适配Graphiti的时序感知知识图谱记忆系统
-    支持实体关系、时间查询、混合搜索等高级功能
+    Graphiti原生客户端适配器
+    
+    专门用于通过原生Python客户端直接访问Graphiti
+    适用于本地开发和直接数据库访问场景
     """
 
     def __init__(self, config: MemorySystemConfig):
@@ -33,13 +33,14 @@ class GraphitiAdapter(MemorySystem):
         self._graphiti_client = None
 
     async def initialize(self) -> bool:
-        """初始化Graphiti系统"""
+        """初始化原生Graphiti客户端"""
         try:
             # 尝试导入Graphiti
             try:
                 from graphiti import Graphiti
             except ImportError as e:
                 logger.error(f"Graphiti未安装或导入失败: {e}")
+                logger.info("请安装Graphiti: pip install graphiti")
                 return False
 
             # 初始化Graphiti客户端
@@ -59,17 +60,17 @@ class GraphitiAdapter(MemorySystem):
             await self._graphiti_client.build_indices_and_constraints()
 
             self.is_initialized = True
-            logger.info("Graphiti系统初始化成功")
+            logger.info("成功初始化原生Graphiti客户端")
             return True
 
         except Exception as e:
-            logger.error(f"Graphiti初始化异常: {e}")
+            logger.error(f"原生客户端初始化失败: {e}")
             return False
 
     async def add_memory(self, memory: MemoryEntry) -> str:
         """添加记忆到Graphiti系统"""
         if not self.is_initialized:
-            raise RuntimeError("Graphiti系统未初始化")
+            raise RuntimeError("Graphiti原生适配器未初始化")
 
         try:
             # 构建Graphiti格式的数据
@@ -95,7 +96,7 @@ class GraphitiAdapter(MemorySystem):
             if memory.relationships:
                 episode_data["relationships"] = memory.relationships
 
-            # 调用Graphiti的add_episode方法
+            # 原生客户端模式
             result = await self._graphiti_client.add_episode(episode_data)
 
             # 提取记忆ID
@@ -111,7 +112,7 @@ class GraphitiAdapter(MemorySystem):
     async def search_memories(self, query: MemoryQuery) -> MemoryResult:
         """搜索Graphiti记忆"""
         if not self.is_initialized:
-            raise RuntimeError("Graphiti系统未初始化")
+            raise RuntimeError("Graphiti原生适配器未初始化")
 
         try:
             start_time = datetime.datetime.now()
@@ -153,7 +154,7 @@ class GraphitiAdapter(MemorySystem):
                 total_count=len(filtered_memories),
                 query_time=query_time,
                 metadata={
-                    "system": "graphiti",
+                    "system": "graphiti_native",
                     "search_type": "hybrid",
                     "original_results": search_results,
                 },
@@ -168,7 +169,7 @@ class GraphitiAdapter(MemorySystem):
     ) -> MemoryEntry | None:
         """获取特定记忆"""
         if not self.is_initialized:
-            raise RuntimeError("Graphiti系统未初始化")
+            raise RuntimeError("Graphiti原生适配器未初始化")
 
         try:
             # Graphiti通过节点ID获取记忆
@@ -188,7 +189,7 @@ class GraphitiAdapter(MemorySystem):
     async def update_memory(self, memory_id: str, memory: MemoryEntry) -> bool:
         """更新记忆"""
         if not self.is_initialized:
-            raise RuntimeError("Graphiti系统未初始化")
+            raise RuntimeError("Graphiti原生适配器未初始化")
 
         try:
             # Graphiti支持节点更新
@@ -216,7 +217,7 @@ class GraphitiAdapter(MemorySystem):
     async def delete_memory(self, memory_id: str, user_context: UserContext) -> bool:
         """删除记忆"""
         if not self.is_initialized:
-            raise RuntimeError("Graphiti系统未初始化")
+            raise RuntimeError("Graphiti原生适配器未初始化")
 
         try:
             result = await self._graphiti_client.delete_node(
@@ -237,7 +238,7 @@ class GraphitiAdapter(MemorySystem):
     ) -> MemoryResult:
         """获取用户的所有记忆"""
         if not self.is_initialized:
-            raise RuntimeError("Graphiti系统未初始化")
+            raise RuntimeError("Graphiti原生适配器未初始化")
 
         try:
             # 构建Cypher查询获取用户所有记忆
@@ -273,7 +274,7 @@ class GraphitiAdapter(MemorySystem):
                 memories=memories,
                 total_count=len(memories),
                 query_time=0.0,
-                metadata={"system": "graphiti", "method": "cypher_query"},
+                metadata={"system": "graphiti_native", "method": "cypher_query"},
             )
 
         except Exception as e:
@@ -283,7 +284,7 @@ class GraphitiAdapter(MemorySystem):
     async def clear_user_memories(self, user_context: UserContext) -> bool:
         """清除用户记忆"""
         if not self.is_initialized:
-            raise RuntimeError("Graphiti系统未初始化")
+            raise RuntimeError("Graphiti原生适配器未初始化")
 
         try:
             # 使用Cypher查询删除用户所有记忆
@@ -306,12 +307,21 @@ class GraphitiAdapter(MemorySystem):
             logger.error(f"清除用户记忆失败: {e}")
             return False
 
+    async def cleanup(self):
+        """清理资源"""
+        self._graphiti_client = None
+        self.is_initialized = False
+        logger.info("GraphitiNativeAdapter资源已清理")
+
     # Graphiti特有的高级功能
 
     async def get_entity_timeline(
         self, entity_name: str, user_context: UserContext
     ) -> list[MemoryEntry]:
         """获取实体的时间线记忆"""
+        if not self.is_initialized:
+            return []
+
         try:
             timeline_data = await self._graphiti_client.get_entity_timeline(
                 entity_name=entity_name, user_id=user_context.user_id
@@ -332,6 +342,9 @@ class GraphitiAdapter(MemorySystem):
         self, query: str, user_context: UserContext
     ) -> dict[str, Any]:
         """查询实体关系"""
+        if not self.is_initialized:
+            return {}
+
         try:
             relationships = await self._graphiti_client.query_relationships(
                 query=query, user_id=user_context.user_id
@@ -347,17 +360,19 @@ class GraphitiAdapter(MemorySystem):
             logger.error(f"查询关系失败: {e}")
             return {}
 
+    # 辅助方法
+
     def _extract_memory_id_from_result(self, result) -> str:
         """从Graphiti结果中提取记忆ID"""
         if isinstance(result, dict):
             return result.get(
                 "node_id",
-                result.get("id", f"graphiti_{datetime.datetime.now().isoformat()}"),
+                result.get("id", f"graphiti_native_{datetime.datetime.now().isoformat()}"),
             )
         elif hasattr(result, "id"):
             return str(result.id)
         else:
-            return f"graphiti_{datetime.datetime.now().isoformat()}_{hash(str(result)) % 10000}"
+            return f"graphiti_native_{datetime.datetime.now().isoformat()}_{hash(str(result)) % 10000}"
 
     def _convert_search_results_to_memories(
         self, results, query: MemoryQuery
@@ -385,9 +400,9 @@ class GraphitiAdapter(MemorySystem):
                 content = graphiti_result.get(
                     "content", graphiti_result.get("text", str(graphiti_result))
                 )
-                confidence = graphiti_result.get(
+                confidence = float(graphiti_result.get(
                     "score", graphiti_result.get("similarity", 1.0)
-                )
+                ))
                 metadata = graphiti_result.get("metadata", {})
 
                 # 解析时间戳
@@ -456,7 +471,7 @@ class GraphitiAdapter(MemorySystem):
         if query.memory_types:
             filtered = [m for m in filtered if m.memory_type in query.memory_types]
 
-        # 时间范围过滤 (Graphiti已在查询时处理，这里是额外保险)
+        # 时间范围过滤
         if query.time_range:
             start_time, end_time = query.time_range
             filtered = [m for m in filtered if start_time <= m.timestamp <= end_time]
@@ -467,7 +482,7 @@ class GraphitiAdapter(MemorySystem):
         return filtered
 
 
-# 注册Graphiti适配器
+# 注册Graphiti原生适配器
 from ..interfaces import MemorySystemFactory
 
-MemorySystemFactory.register_adapter("graphiti", GraphitiAdapter)
+MemorySystemFactory.register_adapter("graphiti_native", GraphitiNativeAdapter)

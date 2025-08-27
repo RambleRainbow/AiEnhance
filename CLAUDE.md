@@ -67,6 +67,27 @@ ollama pull qwen3:8b  # Main model
 ollama pull bge-m3:latest  # Embedding model
 ```
 
+### Graphiti Memory System Setup (Required for Memory Features)
+```bash
+# Navigate to your Graphiti project directory
+cd /Users/hongling/Dev/claude/graphiti
+
+# Start Graphiti services (Neo4j + Graphiti API)
+docker-compose up -d
+
+# Verify services are running
+curl http://localhost:8000/healthcheck  # Should return HTTP 200
+```
+
+**Graphiti Service Details:**
+- **API Service**: http://localhost:8000 (Graphiti REST API)
+- **Neo4j Database**: bolt://localhost:7687 (Graph database)
+- **Neo4j Browser**: http://localhost:7474 (Database management UI)
+
+**Default Credentials:**
+- Neo4j Username: `neo4j`
+- Neo4j Password: `neo4j_passwd`
+
 ## Architecture Overview
 
 This is a **Layered Cognitive System** that implements memory-cognitive synergy beyond traditional RAG approaches.
@@ -107,14 +128,14 @@ This is a **Layered Cognitive System** that implements memory-cognitive synergy 
 
 ### Memory System Integration
 
-**MIRIX Integration** (Recommended):
-- `mirix_unified_adapter.py`: Uses project's LLM abstraction (no separate API key needed)
-- Unified LLM mode: Single model serves both chat and memory functions
-- Automatic fallback to no-memory mode if MIRIX unavailable
+**Graphiti Integration** (Default):
+- `graphiti_adapter.py`: Neo4j-based temporal knowledge graph memory system
+- Supports both HTTP API and native client modes
+- Automatic temporal relationship tracking and hybrid search capabilities
+- External Docker service architecture for better resource isolation
 
 **Alternative Memory Systems:**
-- `mem0_adapter.py`: Mem0 integration
-- `graphiti_adapter.py`: Graphiti integration
+- `mem0_adapter.py`: Mem0 integration (lightweight alternative)
 
 ### LLM Provider Support
 
@@ -164,7 +185,11 @@ response = await system.process_through_layers(query, user_id, context)
 ```
 
 ### Memory Integration Pattern
-The system uses a **unified LLM approach** where the same LLM serves both chat and memory functions, eliminating the need for separate Google API keys for MIRIX.
+The system uses **Graphiti** as the primary memory system, which provides:
+- Neo4j graph database for persistent storage
+- Temporal awareness with automatic timestamping
+- Entity relationship tracking across conversations
+- Hybrid search combining semantic similarity and graph traversal
 
 ### Error Handling & Graceful Degradation
 - Memory system failures → Continue without memory
@@ -185,7 +210,7 @@ The project uses environment variables for all configuration. Key variables incl
 
 **System Configuration:**
 - `DEFAULT_SYSTEM_TYPE`: System type (default: "educational")
-- `DEFAULT_MEMORY_SYSTEM`: Memory system (default: "mirix_unified")
+- `DEFAULT_MEMORY_SYSTEM`: Memory system (default: "graphiti")
 - `ENABLE_MEMORY_SYSTEM`: Enable memory (default: "true")
 - `ENABLE_STREAMING_OUTPUT`: Enable streaming (default: "true")
 - `ENABLE_COLLABORATION_LAYER`: Enable collaboration (default: "true")
@@ -195,9 +220,11 @@ The project uses environment variables for all configuration. Key variables incl
 - `GRADIO_SERVER_PORT`: Server port (default: "7860")
 - `GRADIO_SHARE`: Public sharing (default: "false")
 
-**MIRIX Configuration:**
-- `MIRIX_AGENT_NAME`: Agent identifier (default: "aienhance_unified")
-- `MIRIX_AUTO_SAVE_INTERACTIONS`: Auto-save interactions (default: "true")
+**Graphiti Configuration:**
+- `GRAPHITI_API_URL`: Graphiti service URL (default: "http://localhost:8000")
+- `NEO4J_URI`: Neo4j database URI (default: "bolt://localhost:7687")
+- `NEO4J_USER`: Neo4j username (default: "neo4j")
+- `NEO4J_PASSWORD`: Neo4j password (default: "neo4j_passwd")
 
 ### Configuration Usage
 ```python
@@ -235,7 +262,7 @@ All configuration is handled through:
 
 ### Dependencies
 - **Core**: Python 3.12.9+, asyncio-based async architecture
-- **Memory**: MIRIX SDK (mirix>=0.1.0)
+- **Memory**: Graphiti service via HTTP API (aiohttp>=3.8.0)
 - **LLM**: Multiple provider support via unified interface
 - **Web UI**: Gradio with Plotly for visualizations
 - **Code Quality**: Ruff for linting and formatting
@@ -245,9 +272,9 @@ All configuration is handled through:
 This system evolved from traditional RAG to a **memory-cognitive synergy model**. The current architecture (v2.0) implements explicit layer objects for better modularity and information flow tracking. The legacy architecture is still available but not recommended for new development.
 
 The project prioritizes:
-1. **Unified LLM management** - Single model for all functions
+1. **Temporal knowledge graphs** - Graphiti provides persistent memory with temporal relationships
 2. **Graceful degradation** - Continues working even with component failures  
 3. **Modular design** - Each layer is independently testable and configurable
-4. **Memory integration** - Beyond retrieval, implements memory activation and semantic enhancement
+4. **Memory-cognitive synergy** - Beyond retrieval, implements memory activation and semantic enhancement
 
 When working with this codebase, always use the layered architecture approach and ensure proper async/await patterns throughout.

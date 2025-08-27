@@ -78,9 +78,9 @@ class MemoryResult:
 class MemorySystemConfig:
     """记忆系统配置"""
 
-    system_type: str  # "mirix", "mem0", "graphiti", etc.
+    system_type: str  # "graphiti", "mem0", etc.
     api_key: str | None = None
-    api_base: str | None = None  # 添加api_base字段
+    api_base_url: str | None = None  # API服务基础URL (如 http://localhost:8000)
     config_path: str | None = None
     database_url: str | None = None
     embedding_model: str | None = None
@@ -303,11 +303,8 @@ class MemorySystemFactory:
 
         adapter_class = cls._adapters[system_type]
 
-        # 检查是否为MIRIX统一适配器，如果是则传递LLM提供商
-        if system_type == "mirix_unified" and llm_provider is not None:
-            return adapter_class(config, llm_provider)
-        else:
-            return adapter_class(config)
+        # 创建适配器实例
+        return adapter_class(config)
 
     @classmethod
     def get_supported_systems(cls) -> list[str]:

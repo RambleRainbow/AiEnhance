@@ -68,7 +68,7 @@ class LayeredSystemVisualizer:
                 "llm_temperature": temperature,
                 "use_unified_llm": True,
                 "memory_system_type": os.getenv(
-                    "DEFAULT_MEMORY_SYSTEM", "mirix_unified"
+                    "DEFAULT_MEMORY_SYSTEM", "graphiti_http"
                 ),
             }
 

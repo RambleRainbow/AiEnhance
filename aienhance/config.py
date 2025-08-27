@@ -25,7 +25,7 @@ class Config:
 
     # 系统配置
     SYSTEM_TYPE = os.getenv("DEFAULT_SYSTEM_TYPE", "educational")
-    MEMORY_SYSTEM = os.getenv("DEFAULT_MEMORY_SYSTEM", "mirix_unified")
+    MEMORY_SYSTEM = os.getenv("DEFAULT_MEMORY_SYSTEM", "graphiti_http")
     ENVIRONMENT = os.getenv("AIENHANCE_ENV", "development")
 
     # 功能开关
@@ -42,11 +42,11 @@ class Config:
     GRADIO_SERVER_PORT = int(os.getenv("GRADIO_SERVER_PORT", "7860"))
     GRADIO_SHARE = os.getenv("GRADIO_SHARE", "false").lower() == "true"
 
-    # MIRIX配置
-    MIRIX_AGENT_NAME = os.getenv("MIRIX_AGENT_NAME", "aienhance_unified")
-    MIRIX_AUTO_SAVE_INTERACTIONS = (
-        os.getenv("MIRIX_AUTO_SAVE_INTERACTIONS", "true").lower() == "true"
-    )
+    # Graphiti配置
+    GRAPHITI_API_URL = os.getenv("GRAPHITI_API_URL", "http://localhost:8000")
+    NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+    NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
+    NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "neo4j_passwd")
 
     # 调试配置
     DEBUG_MODE = os.getenv("DEBUG_MODE", "false").lower() == "true"
@@ -97,11 +97,13 @@ class Config:
         }
 
     @classmethod
-    def get_mirix_config(cls) -> dict[str, Any]:
-        """获取MIRIX配置字典"""
+    def get_graphiti_config(cls) -> dict[str, Any]:
+        """获取Graphiti配置字典"""
         return {
-            "agent_name": cls.MIRIX_AGENT_NAME,
-            "auto_save_interactions": cls.MIRIX_AUTO_SAVE_INTERACTIONS,
+            "api_base_url": cls.GRAPHITI_API_URL,
+            "neo4j_uri": cls.NEO4J_URI,
+            "neo4j_user": cls.NEO4J_USER,
+            "neo4j_password": cls.NEO4J_PASSWORD,
         }
 
     @classmethod
@@ -116,6 +118,9 @@ class Config:
         print(f"   Gradio端口: {cls.GRADIO_SERVER_PORT}")
         print(f"   记忆功能: {'启用' if cls.ENABLE_MEMORY_SYSTEM else '禁用'}")
         print(f"   协作层: {'启用' if cls.ENABLE_COLLABORATION_LAYER else '禁用'}")
+        if cls.MEMORY_SYSTEM in ["graphiti", "graphiti_http", "graphiti_native"]:
+            print(f"   Graphiti API: {cls.GRAPHITI_API_URL}")
+            print(f"   Neo4j URI: {cls.NEO4J_URI}")
 
 
 # 全局配置实例

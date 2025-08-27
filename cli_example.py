@@ -67,7 +67,7 @@ class AiEnhanceCliTool:
                     embedding_model_name=os.getenv("DEFAULT_EMBEDDING_MODEL", "bge-m3")
                     + ":latest",
                     memory_system_type=os.getenv(
-                        "DEFAULT_MEMORY_SYSTEM", "mirix_unified"
+                        "DEFAULT_MEMORY_SYSTEM", "graphiti_http"
                     ),
                     use_unified_llm=True,
                 )

@@ -274,7 +274,7 @@ class LayeredSystemFactory:
     @staticmethod
     def create_from_enhanced_factory_config(
         system_type: str = "educational",
-        memory_system_type: str = "mirix_unified",
+        memory_system_type: str = "graphiti",
         llm_provider: str = "ollama",
         llm_model_name: str = "qwen3:8b",
         **kwargs,
@@ -296,7 +296,21 @@ class LayeredSystemFactory:
             # 构建记忆系统配置
             memory_config = None
             if memory_system_type:
-                memory_config = MemorySystemConfig(system_type=memory_system_type)
+                from ..config import config as app_config
+
+                if memory_system_type in ["graphiti", "graphiti_http", "graphiti_native"]:
+                    graphiti_config = app_config.get_graphiti_config()
+                    memory_config = MemorySystemConfig(
+                        system_type=memory_system_type,
+                        api_base_url=graphiti_config["api_base_url"],
+                        database_url=graphiti_config["neo4j_uri"],
+                        custom_config={
+                            "neo4j_user": graphiti_config["neo4j_user"],
+                            "neo4j_password": graphiti_config["neo4j_password"],
+                        },
+                    )
+                else:
+                    memory_config = MemorySystemConfig(system_type=memory_system_type)
 
             # 构建LLM配置
             llm_config = None

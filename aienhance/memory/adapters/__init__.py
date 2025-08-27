@@ -3,9 +3,8 @@
 为不同的记忆系统提供统一的接口适配
 """
 
-from .graphiti_adapter import GraphitiAdapter
+from .graphiti_http_adapter import GraphitiHttpAdapter
+from .graphiti_native_adapter import GraphitiNativeAdapter
 from .mem0_adapter import Mem0Adapter
-from .mirix_llm_bridge import MirixLLMBridge
-from .mirix_unified_adapter import MirixUnifiedAdapter
 
-__all__ = ["MirixUnifiedAdapter", "MirixLLMBridge", "Mem0Adapter", "GraphitiAdapter"]
+__all__ = ["Mem0Adapter", "GraphitiHttpAdapter", "GraphitiNativeAdapter"]

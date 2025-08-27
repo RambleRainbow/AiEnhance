@@ -411,6 +411,10 @@ class SemanticUserModeler(UserModeler):
             end = response.rfind("}") + 1
             if start >= 0 and end > start:
                 json_str = response[start:end]
+                # 尝试修复常见的JSON格式问题
+                json_str = json_str.strip()
+                # 移除可能的多余字符
+                json_str = self._clean_json_string(json_str)
                 result = json.loads(json_str)
 
                 # 标准化数据
@@ -439,6 +443,9 @@ class SemanticUserModeler(UserModeler):
             end = response.rfind("}") + 1
             if start >= 0 and end > start:
                 json_str = response[start:end]
+                # 清理JSON字符串
+                json_str = json_str.strip()
+                json_str = self._clean_json_string(json_str)
                 result = json.loads(json_str)
 
                 # 验证和标准化
@@ -500,6 +507,29 @@ class SemanticUserModeler(UserModeler):
             "feedback_preference": "平衡反馈",
             "learning_style": "适应性学习",
         }
+
+    def _clean_json_string(self, json_str: str) -> str:
+        """清理JSON字符串，移除可能导致解析失败的字符"""
+        # 移除可能的额外空白字符
+        json_str = json_str.strip()
+        
+        # 尝试找到最后一个完整的大括号结束位置
+        bracket_count = 0
+        last_valid_pos = -1
+        
+        for i, char in enumerate(json_str):
+            if char == '{':
+                bracket_count += 1
+            elif char == '}':
+                bracket_count -= 1
+                if bracket_count == 0:
+                    last_valid_pos = i + 1
+                    break
+        
+        if last_valid_pos > 0:
+            json_str = json_str[:last_valid_pos]
+        
+        return json_str
 
     def _build_complete_profile(
         self,

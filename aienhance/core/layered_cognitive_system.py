@@ -521,6 +521,9 @@ class LayeredCognitiveSystem(ICognitiveLayers):
                 generation_requirements=context.get("generation_requirements", {}),
             )
 
+            # 处理行为层，确保始终有behavior_output
+            behavior_output = None
+            
             # 检查是否支持流式生成
             if self.behavior_layer.llm_initialized and hasattr(
                 self.behavior_layer.llm_provider, "chat_stream"
@@ -534,6 +537,10 @@ class LayeredCognitiveSystem(ICognitiveLayers):
                     yield chunk
 
                 yield "\n✅ 行为层处理完成\n"
+                
+                # 为了协作层，需要创建一个behavior_output对象
+                # 这里创建一个最小化的对象用于协作层
+                behavior_output = await self.behavior_layer.process(behavior_input)
             else:
                 # 非流式处理
                 behavior_output = await self.behavior_layer.process(behavior_input)

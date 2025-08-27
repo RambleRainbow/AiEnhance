@@ -9,6 +9,11 @@ from typing import Any
 
 from ..collaboration import CognitiveChallenge as CognitiveChallengeImpl
 from ..collaboration import CollaborativeCoordinator, DialecticalPerspectiveGenerator
+from ..collaboration.interfaces import (
+    ChallengeRequest,
+    CollaborationContext,
+    PerspectiveRequest,
+)
 from .layer_interfaces import (
     CognitiveChallenge,
     CollaborationInput,
@@ -255,9 +260,25 @@ class CollaborationLayer(ICollaborationLayer):
                 )
 
             # 使用辩证观点生成器
+            perspective_request = PerspectiveRequest(
+                content=query,
+                user_position=context.get("user_position"),
+                depth_level=context.get("depth_level", "moderate"),
+                max_perspectives=context.get("max_perspectives", 3),
+                context=context
+            )
+            
+            collaboration_context = CollaborationContext(
+                user_id=context.get("user_id", "default_user"),
+                session_id=context.get("session_id", "default_session"),
+                user_cognitive_profile=context.get("user_cognitive_profile"),
+                collaboration_preferences=context.get("collaboration_preferences") or {},
+                current_task_context=context.get("current_task_context")
+            )
+            
             perspective_result = (
-                await self.perspective_generator.generate_dialectical_perspectives(
-                    query, context
+                await self.perspective_generator.generate_perspectives(
+                    perspective_request, collaboration_context
                 )
             )
 
@@ -319,9 +340,27 @@ class CollaborationLayer(ICollaborationLayer):
                 )
 
             # 使用认知挑战生成器
+            challenge_request = ChallengeRequest(
+                content=content,
+                user_reasoning=getattr(user_profile, 'reasoning_style', None),
+                intensity_level="moderate",
+                context={
+                    "user_profile": user_profile.to_dict() if hasattr(user_profile, 'to_dict') else {},
+                    "task_context": "cognitive_challenge_generation"
+                }
+            )
+            
+            collaboration_context = CollaborationContext(
+                user_id=getattr(user_profile, 'user_id', 'default_user'),
+                session_id="default_session",
+                user_cognitive_profile=user_profile.to_dict() if hasattr(user_profile, 'to_dict') else {},
+                collaboration_preferences={},
+                current_task_context={"content": content}
+            )
+            
             challenge_result = (
-                await self.challenge_generator.generate_cognitive_challenges(
-                    content, user_profile
+                await self.challenge_generator.generate_challenges(
+                    challenge_request, collaboration_context
                 )
             )
 
@@ -363,13 +402,19 @@ class CollaborationLayer(ICollaborationLayer):
 
     async def orchestrate_collaboration(
         self, input_data: CollaborationInput
-    ) -> dict[str, Any]:
+    ) -> CollaborationOutput:
         """编排协作过程"""
         try:
             logger.info("Orchestrating collaboration process...")
 
             if not self.collaborative_coordinator:
-                return {"error": "coordinator_not_available"}
+                return CollaborationOutput(
+                    layer_name="collaboration",
+                    status=ProcessingStatus.ERROR,
+                    data={"error": "coordinator_not_available"},
+                    error_message="coordinator_not_available",
+                    collaboration_insights={"error": "coordinator_not_available"}
+                )
 
             # 构建协作上下文
             from ..collaboration.interfaces import CollaborationContext
@@ -394,11 +439,26 @@ class CollaborationLayer(ICollaborationLayer):
                 )
             )
 
-            return orchestration_result
+            return CollaborationOutput(
+                layer_name="collaboration",
+                status=ProcessingStatus.COMPLETED,
+                data=orchestration_result,
+                collaboration_insights=(
+                    orchestration_result if isinstance(orchestration_result, dict)
+                    else {"result": orchestration_result}
+                ),
+                enhanced_content=str(orchestration_result)
+            )
 
         except Exception as e:
             logger.error(f"Failed to orchestrate collaboration: {e}")
-            return {"error": str(e)}
+            return CollaborationOutput(
+                layer_name="collaboration",
+                status=ProcessingStatus.ERROR,
+                data={"error": str(e)},
+                error_message=str(e),
+                collaboration_insights={"error": str(e)}
+            )
 
     async def _generate_collaboration_insights(
         self,

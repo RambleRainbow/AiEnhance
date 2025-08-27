@@ -100,7 +100,7 @@ def create_memory_system(system_type: str, **kwargs):
     便捷创建记忆系统
 
     Args:
-        system_type: 记忆系统类型 ('mirix_unified', 'mem0', 'graphiti')
+        system_type: 记忆系统类型 ('graphiti', 'mem0')
         **kwargs: 配置参数
 
     Returns:
