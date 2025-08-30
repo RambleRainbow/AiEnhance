@@ -141,8 +141,7 @@ async def test_domain_inference_basic():
         model_name="mock_model",
         temperature=0.1,
         max_tokens=300,
-        timeout=10,
-        fallback_to_keywords=True
+        timeout=10
     )
     
     # 创建领域推断提供商
@@ -261,7 +260,6 @@ async def test_perception_layer_integration():
                 'temperature': 0.1,
                 'max_tokens': 300,
                 'timeout': 10,
-                'fallback_to_keywords': True,
                 'custom_domains': ['technology', 'science', 'education', 'business', 'art']
             }
         }
@@ -428,7 +426,7 @@ async def run_all_tests():
     print("   • 支持多模型配置，为不同业务功能使用不同LLM")
     print("   • 支持主要模型和备选模型配置")
     print("   • 集成到感知层，自动进行领域推断")
-    print("   • 支持优雅降级到关键词匹配")
+    print("   • 简化的单一实现路径，专注LLM推断")
     
     return passed == total
 

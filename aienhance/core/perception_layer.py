@@ -10,9 +10,9 @@ from typing import Any
 from ..memory.interfaces import create_user_context
 from ..perception import DynamicUserModeler, IntegratedContextAnalyzer
 from .domain_inference import (
-    DomainInferenceConfig, 
+    DomainInferenceConfig,
     DomainInferenceManager,
-    LLMDomainInferenceProvider
+    LLMDomainInferenceProvider,
 )
 from .layer_interfaces import (
     ContextProfile,
@@ -81,7 +81,7 @@ class PerceptionLayer(IPerceptionLayer):
             # 初始化领域推断管理器
             self.domain_inference_manager = DomainInferenceManager()
             await self._initialize_domain_inference()
-            
+
             self.is_initialized = True
             logger.info("Perception Layer initialization completed")
             return True
@@ -95,36 +95,36 @@ class PerceptionLayer(IPerceptionLayer):
         """初始化领域推断系统"""
         try:
             # 获取领域推断配置
-            domain_config = self.config.get('domain_inference', {})
-            
+            domain_config = self.config.get("domain_inference", {})
+
             # 确定使用哪个LLM提供商（可以与主LLM不同）
-            domain_llm_provider = domain_config.get('llm_provider', self.llm_provider)
+            domain_llm_provider = domain_config.get("llm_provider", self.llm_provider)
             if not domain_llm_provider:
-                logger.warning("No LLM provider configured for domain inference, will use fallback")
-                return
-            
+                logger.error("No LLM provider configured for domain inference")
+                return False
+
             # 创建领域推断配置
             inference_config = DomainInferenceConfig(
                 llm_provider=domain_llm_provider,
-                model_name=domain_config.get('model_name'),
-                temperature=domain_config.get('temperature', 0.1),
-                max_tokens=domain_config.get('max_tokens', 300),
-                timeout=domain_config.get('timeout', 10),
-                fallback_to_keywords=domain_config.get('fallback_to_keywords', True),
-                custom_domains=domain_config.get('custom_domains')
+                model_name=domain_config.get("model_name"),
+                temperature=domain_config.get("temperature", 0.1),
+                max_tokens=domain_config.get("max_tokens", 300),
+                timeout=domain_config.get("timeout", 10),
+                custom_domains=domain_config.get("custom_domains"),
             )
-            
+
             # 创建和注册LLM提供商
             llm_provider = LLMDomainInferenceProvider(inference_config)
             success = await self.domain_inference_manager.register_provider(
-                'llm_primary', llm_provider
+                "llm_primary", llm_provider
             )
-            
+
             if success:
                 logger.info("Domain inference with LLM provider initialized")
             else:
-                logger.warning("Failed to initialize LLM domain inference, will use fallback")
-                
+                logger.error("Failed to initialize LLM domain inference")
+                return False
+
         except Exception as e:
             logger.error(f"Failed to initialize domain inference: {e}")
             # 不抛出异常，允许感知层在没有领域推断的情况下运行
@@ -359,13 +359,22 @@ class PerceptionLayer(IPerceptionLayer):
                 task_type=context_result.task_characteristics.task_type.value,
                 complexity_level=context_result.contextual_elements.complexity_level,
                 domain_characteristics={
-                    "primary_domain": context_result.contextual_elements.domain_scope[0] if context_result.contextual_elements.domain_scope else "general",
-                    "secondary_domains": context_result.contextual_elements.domain_scope[1:] if len(context_result.contextual_elements.domain_scope) > 1 else [],
+                    "primary_domain": context_result.contextual_elements.domain_scope[0]
+                    if context_result.contextual_elements.domain_scope
+                    else "general",
+                    "secondary_domains": context_result.contextual_elements.domain_scope[
+                        1:
+                    ]
+                    if len(context_result.contextual_elements.domain_scope) > 1
+                    else [],
                     "interdisciplinary_score": context_result.task_characteristics.cross_domain_level,
                 },
                 environmental_factors={
                     "urgency_level": context_result.contextual_elements.urgency_level,
-                    "resource_constraints": {"time": 1.0, "resources": 1.0},  # Default values
+                    "resource_constraints": {
+                        "time": 1.0,
+                        "resources": 1.0,
+                    },  # Default values
                     "social_context": {"collaboration_level": 0.0},  # Default values
                 },
             )
@@ -534,50 +543,23 @@ class PerceptionLayer(IPerceptionLayer):
 
         return initial_data
 
-    async def _infer_domains_from_query(self, query: str, context: dict[str, Any] | None = None) -> list[str]:
+    async def _infer_domains_from_query(
+        self, query: str, context: dict[str, Any] | None = None
+    ) -> list[str]:
         """从查询中推断涉及的领域 - 使用大模型进行智能推断"""
-        try:
-            if self.domain_inference_manager:
-                # 使用大模型进行领域推断
-                result = await self.domain_inference_manager.infer_domains(
-                    query=query,
-                    context=context
-                )
-                
-                # 合并主要领域和次要领域
-                all_domains = result.primary_domains + result.secondary_domains
-                
-                if all_domains:
-                    logger.info(f"LLM domain inference result: {all_domains}")
-                    logger.debug(f"Reasoning: {result.reasoning}")
-                    return all_domains
-            
-            # 如果没有领域推断管理器，回退到简单逻辑
-            logger.warning("Domain inference manager not available, using simple fallback")
-            return self._simple_domain_fallback(query)
-            
-        except Exception as e:
-            logger.error(f"Domain inference failed: {e}")
-            return self._simple_domain_fallback(query)
-    
-    def _simple_domain_fallback(self, query: str) -> list[str]:
-        """简单的领域推断回退逻辑"""
-        domain_keywords = {
-            "technology": ["技术", "科技", "编程", "AI", "人工智能", "软件", "algorithm", "programming", "software"],
-            "education": ["教育", "学习", "教学", "培训", "education", "learning", "teaching"],
-            "science": ["科学", "研究", "实验", "理论", "science", "research", "experiment"],
-            "business": ["商业", "管理", "营销", "经济", "business", "management", "economics"],
-            "art": ["艺术", "设计", "创作", "美学", "art", "design", "creative"],
-        }
+        if not self.domain_inference_manager:
+            raise RuntimeError("Domain inference manager not configured")
 
-        detected_domains = []
-        query_lower = query.lower()
+        # 使用大模型进行领域推断
+        result = await self.domain_inference_manager.infer_domains(
+            query=query, context=context
+        )
 
-        for domain, keywords in domain_keywords.items():
-            if any(keyword.lower() in query_lower for keyword in keywords):
-                detected_domains.append(domain)
-
-        return detected_domains if detected_domains else ["general"]
+        # 合并主要领域和次要领域
+        all_domains = result.primary_domains + result.secondary_domains
+        logger.info(f"LLM domain inference result: {all_domains}")
+        logger.debug(f"Reasoning: {result.reasoning}")
+        return all_domains
 
     async def update_user_profile(
         self, user_id: str, interaction_data: dict[str, Any]
