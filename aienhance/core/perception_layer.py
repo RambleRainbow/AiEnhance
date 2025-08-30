@@ -9,6 +9,11 @@ from typing import Any
 
 from ..memory.interfaces import create_user_context
 from ..perception import DynamicUserModeler, IntegratedContextAnalyzer
+from .domain_inference import (
+    DomainInferenceConfig, 
+    DomainInferenceManager,
+    LLMDomainInferenceProvider
+)
 from .layer_interfaces import (
     ContextProfile,
     IPerceptionLayer,
@@ -46,6 +51,7 @@ class PerceptionLayer(IPerceptionLayer):
         # 核心组件
         self.user_modeler: DynamicUserModeler | None = None
         self.context_analyzer: IntegratedContextAnalyzer | None = None
+        self.domain_inference_manager: DomainInferenceManager | None = None
 
         # 运行时状态
         self.processing_count = 0
@@ -72,6 +78,10 @@ class PerceptionLayer(IPerceptionLayer):
             self.context_analyzer = IntegratedContextAnalyzer()
             logger.info("Context analyzer initialized")
 
+            # 初始化领域推断管理器
+            self.domain_inference_manager = DomainInferenceManager()
+            await self._initialize_domain_inference()
+            
             self.is_initialized = True
             logger.info("Perception Layer initialization completed")
             return True
@@ -80,6 +90,44 @@ class PerceptionLayer(IPerceptionLayer):
             logger.error(f"Failed to initialize Perception Layer: {e}")
             self.is_initialized = False
             return False
+
+    async def _initialize_domain_inference(self) -> None:
+        """初始化领域推断系统"""
+        try:
+            # 获取领域推断配置
+            domain_config = self.config.get('domain_inference', {})
+            
+            # 确定使用哪个LLM提供商（可以与主LLM不同）
+            domain_llm_provider = domain_config.get('llm_provider', self.llm_provider)
+            if not domain_llm_provider:
+                logger.warning("No LLM provider configured for domain inference, will use fallback")
+                return
+            
+            # 创建领域推断配置
+            inference_config = DomainInferenceConfig(
+                llm_provider=domain_llm_provider,
+                model_name=domain_config.get('model_name'),
+                temperature=domain_config.get('temperature', 0.1),
+                max_tokens=domain_config.get('max_tokens', 300),
+                timeout=domain_config.get('timeout', 10),
+                fallback_to_keywords=domain_config.get('fallback_to_keywords', True),
+                custom_domains=domain_config.get('custom_domains')
+            )
+            
+            # 创建和注册LLM提供商
+            llm_provider = LLMDomainInferenceProvider(inference_config)
+            success = await self.domain_inference_manager.register_provider(
+                'llm_primary', llm_provider
+            )
+            
+            if success:
+                logger.info("Domain inference with LLM provider initialized")
+            else:
+                logger.warning("Failed to initialize LLM domain inference, will use fallback")
+                
+        except Exception as e:
+            logger.error(f"Failed to initialize domain inference: {e}")
+            # 不抛出异常，允许感知层在没有领域推断的情况下运行
 
     async def process(self, input_data: PerceptionInput) -> PerceptionOutput:
         """
@@ -477,7 +525,7 @@ class PerceptionLayer(IPerceptionLayer):
         initial_data = {
             "initial_query": query,
             "context": context,
-            "inferred_domains": self._infer_domains_from_query(query),
+            "inferred_domains": await self._infer_domains_from_query(query, context),
             "cognitive_style": "linear",  # 默认值
         }
 
@@ -486,15 +534,40 @@ class PerceptionLayer(IPerceptionLayer):
 
         return initial_data
 
-    def _infer_domains_from_query(self, query: str) -> list[str]:
-        """从查询中推断涉及的领域"""
-        # 简单的关键词匹配
+    async def _infer_domains_from_query(self, query: str, context: dict[str, Any] | None = None) -> list[str]:
+        """从查询中推断涉及的领域 - 使用大模型进行智能推断"""
+        try:
+            if self.domain_inference_manager:
+                # 使用大模型进行领域推断
+                result = await self.domain_inference_manager.infer_domains(
+                    query=query,
+                    context=context
+                )
+                
+                # 合并主要领域和次要领域
+                all_domains = result.primary_domains + result.secondary_domains
+                
+                if all_domains:
+                    logger.info(f"LLM domain inference result: {all_domains}")
+                    logger.debug(f"Reasoning: {result.reasoning}")
+                    return all_domains
+            
+            # 如果没有领域推断管理器，回退到简单逻辑
+            logger.warning("Domain inference manager not available, using simple fallback")
+            return self._simple_domain_fallback(query)
+            
+        except Exception as e:
+            logger.error(f"Domain inference failed: {e}")
+            return self._simple_domain_fallback(query)
+    
+    def _simple_domain_fallback(self, query: str) -> list[str]:
+        """简单的领域推断回退逻辑"""
         domain_keywords = {
-            "technology": ["技术", "科技", "编程", "AI", "人工智能", "软件"],
-            "education": ["教育", "学习", "教学", "培训"],
-            "science": ["科学", "研究", "实验", "理论"],
-            "business": ["商业", "管理", "营销", "经济"],
-            "art": ["艺术", "设计", "创作", "美学"],
+            "technology": ["技术", "科技", "编程", "AI", "人工智能", "软件", "algorithm", "programming", "software"],
+            "education": ["教育", "学习", "教学", "培训", "education", "learning", "teaching"],
+            "science": ["科学", "研究", "实验", "理论", "science", "research", "experiment"],
+            "business": ["商业", "管理", "营销", "经济", "business", "management", "economics"],
+            "art": ["艺术", "设计", "创作", "美学", "art", "design", "creative"],
         }
 
         detected_domains = []
@@ -573,6 +646,10 @@ class PerceptionLayer(IPerceptionLayer):
             if self.context_analyzer:
                 # 如果有需要清理的资源
                 pass
+
+            # 清理领域推断管理器
+            if self.domain_inference_manager:
+                await self.domain_inference_manager.cleanup()
 
             self.is_initialized = False
             logger.info("Perception Layer cleanup completed")
