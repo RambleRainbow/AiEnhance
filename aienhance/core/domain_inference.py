@@ -4,14 +4,11 @@
 支持多模型协同调度的可配置架构
 """
 
-import asyncio
-import json
 import logging
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from .prompts import get_prompt_manager
+from .llm_module_base import LLMModuleConfig, LLMModuleManager, LLMModuleProvider
 
 logger = logging.getLogger(__name__)
 
@@ -29,49 +26,24 @@ class DomainInferenceResult:
 
 
 @dataclass
-class DomainInferenceConfig:
+class DomainInferenceConfig(LLMModuleConfig):
     """领域推断配置"""
-
-    llm_provider: Any  # LLM提供商实例
-    model_name: Optional[str] = None  # 特定模型名称
-    temperature: float = 0.1  # 低温度确保一致性
-    max_tokens: int = 300  # 限制输出长度
-    timeout: int = 10  # 超时设置
+    
     custom_domains: Optional[List[str]] = None  # 自定义领域列表
+    
+    def __post_init__(self):
+        if not self.prompt_template_name:
+            self.prompt_template_name = "domain_inference_basic"
+        if self.temperature is None:
+            self.temperature = 0.1  # 低温度确保一致性
+        if self.max_tokens is None:
+            self.max_tokens = 300  # 限制输出长度
 
 
-class DomainInferenceProvider(ABC):
-    """领域推断提供商抽象接口"""
-
-    def __init__(self, config: DomainInferenceConfig):
-        self.config = config
-        self.is_initialized = False
-
-    @abstractmethod
-    async def initialize(self) -> bool:
-        """初始化提供商"""
-        pass
-
-    @abstractmethod
-    async def infer_domains(
-        self, query: str, context: Optional[Dict[str, Any]] = None
-    ) -> DomainInferenceResult:
-        """推断查询涉及的领域"""
-        pass
-
-    @abstractmethod
-    async def cleanup(self) -> None:
-        """清理资源"""
-        pass
-
-
-class LLMDomainInferenceProvider(DomainInferenceProvider):
+class LLMDomainInferenceProvider(
+    LLMModuleProvider[DomainInferenceResult, DomainInferenceConfig]
+):
     """基于大模型的领域推断提供商"""
-
-    def __init__(self, config: DomainInferenceConfig):
-        super().__init__(config)
-        self.llm_provider = config.llm_provider
-        self.prompt_manager = get_prompt_manager()
 
     async def initialize(self) -> bool:
         """初始化LLM提供商"""
@@ -80,7 +52,6 @@ class LLMDomainInferenceProvider(DomainInferenceProvider):
                 logger.error("LLM provider not configured")
                 return False
 
-            # 这里可以添加LLM连接测试
             self.is_initialized = True
             logger.info("LLM domain inference provider initialized")
             return True
@@ -89,113 +60,67 @@ class LLMDomainInferenceProvider(DomainInferenceProvider):
             logger.error(f"Failed to initialize LLM domain inference provider: {e}")
             return False
 
-    async def infer_domains(
-        self, query: str, context: Optional[Dict[str, Any]] = None
+    async def process(
+        self, input_data: str, context: Optional[Dict[str, Any]] = None
     ) -> DomainInferenceResult:
-        """使用大模型推断领域"""
+        """处理领域推断业务逻辑"""
         if not self.is_initialized:
             raise RuntimeError("Domain inference provider not initialized")
 
         try:
-            # 准备领域列表
-            base_domains = [
-                "technology",
-                "science",
-                "education",
-                "business",
-                "art",
-                "health",
-                "finance",
-                "legal",
-                "engineering",
-                "mathematics",
-                "language",
-                "history",
-                "philosophy",
-                "psychology",
-                "social_science",
-            ]
-            domains_list = self.config.custom_domains or base_domains
-            domains_str = ", ".join(domains_list)
-
-            # 使用集中式提示词管理器渲染提示
-            prompt = self.prompt_manager.render_prompt(
-                name="domain_inference_basic",
-                variables={"domains": domains_str, "query": query, "context": context},
-            )
+            # 准备提示词变量
+            variables = self._prepare_prompt_variables(input_data, context)
 
             # 调用LLM
-            response = await asyncio.wait_for(
-                self._call_llm(prompt), timeout=self.config.timeout
+            response = await self._call_llm_with_prompt(
+                self.config.prompt_template_name, variables
             )
 
             # 解析响应
-            return self._parse_llm_response(response, query)
-
-        except asyncio.TimeoutError:
-            logger.error(f"LLM domain inference timeout for query: {query[:50]}...")
-            raise TimeoutError(
-                f"Domain inference timeout after {self.config.timeout} seconds"
-            )
+            return self._parse_llm_response(response, input_data)
 
         except Exception as e:
             logger.error(f"LLM domain inference failed: {e}")
             raise
 
-    async def _call_llm(self, prompt: str) -> str:
-        """调用LLM生成响应"""
-        try:
-            # 构建消息格式
-            messages = [{"role": "user", "content": prompt}]
+    def _prepare_prompt_variables(
+        self, input_data: str, context: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """准备领域推断提示词变量"""
+        # 准备领域列表
+        base_domains = [
+            "technology",
+            "science",
+            "education",
+            "business",
+            "art",
+            "health",
+            "finance",
+            "legal",
+            "engineering",
+            "mathematics",
+            "language",
+            "history",
+            "philosophy",
+            "psychology",
+            "social_science",
+        ]
+        domains_list = self.config.custom_domains or base_domains
+        domains_str = ", ".join(domains_list)
 
-            # 调用LLM (需要适配不同的LLM接口)
-            if hasattr(self.llm_provider, "generate_async"):
-                # 异步接口
-                response = await self.llm_provider.generate_async(
-                    messages=messages,
-                    temperature=self.config.temperature,
-                    max_tokens=self.config.max_tokens,
-                    model=self.config.model_name,
-                )
-            elif hasattr(self.llm_provider, "chat"):
-                # 同步聊天接口
-                response = await asyncio.to_thread(
-                    self.llm_provider.chat,
-                    messages,
-                    temperature=self.config.temperature,
-                    max_tokens=self.config.max_tokens,
-                    model=self.config.model_name or "default",
-                )
-            else:
-                raise ValueError("Unsupported LLM provider interface")
-
-            # 提取文本内容
-            if isinstance(response, dict):
-                return response.get("content", response.get("message", str(response)))
-            elif hasattr(response, "content"):
-                return response.content
-            else:
-                return str(response)
-
-        except Exception as e:
-            logger.error(f"LLM call failed: {e}")
-            raise
+        return {
+            "domains": domains_str,
+            "query": input_data,
+            "context": context,
+        }
 
     def _parse_llm_response(
-        self, response: str, original_query: str
+        self, response: str, original_input: str
     ) -> DomainInferenceResult:
         """解析LLM响应"""
         try:
-            # 尝试提取JSON部分
-            response = response.strip()
-            if response.startswith("```json"):
-                response = response[7:]
-            if response.endswith("```"):
-                response = response[:-3]
-            response = response.strip()
-
-            # 解析JSON
-            parsed = json.loads(response)
+            # 使用基类的JSON提取方法
+            parsed = self._extract_json_from_response(response)
 
             # 验证必需字段
             primary_domains = parsed.get("primary_domains", [])
@@ -213,92 +138,26 @@ class LLMDomainInferenceProvider(DomainInferenceProvider):
                 metadata={
                     "provider": "llm",
                     "model": self.config.model_name,
-                    "original_query": original_query,
+                    "original_query": original_input,
                 },
             )
 
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse LLM JSON response: {e}")
-            logger.debug(f"Raw response: {response}")
-            raise ValueError(f"Invalid JSON response from LLM: {e}")
-
         except Exception as e:
-            logger.error(f"Failed to parse LLM response: {e}")
+            logger.error(f"Failed to parse domain inference response: {e}")
             raise
 
-    async def cleanup(self) -> None:
-        """清理资源"""
-        try:
-            # 这里可以添加特定的清理逻辑
-            self.is_initialized = False
-            logger.info("LLM domain inference provider cleaned up")
-        except Exception as e:
-            logger.error(f"Error during cleanup: {e}")
 
-
-class DomainInferenceManager:
-    """领域推断管理器
-
-    支持多提供商配置和切换，为多模型协同调度做准备
-    """
+class DomainInferenceManager(LLMModuleManager[DomainInferenceResult, DomainInferenceConfig]):
+    """领域推断管理器"""
 
     def __init__(self):
-        self.providers: Dict[str, DomainInferenceProvider] = {}
-        self.default_provider_name: Optional[str] = None
+        super().__init__("domain_inference")
 
-    async def register_provider(
-        self, name: str, provider: DomainInferenceProvider
-    ) -> bool:
-        """注册领域推断提供商"""
-        try:
-            success = await provider.initialize()
-            if success:
-                self.providers[name] = provider
-                if self.default_provider_name is None:
-                    self.default_provider_name = name
-                logger.info(f"Registered domain inference provider: {name}")
-                return True
-            else:
-                logger.error(f"Failed to initialize provider: {name}")
-                return False
-        except Exception as e:
-            logger.error(f"Error registering provider {name}: {e}")
-            return False
-
-    async def infer_domains(
+    async def infer_domains_async(
         self,
         query: str,
         provider_name: Optional[str] = None,
         context: Optional[Dict[str, Any]] = None,
     ) -> DomainInferenceResult:
-        """推断领域"""
-        provider_name = provider_name or self.default_provider_name
-
-        if not provider_name or provider_name not in self.providers:
-            raise ValueError(f"Provider not found: {provider_name}")
-
-        provider = self.providers[provider_name]
-        return await provider.infer_domains(query, context)
-
-    async def cleanup(self) -> None:
-        """清理所有提供商"""
-        for name, provider in self.providers.items():
-            try:
-                await provider.cleanup()
-                logger.info(f"Cleaned up provider: {name}")
-            except Exception as e:
-                logger.error(f"Error cleaning up provider {name}: {e}")
-
-        self.providers.clear()
-        self.default_provider_name = None
-
-    def get_available_providers(self) -> List[str]:
-        """获取可用的提供商列表"""
-        return list(self.providers.keys())
-
-    def set_default_provider(self, name: str) -> bool:
-        """设置默认提供商"""
-        if name in self.providers:
-            self.default_provider_name = name
-            return True
-        return False
+        """推断领域 - 提供向后兼容的方法名"""
+        return await self.process(query, provider_name, context)
