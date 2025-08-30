@@ -11,6 +11,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
+from .prompts import get_prompt_manager
+
 logger = logging.getLogger(__name__)
 
 
@@ -69,58 +71,7 @@ class LLMDomainInferenceProvider(DomainInferenceProvider):
     def __init__(self, config: DomainInferenceConfig):
         super().__init__(config)
         self.llm_provider = config.llm_provider
-        self.prompt_template = self._create_prompt_template()
-
-    def _create_prompt_template(self) -> str:
-        """创建领域推断的提示模板"""
-        base_domains = [
-            "technology",
-            "science",
-            "education",
-            "business",
-            "art",
-            "health",
-            "finance",
-            "legal",
-            "engineering",
-            "mathematics",
-            "language",
-            "history",
-            "philosophy",
-            "psychology",
-            "social_science",
-        ]
-
-        if self.config.custom_domains:
-            domains_list = self.config.custom_domains
-        else:
-            domains_list = base_domains
-
-        domains_str = ", ".join(domains_list)
-
-        return f"""你是一个专业的领域分析专家。请分析以下用户查询，确定它涉及的学术或专业领域。
-
-可选领域包括但不限于: {domains_str}
-
-请以JSON格式输出结果，包含以下字段：
-- primary_domains: 主要涉及的领域（最多3个）
-- secondary_domains: 次要相关的领域（最多3个）  
-- confidence_scores: 每个领域的置信度分数（0-1）
-- interdisciplinary: 是否为跨学科查询（true/false）
-- reasoning: 简要说明判断理由
-
-用户查询: {{query}}
-
-输出格式示例：
-{{
-    "primary_domains": ["technology", "education"], 
-    "secondary_domains": ["psychology"],
-    "confidence_scores": {{"technology": 0.9, "education": 0.8, "psychology": 0.6}},
-    "interdisciplinary": true,
-    "reasoning": "查询涉及技术教育，结合了技术和教育两个领域，并涉及学习心理学的相关概念。"
-}}
-
-请确保输出有效的JSON格式。"""
+        self.prompt_manager = get_prompt_manager()
 
     async def initialize(self) -> bool:
         """初始化LLM提供商"""
@@ -146,12 +97,32 @@ class LLMDomainInferenceProvider(DomainInferenceProvider):
             raise RuntimeError("Domain inference provider not initialized")
 
         try:
-            # 构建完整提示
-            prompt = self.prompt_template.replace("{query}", query)
-            if context:
-                prompt += (
-                    f"\n\n额外上下文信息: {json.dumps(context, ensure_ascii=False)}"
-                )
+            # 准备领域列表
+            base_domains = [
+                "technology",
+                "science",
+                "education",
+                "business",
+                "art",
+                "health",
+                "finance",
+                "legal",
+                "engineering",
+                "mathematics",
+                "language",
+                "history",
+                "philosophy",
+                "psychology",
+                "social_science",
+            ]
+            domains_list = self.config.custom_domains or base_domains
+            domains_str = ", ".join(domains_list)
+
+            # 使用集中式提示词管理器渲染提示
+            prompt = self.prompt_manager.render_prompt(
+                name="domain_inference_basic",
+                variables={"domains": domains_str, "query": query, "context": context},
+            )
 
             # 调用LLM
             response = await asyncio.wait_for(

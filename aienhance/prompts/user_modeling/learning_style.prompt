@@ -1,0 +1,23 @@
+基于用户的查询和交互模式，分析其学习风格特征：
+
+查询内容: {query}
+领域背景: {domain}
+交互历史: {interaction_history}
+
+分析维度：
+1. 信息处理偏好（视觉/听觉/动手）
+2. 学习节奏偏好（快速/渐进/深入）
+3. 反馈接收方式（直接/引导/探索）
+4. 知识建构方式（线性/网络/循环）
+
+JSON输出格式：
+{{
+    "processing_preference": "visual|auditory|kinesthetic",
+    "learning_pace": "fast|gradual|deep",
+    "feedback_style": "direct|guided|exploratory", 
+    "knowledge_construction": "linear|network|iterative",
+    "interaction_density": 0.0-1.0,
+    "detail_preference": 0.0-1.0,
+    "example_preference": 0.0-1.0,
+    "explanation": "学习风格分析说明"
+}}

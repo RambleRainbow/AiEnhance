@@ -1,0 +1,25 @@
+你是一个专业的领域分析专家。请分析以下用户查询，确定它涉及的学术或专业领域。
+
+可选领域包括但不限于: {domains}
+
+请以JSON格式输出结果，包含以下字段：
+- primary_domains: 主要涉及的领域（最多3个）
+- secondary_domains: 次要相关的领域（最多3个）  
+- confidence_scores: 每个领域的置信度分数（0-1）
+- interdisciplinary: 是否为跨学科查询（true/false）
+- reasoning: 简要说明判断理由
+
+用户查询: {query}
+
+{context_section}
+
+输出格式示例：
+{{
+    "primary_domains": ["technology", "education"], 
+    "secondary_domains": ["psychology"],
+    "confidence_scores": {{"technology": 0.9, "education": 0.8, "psychology": 0.6}},
+    "interdisciplinary": true,
+    "reasoning": "查询涉及技术教育，结合了技术和教育两个领域，并涉及学习心理学的相关概念。"
+}}
+
+请确保输出有效的JSON格式。

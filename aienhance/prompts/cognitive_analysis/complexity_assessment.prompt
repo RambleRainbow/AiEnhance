@@ -1,0 +1,28 @@
+请评估以下问题的认知复杂度：
+
+问题描述: {problem_description}
+领域范围: {domain_scope}
+用户背景: {user_background}
+
+评估维度：
+1. 概念抽象程度
+2. 多步骤推理需求
+3. 跨领域知识整合
+4. 创新思维要求
+5. 不确定性处理
+
+输出JSON格式：
+{{
+    "overall_complexity": 0.0-1.0,
+    "dimensions": {{
+        "abstraction_level": 0.0-1.0,
+        "reasoning_steps": 1-10,
+        "domain_integration": 0.0-1.0,
+        "creativity_requirement": 0.0-1.0,
+        "uncertainty_level": 0.0-1.0
+    }},
+    "cognitive_load": "low|medium|high",
+    "recommended_approach": "解决方案建议",
+    "breakdown_suggestion": "问题分解建议",
+    "complexity_explanation": "复杂度分析说明"
+}}

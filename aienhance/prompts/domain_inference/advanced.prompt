@@ -1,0 +1,25 @@
+作为资深的跨学科领域专家，请对用户查询进行深度领域分析。
+
+分析维度：
+1. 核心专业领域识别
+2. 相关交叉学科分析
+3. 知识深度层级评估
+4. 应用场景定位
+
+可选专业领域: {domains}
+
+用户查询: {query}
+上下文信息: {context}
+
+请以JSON格式输出详细分析结果：
+{{
+    "primary_domains": [主要领域数组],
+    "secondary_domains": [次要领域数组],
+    "confidence_scores": {{领域: 置信度}},
+    "interdisciplinary": 是否跨学科,
+    "depth_level": "基础|中级|高级|专家",
+    "application_scenarios": [应用场景数组],
+    "knowledge_prerequisites": [前置知识数组],
+    "reasoning": "详细推理过程",
+    "complexity_score": 0.0-1.0
+}}

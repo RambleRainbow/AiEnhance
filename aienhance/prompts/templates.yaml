@@ -1,0 +1,72 @@
+# 提示词模板配置文件
+# 定义各模板的元数据信息
+
+templates:
+  domain_inference:
+    basic:
+      name: "domain_inference_basic"
+      version: "1.0"
+      file: "domain_inference/basic.prompt"
+      description: "基础领域推断模板，用于分析用户查询涉及的专业领域"
+      variables: ["domains", "query", "context_section"]
+      category: "domain_inference"
+      language: "zh"
+      temperature: 0.1
+      max_tokens: 300
+    
+    advanced:
+      name: "domain_inference_advanced"
+      version: "1.0"
+      file: "domain_inference/advanced.prompt"
+      description: "高级领域推断模板，提供更详细的跨学科分析"
+      variables: ["domains", "query", "context"]
+      category: "domain_inference"
+      language: "zh"
+      temperature: 0.2
+      max_tokens: 500
+
+  user_modeling:
+    cognitive_analysis:
+      name: "cognitive_analysis"
+      version: "1.0"
+      file: "user_modeling/cognitive_analysis.prompt"
+      description: "用户认知特征分析模板"
+      variables: ["domain_context", "current_query", "historical_data"]
+      category: "user_modeling"
+      language: "zh"
+      temperature: 0.3
+      max_tokens: 400
+    
+    learning_style:
+      name: "learning_style_analysis"
+      version: "1.0"
+      file: "user_modeling/learning_style.prompt"
+      description: "学习风格识别和分析模板"
+      variables: ["query", "domain", "interaction_history"]
+      category: "user_modeling"
+      language: "zh"
+      temperature: 0.4
+      max_tokens: 450
+
+  cognitive_analysis:
+    context_analysis:
+      name: "context_analysis"
+      version: "1.0"
+      file: "cognitive_analysis/context_analysis.prompt"
+      description: "用户情境分析模板，评估任务环境和约束条件"
+      variables: ["query", "background", "temporal_context"]
+      category: "cognitive_analysis"
+      language: "zh"
+      temperature: 0.3
+      max_tokens: 500
+    
+    complexity_assessment:
+      name: "complexity_assessment"
+      version: "1.0"
+      file: "cognitive_analysis/complexity_assessment.prompt"
+      description: "问题认知复杂度评估模板"
+      variables: ["problem_description", "domain_scope", "user_background"]
+      category: "cognitive_analysis"
+      language: "zh"
+      temperature: 0.2
+      max_tokens: 400

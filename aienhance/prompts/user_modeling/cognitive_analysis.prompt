@@ -1,0 +1,23 @@
+请分析用户的认知特征，包括：
+1. 思维模式 (analytical/intuitive/creative)
+2. 认知复杂度 (0.0-1.0)
+3. 抽象思维能力 (0.0-1.0)
+4. 创造性思维倾向 (0.0-1.0)
+5. 推理偏好描述
+
+{domain_context}
+
+用户当前问句：{current_query}
+
+用户历史交互：{historical_data}
+
+请以JSON格式返回分析结果：
+{{
+    "thinking_mode": "analytical|intuitive|creative",
+    "cognitive_complexity": 0.0-1.0,
+    "abstraction_level": 0.0-1.0,
+    "creativity_tendency": 0.0-1.0,
+    "reasoning_preference": "推理偏好描述",
+    "confidence": 0.0-1.0,
+    "analysis_basis": "分析依据说明"
+}}

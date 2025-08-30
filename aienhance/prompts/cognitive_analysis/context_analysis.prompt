@@ -1,0 +1,31 @@
+作为情境分析专家，请分析用户当前的情境特征：
+
+用户查询: {query}
+背景信息: {background}
+时间情境: {temporal_context}
+
+分析要点：
+1. 任务紧急程度 (0.0-1.0)
+2. 复杂度评估 (0.0-1.0)  
+3. 资源约束情况
+4. 社交协作需求
+5. 环境影响因素
+
+请以JSON格式输出情境分析：
+{{
+    "urgency_level": 0.0-1.0,
+    "complexity_score": 0.0-1.0,
+    "resource_constraints": {{
+        "time_pressure": 0.0-1.0,
+        "knowledge_gap": 0.0-1.0,
+        "tool_availability": 0.0-1.0
+    }},
+    "social_context": {{
+        "collaboration_needed": true/false,
+        "audience_type": "self|team|public|expert",
+        "communication_formality": 0.0-1.0
+    }},
+    "environmental_factors": [影响因素数组],
+    "recommended_approach": "具体建议",
+    "context_summary": "情境总结"
+}}
