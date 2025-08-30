@@ -562,7 +562,7 @@ class CollaborationLayer(ICollaborationLayer):
         self,
         perspective_generation: PerspectiveGeneration,
         cognitive_challenge: CognitiveChallenge,
-        orchestration_result: dict[str, Any],
+        orchestration_result: CollaborationOutput,
     ) -> float:
         """评估协作有效性"""
         factors = []
@@ -580,7 +580,7 @@ class CollaborationLayer(ICollaborationLayer):
         factors.append(challenge_quality)
 
         # 编排结果质量
-        if not orchestration_result.get("error"):
+        if orchestration_result.status == ProcessingStatus.COMPLETED and not orchestration_result.error_message:
             orchestration_quality = 0.8
         else:
             orchestration_quality = 0.2
