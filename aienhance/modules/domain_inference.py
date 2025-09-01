@@ -161,3 +161,12 @@ class DomainInferenceManager(LLMModuleManager[DomainInferenceResult, DomainInfer
     ) -> DomainInferenceResult:
         """推断领域 - 提供向后兼容的方法名"""
         return await self.process(query, provider_name, context)
+
+    async def infer_domains(
+        self,
+        query: str,
+        provider_name: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> DomainInferenceResult:
+        """推断领域 - 向后兼容方法"""
+        return await self.process(query, provider_name, context)
