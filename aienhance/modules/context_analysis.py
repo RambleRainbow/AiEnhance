@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, Optional
 
-from .llm_module_base import LLMModuleConfig, LLMModuleManager, LLMModuleProvider
+from ..core.llm_module_base import LLMModuleConfig, LLMModuleManager, LLMModuleProvider
 
 logger = logging.getLogger(__name__)
 

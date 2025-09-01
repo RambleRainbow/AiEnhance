@@ -3,11 +3,14 @@
 提供记忆-认知协同系统的核心功能
 """
 
-# 新的分层架构
-from .behavior_layer import BehaviorLayer
-from .cognition_layer import CognitionLayer
-from .collaboration_layer import CollaborationLayer
-from .layer_interfaces import (
+# 新的分层架构 - 从layers目录导入
+from ..layers import (
+    BehaviorLayer,
+    CognitionLayer,
+    CollaborationLayer,
+    PerceptionLayer,
+)
+from ..layers.layer_interfaces import (
     ContextProfile,
     IBehaviorLayer,
     ICognitionLayer,
@@ -21,7 +24,6 @@ from .layer_interfaces import (
 )
 from .layered_cognitive_system import LayeredCognitiveSystem
 from .layered_system_factory import LayeredSystemFactory
-from .perception_layer import PerceptionLayer
 
 __all__ = [
     # 分层架构接口

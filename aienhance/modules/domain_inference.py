@@ -8,7 +8,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from .llm_module_base import LLMModuleConfig, LLMModuleManager, LLMModuleProvider
+from ..core.llm_module_base import LLMModuleConfig, LLMModuleManager, LLMModuleProvider
 
 logger = logging.getLogger(__name__)
 

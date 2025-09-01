@@ -20,7 +20,7 @@ from aienhance.core.multi_llm_config import (
     CREATIVE_TASK_CONFIG,
     ANALYTICAL_TASK_CONFIG
 )
-from aienhance.core.domain_inference import (
+from aienhance.modules.domain_inference import (
     DomainInferenceConfig,
     DomainInferenceManager,
     LLMDomainInferenceProvider

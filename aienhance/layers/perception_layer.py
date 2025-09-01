@@ -9,7 +9,7 @@ from typing import Any
 
 from ..memory.interfaces import create_user_context
 from ..perception import DynamicUserModeler, IntegratedContextAnalyzer
-from .domain_inference import (
+from ..modules.domain_inference import (
     DomainInferenceConfig,
     DomainInferenceManager,
     LLMDomainInferenceProvider,

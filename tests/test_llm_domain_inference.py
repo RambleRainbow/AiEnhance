@@ -11,7 +11,7 @@ from pathlib import Path
 # 添加项目路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from aienhance.core.domain_inference import (
+from aienhance.modules.domain_inference import (
     DomainInferenceConfig,
     DomainInferenceManager,
     LLMDomainInferenceProvider,

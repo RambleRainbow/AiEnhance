@@ -16,10 +16,10 @@ from ..memory.interfaces import (
     MemoryType,
     create_user_context,
 )
-from .behavior_layer import BehaviorLayer
-from .cognition_layer import CognitionLayer
-from .collaboration_layer import CollaborationLayer
-from .layer_interfaces import (
+from ..layers.behavior_layer import BehaviorLayer
+from ..layers.cognition_layer import CognitionLayer
+from ..layers.collaboration_layer import CollaborationLayer
+from ..layers.layer_interfaces import (
     BehaviorInput,
     CognitionInput,
     CollaborationInput,
@@ -29,7 +29,7 @@ from .layer_interfaces import (
     ProcessingStatus,
     SystemResponse,
 )
-from .perception_layer import PerceptionLayer
+from ..layers.perception_layer import PerceptionLayer
 
 logger = logging.getLogger(__name__)
 
