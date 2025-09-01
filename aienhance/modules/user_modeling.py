@@ -306,6 +306,67 @@ class LLMLearningStyleProvider(
 ):
     """基于大模型的学习风格分析提供商"""
 
+    @classmethod
+    def get_learning_style_schema(cls) -> dict[str, Any]:
+        """获取学习风格分析的JSON Schema"""
+        return {
+            "type": "object",
+            "properties": {
+                "processing_preference": {
+                    "type": "string",
+                    "enum": ["visual", "auditory", "kinesthetic"],
+                    "description": "信息处理偏好类型",
+                },
+                "learning_pace": {
+                    "type": "string",
+                    "enum": ["fast", "gradual", "deep"],
+                    "description": "学习节奏偏好",
+                },
+                "feedback_style": {
+                    "type": "string",
+                    "enum": ["direct", "guided", "exploratory"],
+                    "description": "反馈接收方式偏好",
+                },
+                "knowledge_construction": {
+                    "type": "string",
+                    "enum": ["linear", "network", "iterative"],
+                    "description": "知识建构方式偏好",
+                },
+                "interaction_density": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "maximum": 1.0,
+                    "description": "交互密度偏好评分",
+                },
+                "detail_preference": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "maximum": 1.0,
+                    "description": "细节关注度偏好评分",
+                },
+                "example_preference": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "maximum": 1.0,
+                    "description": "示例需求偏好评分",
+                },
+                "explanation": {
+                    "type": "string",
+                    "description": "学习风格分析的详细说明",
+                },
+            },
+            "required": [
+                "processing_preference",
+                "learning_pace",
+                "feedback_style",
+                "knowledge_construction",
+                "interaction_density",
+                "detail_preference",
+                "example_preference",
+                "explanation",
+            ],
+        }
+
     async def initialize(self) -> bool:
         """初始化LLM提供商"""
         try:
@@ -330,8 +391,11 @@ class LLMLearningStyleProvider(
 
         try:
             variables = self._prepare_prompt_variables(input_data, context)
+            # 使用JSON Schema确保结构化输出
             response = await self._call_llm_with_prompt(
-                self.config.prompt_template_name, variables
+                self.config.prompt_template_name,
+                variables,
+                json_schema=self.get_learning_style_schema(),
             )
             return self._parse_llm_response(response, input_data)
 
