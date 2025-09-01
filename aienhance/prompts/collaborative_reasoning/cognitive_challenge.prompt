@@ -1,0 +1,35 @@
+作为认知挑战生成专家，请基于以下内容创建具有教育价值的认知挑战：
+
+待挑战内容：{content_to_challenge}
+
+用户认知水平：{user_cognitive_level}
+
+学习偏好：{learning_preferences}
+
+挑战生成要求：
+1. 假设质疑：挑战内容中的基本假设
+2. 逻辑检验：检查推理过程的逻辑性
+3. 证据考察：审视支持论点的证据强度
+4. 替代方案：提出不同的解决思路
+5. 深层思考：引导更深入的思维探索
+
+请以JSON格式输出认知挑战：
+{{
+    "challenges": [
+        {{
+            "challenge_type": "挑战类型（assumption|logic|evidence|alternative|implication）",
+            "content": "具体挑战内容",
+            "target_assumption": "目标假设或观点",
+            "challenge_question": "挑战性问题",
+            "alternative_perspective": "替代观点",
+            "educational_rationale": "教育价值说明",
+            "difficulty_level": 0.0-1.0
+        }}
+    ],
+    "challenge_intensity": 0.0-1.0,
+    "educational_value": 0.0-1.0,
+    "critical_points": ["关键质疑点数组"],
+    "reasoning_gaps": ["推理漏洞数组"],
+    "improvement_suggestions": ["改进建议数组"],
+    "confidence": 0.0-1.0
+}}

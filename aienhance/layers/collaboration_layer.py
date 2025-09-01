@@ -265,12 +265,12 @@ class CollaborationLayer(ICollaborationLayer):
                 # 转换为接口格式
                 perspective_generation = PerspectiveGeneration(
                     perspectives=[{
-                        "perspective": p.get("content", ""),
-                        "viewpoint": p.get("viewpoint", ""),
-                        "confidence": p.get("confidence", 0.7),
-                        "rationale": p.get("rationale", "")
+                        "perspective": p.content if hasattr(p, 'content') else str(p),
+                        "viewpoint": p.perspective_type.value if hasattr(p, 'perspective_type') else "general",
+                        "confidence": p.confidence if hasattr(p, 'confidence') else 0.7,
+                        "rationale": p.reasoning if hasattr(p, 'reasoning') else ""
                     } for p in perspective_result.perspectives],
-                    perspective_diversity=perspective_result.diversity_score,
+                    perspective_diversity=0.8,  # 使用默认值，因为MultiPerspectiveResult没有diversity_score
                     generation_metadata={
                         "provider": "llm",
                         "perspective_count": len(perspective_result.perspectives),

@@ -1,0 +1,35 @@
+作为多元观点分析专家，请从不同角度和视角分析以下问题：
+
+原始问题：{original_query}
+
+用户背景：{user_background}
+
+领域背景：{domain_context}
+
+已有分析：{previous_analysis}
+
+请从以下维度生成多元观点：
+1. 分析型视角：逻辑推理、数据驱动
+2. 创造型视角：创新思维、突破常规
+3. 批判型视角：质疑假设、挑战观点
+4. 实用型视角：实践导向、解决问题
+5. 理论型视角：概念框架、系统思维
+6. 伦理型视角：价值判断、道德考量
+
+请以JSON格式输出分析结果：
+{{
+    "perspectives": [
+        {{
+            "viewpoint": "分析视角类型",
+            "content": "具体观点内容",
+            "reasoning": "观点推理过程",
+            "confidence": 0.0-1.0,
+            "supporting_evidence": ["支持证据数组"]
+        }}
+    ],
+    "diversity_score": 0.0-1.0,
+    "synthesis": "观点综合分析",
+    "conflicts": ["观点冲突分析数组"],
+    "complementarities": ["观点互补分析数组"],
+    "confidence": 0.0-1.0
+}}

@@ -148,28 +148,35 @@ class LLMAdaptiveOutputProvider(
     ) -> Dict[str, Any]:
         """准备自适应输出提示词变量"""
         original_content = input_data
-        user_profile = ""
-        cognitive_preferences = ""
-        context_info = ""
         
-        if context:
-            user_profile = context.get("user_profile", "")
-            cognitive_preferences = context.get("cognitive_preferences", "")
-            context_info = context.get("context_info", "")
+        # 从上下文中提取用户特征，如果没有则使用默认值
+        user_profile = context.get("user_profile") if context else None
+        
+        # 提取认知特征
+        cognitive_complexity = "0.5"
+        thinking_mode = "analytical"
+        learning_style = "visual"
+        processing_preference = "structured"
+        detail_preference = "0.5"
+        
+        if user_profile and hasattr(user_profile, 'cognitive_characteristics'):
+            cognitive_chars = user_profile.cognitive_characteristics
+            cognitive_complexity = str(cognitive_chars.get("cognitive_complexity", 0.5))
+            thinking_mode = str(cognitive_chars.get("thinking_mode", "analytical"))
             
-            # 处理用户画像数据
-            if isinstance(user_profile, dict):
-                profile_items = []
-                for key, value in user_profile.items():
-                    profile_items.append(f"{key}: {value}")
-                user_profile = "; ".join(profile_items)
+        if user_profile and hasattr(user_profile, 'interaction_preferences'):
+            interact_prefs = user_profile.interaction_preferences
+            learning_style = str(interact_prefs.get("learning_style", "visual"))
+            processing_preference = str(interact_prefs.get("processing_preference", "structured"))
+            detail_preference = str(interact_prefs.get("detail_preference", 0.5))
             
         return {
             "original_content": original_content,
-            "user_profile": user_profile or "通用用户画像",
-            "cognitive_preferences": cognitive_preferences or "标准认知偏好",
-            "context_info": context_info or "标准输出情境",
-            "target_audience": self.config.target_audience,
+            "cognitive_complexity": cognitive_complexity,
+            "thinking_mode": thinking_mode,
+            "learning_style": learning_style,
+            "processing_preference": processing_preference,
+            "detail_preference": detail_preference,
         }
 
     def _parse_llm_response(

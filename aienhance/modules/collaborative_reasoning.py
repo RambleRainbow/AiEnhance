@@ -174,19 +174,21 @@ class LLMMultiPerspectiveProvider(
         self, input_data: str, context: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """准备多视角生成提示词变量"""
-        topic = input_data
-        background_info = ""
+        original_query = input_data
+        user_background = ""
         domain_context = ""
+        previous_analysis = ""
         
         if context:
-            background_info = context.get("background_info", "")
+            user_background = context.get("user_background", context.get("background_info", ""))
             domain_context = context.get("domain_context", "")
+            previous_analysis = context.get("previous_analysis", context.get("behavior_output", ""))
             
         return {
-            "topic": topic,
-            "background_info": background_info or "无特定背景信息",
-            "domain_context": domain_context or "通用领域",
-            "max_perspectives": self.config.max_perspectives,
+            "original_query": original_query,
+            "user_background": user_background or "无特定用户背景",
+            "domain_context": domain_context or "通用领域", 
+            "previous_analysis": previous_analysis or "无先前分析结果",
         }
 
     def _parse_llm_response(
@@ -314,19 +316,28 @@ class LLMChallengeGenerationProvider(
         self, input_data: str, context: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """准备挑战生成提示词变量"""
-        statement_or_argument = input_data
-        reasoning_context = ""
-        assumptions = ""
+        content_to_challenge = input_data
+        user_cognitive_level = "中等水平"
+        learning_preferences = "结构化学习"
         
         if context:
-            reasoning_context = context.get("reasoning_context", "")
-            assumptions = context.get("assumptions", "")
+            user_profile = context.get("user_profile")
+            if user_profile and hasattr(user_profile, 'cognitive_characteristics'):
+                cognitive_chars = user_profile.cognitive_characteristics
+                complexity = cognitive_chars.get("cognitive_complexity", 0.5)
+                if complexity < 0.3:
+                    user_cognitive_level = "基础水平"
+                elif complexity > 0.7:
+                    user_cognitive_level = "高级水平"
+                    
+            if user_profile and hasattr(user_profile, 'interaction_preferences'):
+                interact_prefs = user_profile.interaction_preferences
+                learning_preferences = str(interact_prefs.get("learning_style", "结构化学习"))
             
         return {
-            "statement_or_argument": statement_or_argument,
-            "reasoning_context": reasoning_context or "标准推理情境",
-            "assumptions": assumptions or "需要识别的隐含假设",
-            "challenge_depth": self.config.challenge_depth,
+            "content_to_challenge": content_to_challenge,
+            "user_cognitive_level": user_cognitive_level,
+            "learning_preferences": learning_preferences,
         }
 
     def _parse_llm_response(

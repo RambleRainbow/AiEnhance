@@ -70,3 +70,38 @@ templates:
       language: "zh"
       temperature: 0.2
       max_tokens: 400
+
+  behavior_output:
+    adaptive_output:
+      name: "adaptive_output"
+      version: "1.0"
+      file: "behavior_output/adaptive_output.prompt"
+      description: "基于用户特征的自适应内容输出生成模板"
+      variables: ["original_content", "cognitive_complexity", "thinking_mode", "learning_style", "processing_preference", "detail_preference"]
+      category: "behavior_output"
+      language: "zh"
+      temperature: 0.4
+      max_tokens: 800
+
+  collaborative_reasoning:
+    dialectical_perspective:
+      name: "dialectical_perspective"
+      version: "1.0"
+      file: "collaborative_reasoning/dialectical_perspective.prompt"
+      description: "辩证思维和多元观点生成模板"
+      variables: ["original_query", "user_background", "domain_context", "previous_analysis"]
+      category: "collaborative_reasoning"
+      language: "zh"
+      temperature: 0.7
+      max_tokens: 800
+    
+    cognitive_challenge:
+      name: "cognitive_challenge"
+      version: "1.0"
+      file: "collaborative_reasoning/cognitive_challenge.prompt"
+      description: "认知挑战和批判性思维激发模板"
+      variables: ["content_to_challenge", "user_cognitive_level", "learning_preferences"]
+      category: "collaborative_reasoning"
+      language: "zh"
+      temperature: 0.7
+      max_tokens: 600
