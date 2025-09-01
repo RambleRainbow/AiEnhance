@@ -4,7 +4,6 @@
 基于domain_inference模式的抽象和泛化
 """
 
-import asyncio
 import json
 import logging
 from abc import ABC, abstractmethod
@@ -66,7 +65,7 @@ class LLMModuleProvider(ABC, Generic[T, C]):
         pass
     
     async def _call_llm_with_prompt(self, prompt_template_name: str, variables: Dict[str, Any]) -> str:
-        """通用LLM调用方法"""
+        """通用LLM调用方法 - 使用流式调用"""
         try:
             # 渲染提示词
             prompt = self.prompt_manager.render_prompt(
@@ -74,72 +73,52 @@ class LLMModuleProvider(ABC, Generic[T, C]):
                 variables=variables
             )
             
-            # 调用LLM
-            response = await asyncio.wait_for(
-                self._call_llm(prompt),
-                timeout=self.config.timeout
-            )
+            # 使用流式调用收集完整响应
+            response = await self._call_llm_stream(prompt)
             
             return response
             
-        except asyncio.TimeoutError:
-            logger.error(f"LLM call timeout for template: {prompt_template_name}")
-            raise TimeoutError(f"LLM call timeout after {self.config.timeout} seconds")
         except Exception as e:
             logger.error(f"LLM call failed for template {prompt_template_name}: {e}")
             raise
     
-    async def _call_llm(self, prompt: str) -> str:
-        """底层LLM调用 - 通用实现"""
+    async def _call_llm_stream(self, prompt: str) -> str:
+        """底层LLM流式调用 - 通用实现"""
         try:
             # 构建消息格式
-            messages = [{"role": "user", "content": prompt}]
+            from ..llm.interfaces import create_chat_message
+            chat_messages = [create_chat_message("user", prompt)]
             
-            # 适配不同LLM提供商接口
-            if hasattr(self.llm_provider, "generate_async"):
-                # 异步接口
-                response = await self.llm_provider.generate_async(
-                    messages=messages,
+            # 使用流式接口收集完整响应
+            if hasattr(self.llm_provider, "chat_stream"):
+                # 流式聊天接口
+                complete_response = ""
+                async for chunk in self.llm_provider.chat_stream(
+                    chat_messages,
                     temperature=self.config.temperature,
                     max_tokens=self.config.max_tokens,
-                    model=self.config.model_name,
-                )
+                    model=self.config.model_name or "default",
+                ):
+                    complete_response += chunk
+                
+                return complete_response
+                
             elif hasattr(self.llm_provider, "chat"):
-                # 检查是否是异步方法
-                if asyncio.iscoroutinefunction(self.llm_provider.chat):
-                    # 异步聊天接口
-                    from ..llm.interfaces import create_chat_message
-                    chat_messages = [create_chat_message("user", messages[0]["content"])]
-                    chat_response = await self.llm_provider.chat(
-                        chat_messages,
-                        temperature=self.config.temperature,
-                        max_tokens=self.config.max_tokens,
-                        model=self.config.model_name or "default",
-                    )
-                    response = chat_response.content if hasattr(chat_response, 'content') else str(chat_response)
-                else:
-                    # 同步聊天接口
-                    response = await asyncio.to_thread(
-                        self.llm_provider.chat,
-                        messages,
-                        temperature=self.config.temperature,
-                        max_tokens=self.config.max_tokens,
-                        model=self.config.model_name or "default",
-                    )
-                    response = response.content if hasattr(response, 'content') else str(response)
+                # 如果没有流式接口，回退到普通聊天接口
+                logger.info("Stream interface not available, falling back to chat interface")
+                chat_response = await self.llm_provider.chat(
+                    chat_messages,
+                    temperature=self.config.temperature,
+                    max_tokens=self.config.max_tokens,
+                    model=self.config.model_name or "default",
+                )
+                return chat_response.content if hasattr(chat_response, 'content') else str(chat_response)
+                
             else:
-                raise ValueError("Unsupported LLM provider interface")
-            
-            # 提取文本内容
-            if isinstance(response, dict):
-                return response.get("content", response.get("message", str(response)))
-            elif hasattr(response, "content"):
-                return response.content
-            else:
-                return str(response)
+                raise ValueError("No supported LLM provider interface found")
                 
         except Exception as e:
-            logger.error(f"LLM call failed: {e}")
+            logger.error(f"LLM stream call failed: {e}")
             raise
     
     def _extract_json_from_response(self, response: str) -> Dict[str, Any]:
