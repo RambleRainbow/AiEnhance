@@ -105,14 +105,28 @@ class LLMModuleProvider(ABC, Generic[T, C]):
                     model=self.config.model_name,
                 )
             elif hasattr(self.llm_provider, "chat"):
-                # 同步聊天接口
-                response = await asyncio.to_thread(
-                    self.llm_provider.chat,
-                    messages,
-                    temperature=self.config.temperature,
-                    max_tokens=self.config.max_tokens,
-                    model=self.config.model_name or "default",
-                )
+                # 检查是否是异步方法
+                if asyncio.iscoroutinefunction(self.llm_provider.chat):
+                    # 异步聊天接口
+                    from ..llm.interfaces import create_chat_message
+                    chat_messages = [create_chat_message("user", messages[0]["content"])]
+                    chat_response = await self.llm_provider.chat(
+                        chat_messages,
+                        temperature=self.config.temperature,
+                        max_tokens=self.config.max_tokens,
+                        model=self.config.model_name or "default",
+                    )
+                    response = chat_response.content if hasattr(chat_response, 'content') else str(chat_response)
+                else:
+                    # 同步聊天接口
+                    response = await asyncio.to_thread(
+                        self.llm_provider.chat,
+                        messages,
+                        temperature=self.config.temperature,
+                        max_tokens=self.config.max_tokens,
+                        model=self.config.model_name or "default",
+                    )
+                    response = response.content if hasattr(response, 'content') else str(response)
             else:
                 raise ValueError("Unsupported LLM provider interface")
             
@@ -131,6 +145,11 @@ class LLMModuleProvider(ABC, Generic[T, C]):
     def _extract_json_from_response(self, response: str) -> Dict[str, Any]:
         """通用JSON提取方法"""
         try:
+            # 检查响应是否为空
+            if not response or response.strip() == "":
+                logger.warning("Empty response from LLM, returning default structure")
+                return {"error": "empty_response", "raw_content": response}
+            
             # 清理响应格式
             response = response.strip()
             if response.startswith("```json"):
@@ -139,13 +158,37 @@ class LLMModuleProvider(ABC, Generic[T, C]):
                 response = response[:-3]
             response = response.strip()
             
-            # 解析JSON
+            # 如果清理后仍然为空
+            if not response:
+                logger.warning("Response empty after cleaning, returning default structure")
+                return {"error": "empty_after_cleaning", "raw_content": response}
+            
+            # 尝试解析JSON
             return json.loads(response)
             
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse JSON response: {e}")
             logger.debug(f"Raw response: {response}")
-            raise ValueError(f"Invalid JSON response from LLM: {e}")
+            
+            # 尝试从非JSON响应中提取有用信息
+            try:
+                # 如果响应看起来像是纯文本回答，尝试构造基本结构
+                if response and len(response) > 10:
+                    logger.info("Attempting to extract content from non-JSON response")
+                    return {
+                        "error": "non_json_response",
+                        "raw_content": response[:500],  # 限制长度
+                        "extracted_text": response.split('\n')[0][:200] if '\n' in response else response[:200]
+                    }
+            except Exception as extract_error:
+                logger.error(f"Failed to extract content from response: {extract_error}")
+            
+            # 返回错误结构而不是抛出异常，让调用者处理
+            return {
+                "error": "json_parse_failed",
+                "raw_content": response[:500] if response else "",
+                "parse_error": str(e)
+            }
     
     async def cleanup(self) -> None:
         """清理资源 - 通用实现"""

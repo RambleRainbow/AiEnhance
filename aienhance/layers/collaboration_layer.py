@@ -7,12 +7,12 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from ..collaboration import CognitiveChallenge as CognitiveChallengeImpl
-from ..collaboration import CollaborativeCoordinator, DialecticalPerspectiveGenerator
-from ..collaboration.interfaces import (
-    ChallengeRequest,
-    CollaborationContext,
-    PerspectiveRequest,
+from ..modules.collaborative_reasoning import (
+    MultiPerspectiveManager,
+    ChallengeGenerationManager,
+    CollaborativeReasoningConfig,
+    LLMMultiPerspectiveProvider,
+    LLMChallengeGenerationProvider,
 )
 from .layer_interfaces import (
     CognitiveChallenge,
@@ -49,9 +49,8 @@ class CollaborationLayer(ICollaborationLayer):
         self.is_initialized = False
 
         # 核心组件
-        self.collaborative_coordinator: CollaborativeCoordinator | None = None
-        self.perspective_generator: DialecticalPerspectiveGenerator | None = None
-        self.challenge_generator: CognitiveChallengeImpl | None = None
+        self.perspective_manager: MultiPerspectiveManager | None = None
+        self.challenge_manager: ChallengeGenerationManager | None = None
 
         # 运行时状态
         self.processing_count = 0
@@ -68,35 +67,33 @@ class CollaborationLayer(ICollaborationLayer):
                 logger.warning("No LLM provider available for collaboration layer")
                 return False
 
-            # 初始化协作协调器
-            try:
-                self.collaborative_coordinator = CollaborativeCoordinator(
-                    llm_provider=self.llm_provider, memory_system=self.memory_system
+            # 初始化多元观点管理器
+            self.perspective_manager = MultiPerspectiveManager()
+            
+            if self.llm_provider:
+                perspective_config = CollaborativeReasoningConfig(
+                    llm_provider=self.llm_provider,
+                    reasoning_type="multi_perspective",
+                    temperature=0.6
                 )
-                logger.info("Collaborative coordinator initialized")
-            except Exception as e:
-                logger.error(f"Failed to initialize collaborative coordinator: {e}")
-                return False
+                perspective_provider = LLMMultiPerspectiveProvider(perspective_config)
+                await self.perspective_manager.register_provider("default", perspective_provider)
+            
+            logger.info("Perspective manager initialized")
 
-            # 初始化观点生成器
-            try:
-                self.perspective_generator = DialecticalPerspectiveGenerator(
-                    llm_provider=self.llm_provider
+            # 初始化认知挑战管理器
+            self.challenge_manager = ChallengeGenerationManager()
+            
+            if self.llm_provider:
+                challenge_config = CollaborativeReasoningConfig(
+                    llm_provider=self.llm_provider,
+                    reasoning_type="challenge_generation",
+                    temperature=0.7
                 )
-                logger.info("Perspective generator initialized")
-            except Exception as e:
-                logger.warning(f"Failed to initialize perspective generator: {e}")
-                self.perspective_generator = None
-
-            # 初始化认知挑战生成器
-            try:
-                self.challenge_generator = CognitiveChallengeImpl(
-                    llm_provider=self.llm_provider
-                )
-                logger.info("Challenge generator initialized")
-            except Exception as e:
-                logger.warning(f"Failed to initialize challenge generator: {e}")
-                self.challenge_generator = None
+                challenge_provider = LLMChallengeGenerationProvider(challenge_config)
+                await self.challenge_manager.register_provider("default", challenge_provider)
+            
+            logger.info("Challenge manager initialized")
 
             self.is_initialized = True
             logger.info("Collaboration Layer initialization completed")
@@ -247,75 +244,53 @@ class CollaborationLayer(ICollaborationLayer):
     async def generate_perspectives(
         self, query: str, context: dict[str, Any]
     ) -> PerspectiveGeneration:
-        """生成多元观点"""
+        """生成多元观点 - 使用LLM分析"""
         try:
-            logger.info("Generating multiple perspectives...")
+            logger.info("Generating multiple perspectives with LLM...")
 
-            if not self.perspective_generator:
-                logger.warning("Perspective generator not available")
-                return PerspectiveGeneration(
-                    perspectives=[],
-                    perspective_diversity=0.0,
-                    generation_metadata={"error": "generator_not_available"},
+            # 准备多视角分析上下文
+            perspective_context = {
+                "original_query": query,
+                "user_background": str(context.get("user_profile", {}))[:500],
+                "domain_context": str(context.get("context_profile", {}))[:500],
+                "previous_analysis": str(context.get("behavior_output", {}))[:500],
+            }
+
+            # 使用LLM多视角管理器
+            if self.perspective_manager:
+                perspective_result = await self.perspective_manager.process(
+                    query, context=perspective_context
                 )
-
-            # 使用辩证观点生成器
-            perspective_request = PerspectiveRequest(
-                content=query,
-                user_position=context.get("user_position"),
-                depth_level=context.get("depth_level", "moderate"),
-                max_perspectives=context.get("max_perspectives", 3),
-                context=context
-            )
-            
-            collaboration_context = CollaborationContext(
-                user_id=context.get("user_id", "default_user"),
-                session_id=context.get("session_id", "default_session"),
-                user_cognitive_profile=context.get("user_cognitive_profile"),
-                collaboration_preferences=context.get("collaboration_preferences") or {},
-                current_task_context=context.get("current_task_context")
-            )
-            
-            perspective_result = (
-                await self.perspective_generator.generate_perspectives(
-                    perspective_request, collaboration_context
+                
+                # 转换为接口格式
+                perspective_generation = PerspectiveGeneration(
+                    perspectives=[{
+                        "perspective": p.get("content", ""),
+                        "viewpoint": p.get("viewpoint", ""),
+                        "confidence": p.get("confidence", 0.7),
+                        "rationale": p.get("rationale", "")
+                    } for p in perspective_result.perspectives],
+                    perspective_diversity=perspective_result.diversity_score,
+                    generation_metadata={
+                        "provider": "llm",
+                        "perspective_count": len(perspective_result.perspectives),
+                        "confidence": perspective_result.confidence
+                    },
                 )
-            )
-
-            # 处理生成结果
-            if isinstance(perspective_result, dict):
-                perspectives = perspective_result.get("perspectives", [])
-                diversity = perspective_result.get("diversity_score", 0.0)
-                metadata = perspective_result.get("generation_metadata", {})
             else:
-                # 处理其他格式的结果
-                perspectives = [
-                    {"perspective": str(perspective_result), "confidence": 0.5}
-                ]
-                diversity = 0.5
-                metadata = {}
+                # 默认多视角生成
+                perspective_generation = PerspectiveGeneration(
+                    perspectives=[{
+                        "perspective": "标准分析视角",
+                        "viewpoint": "analytical",
+                        "confidence": 0.5,
+                        "rationale": "未启用LLM多视角生成"
+                    }],
+                    perspective_diversity=0.0,
+                    generation_metadata={"error": "LLM多视角管理器未初始化"},
+                )
 
-            # 确保观点格式正确
-            formatted_perspectives = []
-            for p in perspectives:
-                if isinstance(p, dict):
-                    formatted_perspectives.append(p)
-                else:
-                    formatted_perspectives.append(
-                        {
-                            "perspective": str(p),
-                            "viewpoint": "generated",
-                            "confidence": 0.5,
-                        }
-                    )
-
-            perspective_generation = PerspectiveGeneration(
-                perspectives=formatted_perspectives,
-                perspective_diversity=diversity,
-                generation_metadata=metadata,
-            )
-
-            logger.info(f"Generated {len(formatted_perspectives)} perspectives")
+            logger.info(f"Generated {len(perspective_generation.perspectives)} perspectives")
             return perspective_generation
 
         except Exception as e:
@@ -329,69 +304,48 @@ class CollaborationLayer(ICollaborationLayer):
     async def create_cognitive_challenges(
         self, content: str, user_profile
     ) -> CognitiveChallenge:
-        """创建认知挑战"""
+        """创建认知挑战 - 使用LLM分析"""
         try:
-            logger.info("Creating cognitive challenges...")
+            logger.info("Creating cognitive challenges with LLM...")
 
-            if not self.challenge_generator:
-                logger.warning("Challenge generator not available")
-                return CognitiveChallenge(
-                    challenges=[], challenge_intensity=0.0, educational_value=0.0
+            # 准备认知挑战生成上下文
+            challenge_context = {
+                "content_to_challenge": content,
+                "user_cognitive_level": str(getattr(user_profile, 'cognitive_characteristics', {}))[:300],
+                "learning_preferences": str(getattr(user_profile, 'interaction_preferences', {}))[:300],
+            }
+
+            # 使用LLM认知挑战管理器
+            if self.challenge_manager:
+                challenge_result = await self.challenge_manager.process(
+                    content, context=challenge_context
                 )
-
-            # 使用认知挑战生成器
-            challenge_request = ChallengeRequest(
-                content=content,
-                user_reasoning=getattr(user_profile, 'reasoning_style', None),
-                intensity_level="moderate",
-                context={
-                    "user_profile": user_profile.to_dict() if hasattr(user_profile, 'to_dict') else {},
-                    "task_context": "cognitive_challenge_generation"
-                }
-            )
-            
-            collaboration_context = CollaborationContext(
-                user_id=getattr(user_profile, 'user_id', 'default_user'),
-                session_id="default_session",
-                user_cognitive_profile=user_profile.to_dict() if hasattr(user_profile, 'to_dict') else {},
-                collaboration_preferences={},
-                current_task_context={"content": content}
-            )
-            
-            challenge_result = (
-                await self.challenge_generator.generate_challenges(
-                    challenge_request, collaboration_context
+                
+                # 转换为接口格式
+                cognitive_challenge = CognitiveChallenge(
+                    challenges=[{
+                        "challenge": c.get("content", ""),
+                        "type": c.get("challenge_type", "general"),
+                        "difficulty": c.get("difficulty_level", 0.5),
+                        "educational_rationale": c.get("educational_rationale", "")
+                    } for c in challenge_result.challenges],
+                    challenge_intensity=challenge_result.challenge_intensity,
+                    educational_value=challenge_result.educational_value,
                 )
-            )
-
-            # 处理生成结果
-            if isinstance(challenge_result, dict):
-                challenges = challenge_result.get("challenges", [])
-                intensity = challenge_result.get("challenge_intensity", 0.0)
-                educational_value = challenge_result.get("educational_value", 0.0)
             else:
-                # 处理其他格式的结果
-                challenges = [{"challenge": str(challenge_result), "type": "general"}]
-                intensity = 0.5
-                educational_value = 0.5
+                # 默认认知挑战
+                cognitive_challenge = CognitiveChallenge(
+                    challenges=[{
+                        "challenge": "请深入思考这个问题的不同维度",
+                        "type": "analytical",
+                        "difficulty": 0.5,
+                        "educational_rationale": "未启用LLM挑战生成"
+                    }],
+                    challenge_intensity=0.3,
+                    educational_value=0.3,
+                )
 
-            # 确保挑战格式正确
-            formatted_challenges = []
-            for c in challenges:
-                if isinstance(c, dict):
-                    formatted_challenges.append(c)
-                else:
-                    formatted_challenges.append(
-                        {"challenge": str(c), "type": "cognitive", "difficulty": 0.5}
-                    )
-
-            cognitive_challenge = CognitiveChallenge(
-                challenges=formatted_challenges,
-                challenge_intensity=intensity,
-                educational_value=educational_value,
-            )
-
-            logger.info(f"Created {len(formatted_challenges)} cognitive challenges")
+            logger.info(f"Created {len(cognitive_challenge.challenges)} cognitive challenges")
             return cognitive_challenge
 
         except Exception as e:

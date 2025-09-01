@@ -162,6 +162,30 @@ class LLMCognitiveAnalysisProvider(
         try:
             parsed = self._extract_json_from_response(response)
 
+            # 检查是否解析出错
+            if "error" in parsed:
+                logger.warning(f"LLM response parsing had errors: {parsed['error']}")
+                # 如果有提取的文本，尝试从中获取信息
+                if "extracted_text" in parsed:
+                    extracted_text = parsed["extracted_text"]
+                    # 简单的关键词分析作为fallback
+                    thinking_mode = ThinkingMode.CREATIVE if "创造" in extracted_text or "创新" in extracted_text else ThinkingMode.ANALYTICAL
+                    return CognitiveAnalysisResult(
+                        thinking_mode=thinking_mode,
+                        cognitive_complexity=0.6 if "复杂" in extracted_text else 0.5,
+                        abstraction_level=0.6 if "抽象" in extracted_text else 0.5,
+                        creativity_tendency=0.7 if "创造" in extracted_text else 0.5,
+                        reasoning_preference=f"基于文本分析: {extracted_text[:100]}",
+                        confidence=0.4,
+                        analysis_basis="从非结构化响应中提取",
+                        metadata={
+                            "provider": "llm_text_extract",
+                            "model": self.config.model_name,
+                            "original_query": original_input,
+                            "parse_error": parsed.get("parse_error", ""),
+                        },
+                    )
+
             # 解析思维模式
             thinking_mode_str = parsed.get("thinking_mode", "analytical").lower()
             thinking_mode = ThinkingMode.ANALYTICAL
@@ -265,6 +289,31 @@ class LLMLearningStyleProvider(
         """解析学习风格分析LLM响应"""
         try:
             parsed = self._extract_json_from_response(response)
+
+            # 检查是否解析出错
+            if "error" in parsed:
+                logger.warning(f"LLM response parsing had errors: {parsed['error']}")
+                # 如果有提取的文本，尝试基于文本内容推断学习风格
+                if "extracted_text" in parsed:
+                    extracted_text = parsed["extracted_text"]
+                    # 简单的关键词分析
+                    processing_pref = ProcessingPreference.VISUAL if "视觉" in extracted_text or "图像" in extracted_text else ProcessingPreference.VISUAL
+                    return LearningStyleResult(
+                        processing_preference=processing_pref,
+                        learning_pace=LearningPace.GRADUAL,
+                        feedback_style=FeedbackStyle.GUIDED,
+                        knowledge_construction=KnowledgeConstruction.LINEAR,
+                        interaction_density=0.5,
+                        detail_preference=0.5,
+                        example_preference=0.7,
+                        explanation=f"基于文本分析的学习风格推断: {extracted_text[:100]}",
+                        metadata={
+                            "provider": "llm_text_extract",
+                            "model": self.config.model_name,
+                            "original_query": original_input,
+                            "parse_error": parsed.get("parse_error", ""),
+                        },
+                    )
 
             # 解析各种枚举类型
             processing_pref_str = parsed.get("processing_preference", "visual").lower()

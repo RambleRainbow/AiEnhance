@@ -8,7 +8,18 @@ from datetime import datetime
 from typing import Any
 
 from ..memory.interfaces import create_user_context
-from ..perception import DynamicUserModeler, IntegratedContextAnalyzer
+from ..modules.user_modeling import (
+    CognitiveAnalysisManager,
+    LearningStyleManager,
+    UserModelingConfig,
+    LLMCognitiveAnalysisProvider,
+    LLMLearningStyleProvider,
+)
+from ..modules.context_analysis import (
+    ContextAnalysisManager,
+    ContextAnalysisConfig,
+    LLMContextAnalysisProvider,
+)
 from ..modules.domain_inference import (
     DomainInferenceConfig,
     DomainInferenceManager,
@@ -49,8 +60,9 @@ class PerceptionLayer(IPerceptionLayer):
         self.is_initialized = False
 
         # 核心组件
-        self.user_modeler: DynamicUserModeler | None = None
-        self.context_analyzer: IntegratedContextAnalyzer | None = None
+        self.cognitive_analysis_manager: CognitiveAnalysisManager | None = None
+        self.learning_style_manager: LearningStyleManager | None = None
+        self.context_analyzer: ContextAnalysisManager | None = None
         self.domain_inference_manager: DomainInferenceManager | None = None
 
         # 运行时状态
@@ -62,20 +74,42 @@ class PerceptionLayer(IPerceptionLayer):
         try:
             logger.info("Initializing Perception Layer...")
 
-            # 初始化用户建模器（支持LLM语义分析）
-            modeler_type = "semantic"  # Always use semantic modeling
-            self.user_modeler = DynamicUserModeler(
-                llm_provider=self.llm_provider,
-                modeler_type=modeler_type,
-            )
-            logger.info(
-                "User modeler initialized with LLM support"
-                if self.llm_provider
-                else "User modeler initialized"
-            )
+            # 初始化用户建模器（LLM语义分析）
+            self.cognitive_analysis_manager = CognitiveAnalysisManager()
+            self.learning_style_manager = LearningStyleManager()
+            
+            if self.llm_provider:
+                # 认知特征分析提供商
+                cognitive_config = UserModelingConfig(
+                    llm_provider=self.llm_provider,
+                    analysis_type="cognitive",
+                    temperature=0.3
+                )
+                cognitive_provider = LLMCognitiveAnalysisProvider(cognitive_config)
+                await self.cognitive_analysis_manager.register_provider("default", cognitive_provider)
+                
+                # 学习风格分析提供商
+                learning_config = UserModelingConfig(
+                    llm_provider=self.llm_provider,
+                    analysis_type="learning_style",
+                    temperature=0.3
+                )
+                learning_provider = LLMLearningStyleProvider(learning_config)
+                await self.learning_style_manager.register_provider("default", learning_provider)
+            
+            logger.info("User modeling components initialized")
 
             # 初始化情境分析器
-            self.context_analyzer = IntegratedContextAnalyzer()
+            self.context_analyzer = ContextAnalysisManager()
+            
+            if self.llm_provider:
+                context_config = ContextAnalysisConfig(
+                    llm_provider=self.llm_provider,
+                    temperature=0.3
+                )
+                context_provider = LLMContextAnalysisProvider(context_config)
+                await self.context_analyzer.register_provider("default", context_provider)
+            
             logger.info("Context analyzer initialized")
 
             # 初始化领域推断管理器
@@ -242,79 +276,94 @@ class PerceptionLayer(IPerceptionLayer):
         context: dict[str, Any],
         historical_data: list[Any] | None,
     ) -> UserProfile:
-        """处理用户画像"""
+        """处理用户画像 - 使用LLM语义分析"""
         try:
-            # 获取或创建用户画像
-            existing_profile = self.user_modeler.get_user_profile(user_id)
+            logger.info(f"Processing user profile for: {user_id}")
+            
+            # 准备用户分析上下文
+            analysis_context = {
+                "domain_context": context.get("domain", ""),
+                "historical_data": str(historical_data or [])[:1000],  # 限制长度
+            }
 
-            if existing_profile:
-                logger.info(f"Found existing user profile for: {user_id}")
-                # 转换为接口定义的UserProfile格式
-                return UserProfile(
-                    user_id=existing_profile.user_id,
-                    cognitive_characteristics={
-                        "thinking_mode": existing_profile.cognitive.thinking_mode.value,
-                        "cognitive_complexity": existing_profile.cognitive.cognitive_complexity,
-                        "abstraction_level": existing_profile.cognitive.abstraction_level,
-                        "creativity_tendency": existing_profile.cognitive.creativity_tendency,
-                    },
-                    knowledge_profile={
-                        "core_domains": existing_profile.knowledge.core_domains,
-                        "edge_domains": existing_profile.knowledge.edge_domains,
-                        "knowledge_depth": existing_profile.knowledge.knowledge_depth,
-                    },
-                    interaction_preferences={
-                        "cognitive_style": existing_profile.interaction.cognitive_style.value,
-                        "information_density_preference": existing_profile.interaction.information_density_preference,
-                        "processing_speed": existing_profile.interaction.processing_speed,
-                    },
-                    created_at=existing_profile.created_at,
-                    updated_at=existing_profile.updated_at,
+            # 从记忆系统获取用户历史数据
+            if self.memory_system:
+                try:
+                    user_context = create_user_context(user_id)
+                    user_memories = await self.memory_system.get_user_memories(
+                        user_context, limit=10
+                    )
+                    if user_memories and hasattr(user_memories, 'memories'):
+                        memory_context = [str(mem)[:200] for mem in user_memories.memories[:5]]
+                        analysis_context["historical_data"] = "\n".join(memory_context)
+                except Exception as e:
+                    logger.warning(f"Failed to get user memories: {e}")
+
+            # LLM认知特征分析
+            if self.cognitive_analysis_manager:
+                cognitive_result = await self.cognitive_analysis_manager.process(
+                    query, context=analysis_context
                 )
             else:
-                # 创建新用户画像
-                logger.info(f"Creating new user profile for: {user_id}")
-                initial_data = await self._extract_initial_user_data(
-                    query, context, historical_data
+                # 默认认知特征
+                from ..modules.user_modeling import ThinkingMode, CognitiveAnalysisResult
+                cognitive_result = CognitiveAnalysisResult(
+                    thinking_mode=ThinkingMode.ANALYTICAL,
+                    cognitive_complexity=0.5,
+                    abstraction_level=0.5,
+                    creativity_tendency=0.5,
+                    reasoning_preference="标准逻辑推理",
+                    confidence=0.3,
+                    analysis_basis="未启用LLM分析"
                 )
 
-                # 从记忆系统获取用户历史数据
-                if self.memory_system:
-                    try:
-                        user_context = create_user_context(user_id)
-                        user_memories = await self.memory_system.get_user_memories(
-                            user_context, limit=50
-                        )
-                        initial_data["memory_context"] = user_memories.memories
-                    except Exception as e:
-                        logger.warning(f"Failed to get user memories: {e}")
-
-                new_profile = await self.user_modeler.create_user_profile(
-                    user_id, initial_data
+            # LLM学习风格分析
+            if self.learning_style_manager:
+                learning_result = await self.learning_style_manager.process(
+                    query, context=analysis_context
+                )
+            else:
+                # 默认学习风格
+                from ..modules.user_modeling import (
+                    ProcessingPreference, LearningPace, FeedbackStyle, 
+                    KnowledgeConstruction, LearningStyleResult
+                )
+                learning_result = LearningStyleResult(
+                    processing_preference=ProcessingPreference.VISUAL,
+                    learning_pace=LearningPace.GRADUAL,
+                    feedback_style=FeedbackStyle.GUIDED,
+                    knowledge_construction=KnowledgeConstruction.LINEAR,
+                    interaction_density=0.5,
+                    detail_preference=0.5,
+                    example_preference=0.7,
+                    explanation="未启用LLM分析"
                 )
 
-                # 转换为接口格式
-                return UserProfile(
-                    user_id=new_profile.user_id,
-                    cognitive_characteristics={
-                        "thinking_mode": new_profile.cognitive.thinking_mode.value,
-                        "cognitive_complexity": new_profile.cognitive.cognitive_complexity,
-                        "abstraction_level": new_profile.cognitive.abstraction_level,
-                        "creativity_tendency": new_profile.cognitive.creativity_tendency,
-                    },
-                    knowledge_profile={
-                        "core_domains": new_profile.knowledge.core_domains,
-                        "edge_domains": new_profile.knowledge.edge_domains,
-                        "knowledge_depth": new_profile.knowledge.knowledge_depth,
-                    },
-                    interaction_preferences={
-                        "cognitive_style": new_profile.interaction.cognitive_style.value,
-                        "information_density_preference": new_profile.interaction.information_density_preference,
-                        "processing_speed": new_profile.interaction.processing_speed,
-                    },
-                    created_at=new_profile.created_at,
-                    updated_at=new_profile.updated_at,
-                )
+            # 转换为接口格式
+            return UserProfile(
+                user_id=user_id,
+                cognitive_characteristics={
+                    "thinking_mode": cognitive_result.thinking_mode.value,
+                    "cognitive_complexity": cognitive_result.cognitive_complexity,
+                    "abstraction_level": cognitive_result.abstraction_level,
+                    "creativity_tendency": cognitive_result.creativity_tendency,
+                    "reasoning_preference": cognitive_result.reasoning_preference,
+                },
+                knowledge_profile={
+                    "core_domains": [context.get("domain", "general")],
+                    "edge_domains": [],
+                    "knowledge_depth": cognitive_result.cognitive_complexity,
+                },
+                interaction_preferences={
+                    "cognitive_style": learning_result.processing_preference.value,
+                    "information_density_preference": learning_result.detail_preference,
+                    "processing_speed": learning_result.interaction_density,
+                    "feedback_style": learning_result.feedback_style.value,
+                    "learning_pace": learning_result.learning_pace.value,
+                },
+                created_at=datetime.now().isoformat(),
+                updated_at=datetime.now().isoformat(),
+            )
 
         except Exception as e:
             logger.error(f"Failed to process user profile: {e}")
@@ -344,38 +393,60 @@ class PerceptionLayer(IPerceptionLayer):
     async def _process_context_analysis(
         self, query: str, context: dict[str, Any], user_profile: UserProfile
     ) -> ContextProfile:
-        """处理情境分析"""
+        """处理情境分析 - 使用LLM语义分析"""
         try:
-            # 增强上下文（添加用户画像信息）
-            enhanced_context = {**context, "user_profile": user_profile}
+            logger.info("Processing context analysis")
+            
+            # 准备情境分析上下文
+            enhanced_context = {
+                "background": context.get("background", ""),
+                "temporal_context": context.get("temporal_context", "当前时间"),
+                "user_cognitive_style": user_profile.cognitive_characteristics.get("thinking_mode", "analytical"),
+                "user_complexity_level": user_profile.cognitive_characteristics.get("cognitive_complexity", 0.5)
+            }
 
-            # 使用情境分析器
-            context_result = self.context_analyzer.analyze_context(
-                query, enhanced_context
-            )
+            # LLM情境分析
+            if self.context_analyzer:
+                context_result = await self.context_analyzer.process(
+                    query, context=enhanced_context
+                )
+            else:
+                # 默认情境分析
+                from ..modules.context_analysis import TaskType, UrgencyLevel, ComplexityLevel, ContextAnalysisResult
+                context_result = ContextAnalysisResult(
+                    task_type=TaskType.ANALYTICAL,
+                    urgency_level=UrgencyLevel.MEDIUM,
+                    complexity_level=ComplexityLevel.MEDIUM,
+                    resource_constraints={
+                        "time_pressure": 0.5,
+                        "knowledge_gap": 0.5,
+                        "tool_availability": 0.5,
+                    },
+                    social_context={
+                        "collaboration_needed": False,
+                        "audience_type": "self",
+                        "communication_formality": 0.5,
+                    },
+                    environmental_factors=[],
+                    recommended_approach="采用标准分析方法处理",
+                    context_summary="未启用LLM分析的默认情境",
+                    confidence=0.3
+                )
 
             # 转换为接口格式
             return ContextProfile(
-                task_type=context_result.task_characteristics.task_type.value,
-                complexity_level=context_result.contextual_elements.complexity_level,
+                task_type=context_result.task_type.value,
+                complexity_level=context_result.complexity_level.value if hasattr(context_result.complexity_level, 'value') else 0.5,
                 domain_characteristics={
-                    "primary_domain": context_result.contextual_elements.domain_scope[0]
-                    if context_result.contextual_elements.domain_scope
-                    else "general",
-                    "secondary_domains": context_result.contextual_elements.domain_scope[
-                        1:
-                    ]
-                    if len(context_result.contextual_elements.domain_scope) > 1
-                    else [],
-                    "interdisciplinary_score": context_result.task_characteristics.cross_domain_level,
+                    "primary_domain": context.get("domain", "general"),
+                    "secondary_domains": [],
+                    "interdisciplinary_score": 0.5,
                 },
                 environmental_factors={
-                    "urgency_level": context_result.contextual_elements.urgency_level,
-                    "resource_constraints": {
-                        "time": 1.0,
-                        "resources": 1.0,
-                    },  # Default values
-                    "social_context": {"collaboration_level": 0.0},  # Default values
+                    "urgency_level": context_result.urgency_level.value if hasattr(context_result.urgency_level, 'value') else "medium",
+                    "resource_constraints": context_result.resource_constraints,
+                    "social_context": context_result.social_context,
+                    "recommended_approach": context_result.recommended_approach,
                 },
             )
 
@@ -442,7 +513,19 @@ class PerceptionLayer(IPerceptionLayer):
         cognitive_complexity = user_profile.cognitive_characteristics.get(
             "cognitive_complexity", 0.5
         )
+        
+        # 确保cognitive_complexity是数值类型
+        if isinstance(cognitive_complexity, str):
+            cognitive_complexity = 0.5
+        
         task_complexity = context_profile.complexity_level
+        
+        # 将字符串类型的复杂度转换为数值
+        if isinstance(task_complexity, str):
+            complexity_map = {"low": 0.3, "medium": 0.5, "high": 0.8}
+            task_complexity = complexity_map.get(task_complexity.lower(), 0.5)
+        elif not isinstance(task_complexity, (int, float)):
+            task_complexity = 0.5
 
         # 简单的就绪程度评估
         readiness = min(1.0, cognitive_complexity / max(0.1, task_complexity))
@@ -482,7 +565,19 @@ class PerceptionLayer(IPerceptionLayer):
         cognitive_complexity = user_profile.cognitive_characteristics.get(
             "cognitive_complexity", 0.5
         )
+        
+        # 确保cognitive_complexity是数值类型
+        if isinstance(cognitive_complexity, str):
+            cognitive_complexity = 0.5
+            
         task_complexity = context_profile.complexity_level
+        
+        # 将字符串类型的复杂度转换为数值
+        if isinstance(task_complexity, str):
+            complexity_map = {"low": 0.3, "medium": 0.5, "high": 0.8}
+            task_complexity = complexity_map.get(task_complexity.lower(), 0.5)
+        elif not isinstance(task_complexity, (int, float)):
+            task_complexity = 0.5
 
         if task_complexity > cognitive_complexity + 0.2:
             suggestions.append("简化表述，降低认知负荷")

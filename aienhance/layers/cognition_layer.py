@@ -7,10 +7,12 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from ..cognition import (
-    IntegratedAnalogyReasoner,
-    IntegratedSemanticEnhancer,
-    MultiLevelMemoryActivator,
+from ..modules.memory_activation import (
+    MemoryActivationManager,
+    SemanticEnhancementManager,
+    MemoryActivationConfig,
+    LLMMemoryActivationProvider,
+    LLMSemanticEnhancementProvider,
 )
 from ..memory.interfaces import MemoryEntry
 from .layer_interfaces import (
@@ -29,7 +31,7 @@ logger = logging.getLogger(__name__)
 class CognitionLayer(ICognitionLayer):
     """认知层具体实现"""
 
-    def __init__(self, config: dict[str, Any] | None = None):
+    def __init__(self, config: dict[str, Any] | None = None, llm_provider: Any | None = None):
         """
         初始化认知层
 
@@ -37,12 +39,13 @@ class CognitionLayer(ICognitionLayer):
             config: 认知层配置
         """
         self.config = config or {}
+        self.llm_provider = llm_provider
         self.is_initialized = False
 
         # 核心组件
-        self.memory_activator: MultiLevelMemoryActivator | None = None
-        self.semantic_enhancer: IntegratedSemanticEnhancer | None = None
-        self.analogy_reasoner: IntegratedAnalogyReasoner | None = None
+        self.memory_activator: MemoryActivationManager | None = None
+        self.semantic_enhancer: SemanticEnhancementManager | None = None
+        self.llm_provider: Any | None = None
 
         # 运行时状态
         self.processing_count = 0
@@ -55,16 +58,34 @@ class CognitionLayer(ICognitionLayer):
             logger.info("Initializing Cognition Layer...")
 
             # 初始化记忆激活器
-            self.memory_activator = MultiLevelMemoryActivator()
+            self.memory_activator = MemoryActivationManager()
+            
+            if self.llm_provider:
+                # 记忆激活提供商
+                activation_config = MemoryActivationConfig(
+                    llm_provider=self.llm_provider,
+                    activation_type="memory_activation",
+                    temperature=0.4
+                )
+                activation_provider = LLMMemoryActivationProvider(activation_config)
+                await self.memory_activator.register_provider("default", activation_provider)
+                
             logger.info("Memory activator initialized")
 
             # 初始化语义增强器
-            self.semantic_enhancer = IntegratedSemanticEnhancer()
+            self.semantic_enhancer = SemanticEnhancementManager()
+            
+            if self.llm_provider:
+                # 语义增强提供商
+                enhancement_config = MemoryActivationConfig(
+                    llm_provider=self.llm_provider,
+                    activation_type="semantic_enhancement",
+                    temperature=0.4
+                )
+                enhancement_provider = LLMSemanticEnhancementProvider(enhancement_config)
+                await self.semantic_enhancer.register_provider("default", enhancement_provider)
+                
             logger.info("Semantic enhancer initialized")
-
-            # 初始化类比推理器
-            self.analogy_reasoner = IntegratedAnalogyReasoner()
-            logger.info("Analogy reasoner initialized")
 
             self.is_initialized = True
             logger.info("Cognition Layer initialization completed")
@@ -218,75 +239,55 @@ class CognitionLayer(ICognitionLayer):
     async def activate_memories(
         self, query: str, context: dict[str, Any]
     ) -> MemoryActivation:
-        """激活相关记忆"""
+        """激活相关记忆 - 使用LLM语义分析"""
         try:
-            logger.info("Activating memories...")
+            logger.info("Activating memories with LLM...")
 
-            # 检查缓存
-            cache_key = f"{hash(query)}_{hash(str(context.get('user_profile', {})))}"
-            if cache_key in self.activation_cache:
-                logger.info("Using cached activation result")
-                return self.activation_cache[cache_key]
-
-            # 使用记忆激活器进行综合激活
-            activation_results = self.memory_activator.activate_comprehensive_memories(
-                query, context
-            )
-
-            # 收集所有激活的片段
-            all_fragments = []
-            total_confidence = 0.0
-            activation_metadata = {
-                "activation_levels": [],
-                "activation_methods": [],
-                "fragment_sources": [],
+            # 准备记忆激活上下文
+            activation_context = {
+                "available_memory": "",
+                "context_info": f"用户查询: {query}",
+                "memory_fragments": context.get("external_memories", [])
             }
+            
+            # 从外部记忆构建可用记忆文本
+            if context.get("external_memories"):
+                memory_texts = []
+                for memory in context["external_memories"][:10]:  # 限制数量
+                    if hasattr(memory, 'content'):
+                        memory_texts.append(f"[记忆] {memory.content}")
+                    else:
+                        memory_texts.append(f"[记忆] {str(memory)}")
+                activation_context["available_memory"] = "\n".join(memory_texts)
 
-            for result in activation_results:
-                all_fragments.extend(result.fragments)
-                total_confidence += getattr(result, "confidence", 0.5)
-
-                activation_metadata["activation_levels"].append(
-                    {
-                        "level": getattr(result, "level", "unknown"),
-                        "fragment_count": len(result.fragments),
-                        "confidence": getattr(result, "confidence", 0.5),
-                    }
+            # 使用LLM记忆激活器
+            if self.memory_activator:
+                activation_result = await self.memory_activator.process(
+                    query, context=activation_context
                 )
-
-                activation_metadata["activation_methods"].extend(
-                    [
-                        getattr(fragment, "activation_method", "unknown")
-                        for fragment in result.fragments
-                    ]
+                
+                # 转换为接口格式
+                memory_activation = MemoryActivation(
+                    activated_fragments=activation_result.fragments,
+                    activation_confidence=activation_result.confidence,
+                    activation_metadata={
+                        "activation_level": activation_result.activation_level.value,
+                        "total_score": activation_result.total_score,
+                        "activation_path": activation_result.activation_path,
+                        "semantic_clusters": activation_result.semantic_clusters,
+                        "provider": "llm"
+                    },
                 )
-
-                activation_metadata["fragment_sources"].extend(
-                    [
-                        getattr(fragment, "source", "internal")
-                        for fragment in result.fragments
-                    ]
+            else:
+                # 默认激活结果
+                memory_activation = MemoryActivation(
+                    activated_fragments=[],
+                    activation_confidence=0.3,
+                    activation_metadata={"error": "未启用LLM记忆激活"},
                 )
-
-            # 计算平均置信度
-            avg_confidence = total_confidence / max(1, len(activation_results))
-
-            memory_activation = MemoryActivation(
-                activated_fragments=all_fragments,
-                activation_confidence=avg_confidence,
-                activation_metadata=activation_metadata,
-            )
-
-            # 缓存结果（限制缓存大小）
-            if len(self.activation_cache) > 100:
-                # 清理最旧的缓存项
-                oldest_key = next(iter(self.activation_cache))
-                del self.activation_cache[oldest_key]
-
-            self.activation_cache[cache_key] = memory_activation
 
             logger.info(
-                f"Memory activation completed: {len(all_fragments)} fragments activated"
+                f"Memory activation completed: {len(memory_activation.activated_fragments)} fragments activated"
             )
             return memory_activation
 
@@ -301,7 +302,7 @@ class CognitionLayer(ICognitionLayer):
     async def enhance_semantics(
         self, fragments: list[Any], context: dict[str, Any]
     ) -> SemanticEnhancement:
-        """语义增强"""
+        """语义增强 - 使用LLM语义分析"""
         try:
             logger.info(f"Enhancing semantics for {len(fragments)} fragments...")
 
@@ -312,44 +313,52 @@ class CognitionLayer(ICognitionLayer):
                     enhancement_confidence=0.0,
                 )
 
-            # 使用语义增强器进行综合语义增强
-            enhancement_result = self.semantic_enhancer.enhance_comprehensive_semantics(
-                fragments, context
-            )
+            # 准备语义增强上下文
+            enhancement_context = {
+                "original_content": "",
+                "memory_context": "",
+                "domain_knowledge": context.get("context_profile", {}).get("domain_characteristics", {}).get("primary_domain", "general")
+            }
+            
+            # 构建原始内容文本
+            content_texts = []
+            for fragment in fragments[:5]:  # 限制数量
+                if hasattr(fragment, 'content'):
+                    content_texts.append(fragment.content)
+                else:
+                    content_texts.append(str(fragment))
+            enhancement_context["original_content"] = "\n".join(content_texts)
 
-            # 提取增强内容
-            enhanced_content = []
-            semantic_gaps_filled = []
-
-            if hasattr(enhancement_result, "enhanced_fragments"):
-                enhanced_content = enhancement_result.enhanced_fragments
+            # 使用LLM语义增强器
+            if self.semantic_enhancer:
+                enhancement_result = await self.semantic_enhancer.process(
+                    enhancement_context["original_content"], 
+                    context=enhancement_context
+                )
+                
+                # 转换为接口格式
+                semantic_enhancement = SemanticEnhancement(
+                    enhanced_content=[enhancement_result.enhanced_content],
+                    semantic_gaps_filled=[link.get("description", "语义关联") for link in enhancement_result.semantic_links[:3]],
+                    enhancement_confidence=enhancement_result.confidence,
+                )
             else:
-                enhanced_content = fragments  # 回退到原始片段
-
-            if hasattr(enhancement_result, "semantic_bridges"):
-                semantic_gaps_filled = [
-                    bridge.get("description", "unknown_bridge")
-                    for bridge in enhancement_result.semantic_bridges
-                ]
-
-            # 计算增强置信度
-            enhancement_confidence = getattr(enhancement_result, "confidence", 0.7)
-
-            semantic_enhancement = SemanticEnhancement(
-                enhanced_content=enhanced_content,
-                semantic_gaps_filled=semantic_gaps_filled,
-                enhancement_confidence=enhancement_confidence,
-            )
+                # 默认语义增强
+                semantic_enhancement = SemanticEnhancement(
+                    enhanced_content=[str(f) for f in fragments],
+                    semantic_gaps_filled=[],
+                    enhancement_confidence=0.3,
+                )
 
             logger.info(
-                f"Semantic enhancement completed: {len(enhanced_content)} enhanced items"
+                f"Semantic enhancement completed: {len(semantic_enhancement.enhanced_content)} enhanced items"
             )
             return semantic_enhancement
 
         except Exception as e:
             logger.error(f"Failed to enhance semantics: {e}")
             return SemanticEnhancement(
-                enhanced_content=fragments,  # 回退到原始片段
+                enhanced_content=[str(f) for f in fragments],  # 回退到原始片段
                 semantic_gaps_filled=[],
                 enhancement_confidence=0.0,
             )
@@ -357,14 +366,17 @@ class CognitionLayer(ICognitionLayer):
     async def reason_analogies(
         self, query: str, context: dict[str, Any]
     ) -> AnalogyReasoning:
-        """类比推理"""
+        """类比推理 - 简化实现"""
         try:
-            logger.info("Performing analogy reasoning...")
+            logger.info("Performing simplified analogy reasoning...")
 
-            # 使用类比推理器进行综合推理
-            reasoning_result = self.analogy_reasoner.comprehensive_analogy_reasoning(
-                query, context
-            )
+            # 简化的类比推理实现
+            # TODO: 可以在未来添加专门的类比推理模块
+            reasoning_result = {
+                "analogies": [],
+                "reasoning_chains": [],
+                "confidence_scores": []
+            }
 
             # 提取类比结果
             analogies = []
@@ -459,6 +471,12 @@ class CognitionLayer(ICognitionLayer):
 
         # 任务复杂度
         task_complexity = input_data.context_profile.complexity_level
+        # 处理可能的字符串类型
+        if isinstance(task_complexity, str):
+            complexity_map = {"low": 0.3, "medium": 0.5, "high": 0.8}
+            task_complexity = complexity_map.get(task_complexity.lower(), 0.5)
+        elif not isinstance(task_complexity, (int, float)):
+            task_complexity = 0.5
         factors.append(task_complexity)
 
         # 记忆激活量

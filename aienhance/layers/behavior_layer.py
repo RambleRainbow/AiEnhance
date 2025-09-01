@@ -8,7 +8,7 @@ from collections.abc import AsyncIterator
 from datetime import datetime
 from typing import Any
 
-from ..behavior.adaptive_output import IntegratedAdaptiveOutput
+from ..modules.adaptive_output import AdaptiveOutputManager, AdaptiveOutputConfig, LLMAdaptiveOutputProvider
 from ..llm.interfaces import ChatMessage, LLMProvider, create_chat_message
 from .layer_interfaces import (
     AdaptedContent,
@@ -41,7 +41,7 @@ class BehaviorLayer(IBehaviorLayer):
         self.is_initialized = False
 
         # 核心组件
-        self.adaptive_output: IntegratedAdaptiveOutput | None = None
+        self.adaptive_output: AdaptiveOutputManager | None = None
 
         # 运行时状态
         self.processing_count = 0
@@ -55,7 +55,18 @@ class BehaviorLayer(IBehaviorLayer):
             logger.info("Initializing Behavior Layer...")
 
             # 初始化适配输出组件
-            self.adaptive_output = IntegratedAdaptiveOutput()
+            self.adaptive_output = AdaptiveOutputManager()
+            
+            # 配置 LLM 提供商
+            if self.llm_provider:
+                config = AdaptiveOutputConfig(
+                    llm_provider=self.llm_provider,
+                    model_name=getattr(self.llm_provider, 'model_name', 'default'),
+                    temperature=0.7
+                )
+                provider = LLMAdaptiveOutputProvider(config)
+                await self.adaptive_output.register_provider("default", provider)
+            
             logger.info("Adaptive output component initialized")
 
             # 初始化LLM提供商
@@ -209,52 +220,20 @@ class BehaviorLayer(IBehaviorLayer):
             # 构建适配上下文
             adaptation_context = {"user_profile": user_profile, **context}
 
-            # 使用集成适配输出组件
-            if hasattr(context, "cognition_output") and context["cognition_output"]:
-                # 如果有认知层输出，使用增强的片段
-                cognition_output = context["cognition_output"]
-                if hasattr(cognition_output, "semantic_enhancement"):
-                    fragments = cognition_output.semantic_enhancement.enhanced_content
-                else:
-                    fragments = []
-
-                adapted_result = self.adaptive_output.comprehensive_adaptation(
-                    fragments, user_profile, adaptation_context
-                )
-            else:
-                # 回退到基础适配
-                adapted_result = await self._basic_content_adaptation(
-                    content, user_profile, adaptation_context
-                )
+            # 使用LLM适配输出组件
+            adapted_result = await self.adaptive_output.process(
+                content, context=adaptation_context
+            )
 
             # 转换为接口格式
-            if hasattr(adapted_result, "content"):
-                return AdaptedContent(
-                    content=adapted_result.content,
-                    adaptation_strategy=getattr(
-                        adapted_result, "adaptation_strategy", "comprehensive"
-                    ),
-                    cognitive_load=getattr(adapted_result, "cognitive_load", 0.5),
-                    information_density=getattr(
-                        adapted_result, "density_level", "medium"
-                    ),
-                    structure_type=getattr(
-                        adapted_result, "structure_type", "hierarchical"
-                    ),
-                    personalization_level=getattr(
-                        adapted_result, "adaptation_confidence", 0.7
-                    ),
-                )
-            else:
-                # 处理其他格式的适配结果
-                return AdaptedContent(
-                    content=str(adapted_result),
-                    adaptation_strategy="fallback",
-                    cognitive_load=0.5,
-                    information_density="medium",
-                    structure_type="simple",
-                    personalization_level=0.5,
-                )
+            return AdaptedContent(
+                content=adapted_result.adapted_content,
+                adaptation_strategy=adapted_result.adaptation_rationale,
+                cognitive_load=adapted_result.cognitive_load_score,
+                information_density=adapted_result.output_config.information_density.value,
+                structure_type=adapted_result.output_config.structure_type.value,
+                personalization_level=adapted_result.confidence,
+            )
 
         except Exception as e:
             logger.error(f"Failed to adapt content: {e}")

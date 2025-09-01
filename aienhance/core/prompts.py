@@ -222,6 +222,9 @@ class StaticPromptManager(PromptManager):
 
         # 认知特征分析提示词
         self._register_cognitive_analysis_prompts()
+        
+        # 行为层输出适配提示词
+        self._register_behavior_output_prompts()
 
         logger.info("Initialized default prompt templates")
 
@@ -463,6 +466,50 @@ JSON输出格式：
 
         self._register_template(context_analysis_template)
         self._register_template(complexity_assessment_template)
+
+    def _register_behavior_output_prompts(self):
+        """注册行为层输出适配相关提示词"""
+
+        # 自适应输出生成模板
+        adaptive_output_template = PromptTemplate(
+            name="adaptive_output",
+            version="1.0",
+            template="""基于用户认知特征和学习风格，请调整和优化以下内容的表达方式：
+
+原始内容：{original_content}
+
+用户特征：
+- 认知复杂度：{cognitive_complexity}
+- 思维模式：{thinking_mode}
+- 学习风格：{learning_style}
+- 处理偏好：{processing_preference}
+- 详细程度偏好：{detail_preference}
+
+优化要求：
+1. 根据用户认知水平调整内容难度和深度
+2. 根据学习风格调整表达方式和结构
+3. 根据处理偏好选择最佳呈现格式
+4. 保持内容的准确性和完整性
+
+请以JSON格式输出优化后的内容：
+{{
+    "adapted_content": "适配后的内容文本",
+    "adaptation_strategy": "适配策略说明",
+    "content_structure": "内容结构类型（linear|modular|layered）",
+    "difficulty_level": "难度等级（basic|intermediate|advanced）",
+    "presentation_format": "呈现格式建议",
+    "engagement_elements": ["参与要素数组"],
+    "adaptation_confidence": 0.0-1.0,
+    "additional_resources": ["补充资源建议数组"]
+}}""",
+            description="基于用户特征的自适应内容输出生成模板",
+            variables=["original_content", "cognitive_complexity", "thinking_mode", "learning_style", "processing_preference", "detail_preference"],
+            category="behavior_output",
+            temperature=0.4,
+            max_tokens=800,
+        )
+
+        self._register_template(adaptive_output_template)
 
     def _register_template(self, template: PromptTemplate):
         """注册模板到内存"""

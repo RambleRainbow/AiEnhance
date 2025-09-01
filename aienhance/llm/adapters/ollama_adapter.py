@@ -316,6 +316,17 @@ class OllamaLLMAdapter(LLMProvider):
 
         return options
 
+    async def cleanup(self):
+        """清理资源"""
+        try:
+            if self.session:
+                await self.session.close()
+                self.session = None
+            self.is_initialized = False
+            logger.info("Ollama LLM adapter cleaned up")
+        except Exception as e:
+            logger.error(f"Error during Ollama LLM cleanup: {e}")
+
     async def __aenter__(self):
         """异步上下文管理器入口"""
         await self.initialize()
@@ -323,8 +334,7 @@ class OllamaLLMAdapter(LLMProvider):
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """异步上下文管理器出口"""
-        if self.session:
-            await self.session.close()
+        await self.cleanup()
 
 
 class OllamaEmbeddingAdapter(EmbeddingProvider):
@@ -432,6 +442,17 @@ class OllamaEmbeddingAdapter(EmbeddingProvider):
             logger.error(f"检查嵌入模型可用性失败: {e}")
             raise
 
+    async def cleanup(self):
+        """清理资源"""
+        try:
+            if self.session:
+                await self.session.close()
+                self.session = None
+            self.is_initialized = False
+            logger.info("Ollama Embedding adapter cleaned up")
+        except Exception as e:
+            logger.error(f"Error during Ollama Embedding cleanup: {e}")
+
     async def __aenter__(self):
         """异步上下文管理器入口"""
         await self.initialize()
@@ -439,8 +460,7 @@ class OllamaEmbeddingAdapter(EmbeddingProvider):
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """异步上下文管理器出口"""
-        if self.session:
-            await self.session.close()
+        await self.cleanup()
 
 
 # 注册Ollama适配器
