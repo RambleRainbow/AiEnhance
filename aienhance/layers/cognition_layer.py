@@ -31,7 +31,9 @@ logger = logging.getLogger(__name__)
 class CognitionLayer(ICognitionLayer):
     """认知层具体实现"""
 
-    def __init__(self, config: dict[str, Any] | None = None, llm_provider: Any | None = None):
+    def __init__(
+        self, config: dict[str, Any] | None = None, llm_provider: Any | None = None
+    ):
         """
         初始化认知层
 
@@ -59,32 +61,64 @@ class CognitionLayer(ICognitionLayer):
 
             # 初始化记忆激活器
             self.memory_activator = MemoryActivationManager()
-            
+
             if self.llm_provider:
+                logger.info(
+                    f"Registering memory activation provider with LLM: {type(self.llm_provider).__name__}"
+                )
                 # 记忆激活提供商
                 activation_config = MemoryActivationConfig(
                     llm_provider=self.llm_provider,
                     activation_type="memory_activation",
-                    temperature=0.4
+                    temperature=0.4,
                 )
                 activation_provider = LLMMemoryActivationProvider(activation_config)
-                await self.memory_activator.register_provider("default", activation_provider)
-                
+                registration_success = await self.memory_activator.register_provider(
+                    "default", activation_provider
+                )
+
+                if not registration_success:
+                    logger.error("Failed to register memory activation provider")
+                    # 不要失败整个初始化，继续其他组件
+                else:
+                    logger.info("Memory activation provider registered successfully")
+            else:
+                logger.warning(
+                    "No LLM provider configured, skipping memory activation provider registration"
+                )
+
             logger.info("Memory activator initialized")
 
             # 初始化语义增强器
             self.semantic_enhancer = SemanticEnhancementManager()
-            
+
             if self.llm_provider:
+                logger.info(
+                    f"Registering semantic enhancement provider with LLM: {type(self.llm_provider).__name__}"
+                )
                 # 语义增强提供商
                 enhancement_config = MemoryActivationConfig(
                     llm_provider=self.llm_provider,
                     activation_type="semantic_enhancement",
-                    temperature=0.4
+                    temperature=0.4,
                 )
-                enhancement_provider = LLMSemanticEnhancementProvider(enhancement_config)
-                await self.semantic_enhancer.register_provider("default", enhancement_provider)
-                
+                enhancement_provider = LLMSemanticEnhancementProvider(
+                    enhancement_config
+                )
+                registration_success = await self.semantic_enhancer.register_provider(
+                    "default", enhancement_provider
+                )
+
+                if not registration_success:
+                    logger.error("Failed to register semantic enhancement provider")
+                    # 不要失败整个初始化，继续其他组件
+                else:
+                    logger.info("Semantic enhancement provider registered successfully")
+            else:
+                logger.warning(
+                    "No LLM provider configured, skipping semantic enhancement provider registration"
+                )
+
             logger.info("Semantic enhancer initialized")
 
             self.is_initialized = True
@@ -247,25 +281,28 @@ class CognitionLayer(ICognitionLayer):
             activation_context = {
                 "available_memory": "",
                 "context_info": f"用户查询: {query}",
-                "memory_fragments": context.get("external_memories", [])
+                "memory_fragments": context.get("external_memories", []),
             }
-            
+
             # 从外部记忆构建可用记忆文本
             if context.get("external_memories"):
                 memory_texts = []
                 for memory in context["external_memories"][:10]:  # 限制数量
-                    if hasattr(memory, 'content'):
+                    if hasattr(memory, "content"):
                         memory_texts.append(f"[记忆] {memory.content}")
                     else:
                         memory_texts.append(f"[记忆] {str(memory)}")
                 activation_context["available_memory"] = "\n".join(memory_texts)
 
             # 使用LLM记忆激活器
-            if self.memory_activator:
+            if (
+                self.memory_activator
+                and len(self.memory_activator.get_available_providers()) > 0
+            ):
                 activation_result = await self.memory_activator.process(
                     query, context=activation_context
                 )
-                
+
                 # 转换为接口格式
                 memory_activation = MemoryActivation(
                     activated_fragments=activation_result.fragments,
@@ -275,7 +312,7 @@ class CognitionLayer(ICognitionLayer):
                         "total_score": activation_result.total_score,
                         "activation_path": activation_result.activation_path,
                         "semantic_clusters": activation_result.semantic_clusters,
-                        "provider": "llm"
+                        "provider": "llm",
                     },
                 )
             else:
@@ -317,29 +354,36 @@ class CognitionLayer(ICognitionLayer):
             enhancement_context = {
                 "original_content": "",
                 "memory_context": "",
-                "domain_knowledge": context.get("context_profile", {}).get("domain_characteristics", {}).get("primary_domain", "general")
+                "domain_knowledge": context.get("context_profile", {})
+                .get("domain_characteristics", {})
+                .get("primary_domain", "general"),
             }
-            
+
             # 构建原始内容文本
             content_texts = []
             for fragment in fragments[:5]:  # 限制数量
-                if hasattr(fragment, 'content'):
+                if hasattr(fragment, "content"):
                     content_texts.append(fragment.content)
                 else:
                     content_texts.append(str(fragment))
             enhancement_context["original_content"] = "\n".join(content_texts)
 
             # 使用LLM语义增强器
-            if self.semantic_enhancer:
+            if (
+                self.semantic_enhancer
+                and len(self.semantic_enhancer.get_available_providers()) > 0
+            ):
                 enhancement_result = await self.semantic_enhancer.process(
-                    enhancement_context["original_content"], 
-                    context=enhancement_context
+                    enhancement_context["original_content"], context=enhancement_context
                 )
-                
+
                 # 转换为接口格式
                 semantic_enhancement = SemanticEnhancement(
                     enhanced_content=[enhancement_result.enhanced_content],
-                    semantic_gaps_filled=[link.get("description", "语义关联") for link in enhancement_result.semantic_links[:3]],
+                    semantic_gaps_filled=[
+                        link.get("description", "语义关联")
+                        for link in enhancement_result.semantic_links[:3]
+                    ],
                     enhancement_confidence=enhancement_result.confidence,
                 )
             else:
@@ -375,7 +419,7 @@ class CognitionLayer(ICognitionLayer):
             reasoning_result = {
                 "analogies": [],
                 "reasoning_chains": [],
-                "confidence_scores": []
+                "confidence_scores": [],
             }
 
             # 提取类比结果
