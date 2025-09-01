@@ -8,7 +8,25 @@ from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+from typing import Any, Optional
+
+
+@dataclass
+class JsonSchema:
+    """JSON Schema 数据结构"""
+
+    name: str
+    description: Optional[str] = None
+    schema: dict[str, Any] = None
+    strict: bool = True  # 严格模式，确保100%匹配
+
+
+@dataclass
+class ResponseFormat:
+    """响应格式数据结构"""
+
+    type: str = "text"  # "text", "json_object", "json_schema"
+    json_schema: Optional[JsonSchema] = None
 
 
 class MessageRole(Enum):
@@ -117,12 +135,18 @@ class LLMProvider(ABC):
         pass
 
     @abstractmethod
-    async def chat(self, messages: list[ChatMessage], **kwargs) -> ChatResponse:
+    async def chat(
+        self,
+        messages: list[ChatMessage],
+        response_format: Optional[ResponseFormat] = None,
+        **kwargs,
+    ) -> ChatResponse:
         """
         聊天完成接口
 
         Args:
             messages: 聊天消息列表
+            response_format: 响应格式，支持JSON Schema
             **kwargs: 额外参数
 
         Returns:
@@ -132,13 +156,17 @@ class LLMProvider(ABC):
 
     @abstractmethod
     async def chat_stream(
-        self, messages: list[ChatMessage], **kwargs
+        self,
+        messages: list[ChatMessage],
+        response_format: Optional[ResponseFormat] = None,
+        **kwargs,
     ) -> AsyncIterator[str]:
         """
         流式聊天完成接口
 
         Args:
             messages: 聊天消息列表
+            response_format: 响应格式，支持JSON Schema
             **kwargs: 额外参数
 
         Yields:
@@ -146,12 +174,15 @@ class LLMProvider(ABC):
         """
         pass
 
-    async def completion(self, prompt: str, **kwargs) -> str:
+    async def completion(
+        self, prompt: str, response_format: Optional[ResponseFormat] = None, **kwargs
+    ) -> str:
         """
         文本完成接口 (可选实现)
 
         Args:
             prompt: 输入提示
+            response_format: 响应格式，支持JSON Schema
             **kwargs: 额外参数
 
         Returns:
@@ -159,7 +190,7 @@ class LLMProvider(ABC):
         """
         # 默认实现：转换为chat格式
         messages = [ChatMessage(role=MessageRole.USER, content=prompt)]
-        response = await self.chat(messages, **kwargs)
+        response = await self.chat(messages, response_format=response_format, **kwargs)
         return response.content
 
     async def function_call(
@@ -360,3 +391,31 @@ def create_embedding_request(
         texts = [texts]
 
     return EmbeddingRequest(texts=texts, model=model, **kwargs)
+
+
+def create_json_schema(
+    name: str,
+    schema: dict[str, Any],
+    description: Optional[str] = None,
+    strict: bool = True,
+) -> JsonSchema:
+    """创建JSON Schema的便捷函数"""
+    return JsonSchema(name=name, schema=schema, description=description, strict=strict)
+
+
+def create_response_format(
+    type: str = "text", json_schema: Optional[JsonSchema] = None
+) -> ResponseFormat:
+    """创建响应格式的便捷函数"""
+    return ResponseFormat(type=type, json_schema=json_schema)
+
+
+def create_json_response_format(
+    name: str,
+    schema: dict[str, Any],
+    description: Optional[str] = None,
+    strict: bool = True,
+) -> ResponseFormat:
+    """创建JSON响应格式的便捷函数"""
+    json_schema = create_json_schema(name, schema, description, strict)
+    return create_response_format("json_schema", json_schema)

@@ -20,6 +20,8 @@ from ..interfaces import (
     LLMProvider,
     MessageRole,
     ModelConfig,
+    ResponseFormat,
+    JsonSchema,
 )
 
 logger = logging.getLogger(__name__)
@@ -61,7 +63,12 @@ class OllamaLLMAdapter(LLMProvider):
                 self.session = None
             return False
 
-    async def chat(self, messages: list[ChatMessage], **kwargs) -> ChatResponse:
+    async def chat(
+        self,
+        messages: list[ChatMessage],
+        response_format: ResponseFormat | None = None,
+        **kwargs,
+    ) -> ChatResponse:
         """Ollama聊天完成接口"""
         if not self.is_initialized:
             raise RuntimeError("Ollama LLM未初始化")
@@ -79,6 +86,16 @@ class OllamaLLMAdapter(LLMProvider):
                     "stream": False,
                     "options": self._build_generation_options(**kwargs),
                 }
+
+                # 添加JSON Schema支持
+                if (
+                    response_format
+                    and response_format.type == "json_schema"
+                    and response_format.json_schema
+                ):
+                    request_data["format"] = response_format.json_schema.schema
+                elif response_format and response_format.type == "json_object":
+                    request_data["format"] = "json"
 
                 # 添加系统提示（如果有）
                 system_messages = [
@@ -101,7 +118,10 @@ class OllamaLLMAdapter(LLMProvider):
             raise
 
     async def chat_stream(
-        self, messages: list[ChatMessage], **kwargs
+        self,
+        messages: list[ChatMessage],
+        response_format: ResponseFormat | None = None,
+        **kwargs,
     ) -> AsyncIterator[str]:
         """Ollama流式聊天接口"""
         if not self.is_initialized:
@@ -120,6 +140,16 @@ class OllamaLLMAdapter(LLMProvider):
                     "stream": True,
                     "options": self._build_generation_options(**kwargs),
                 }
+
+                # 添加JSON Schema支持
+                if (
+                    response_format
+                    and response_format.type == "json_schema"
+                    and response_format.json_schema
+                ):
+                    request_data["format"] = response_format.json_schema.schema
+                elif response_format and response_format.type == "json_object":
+                    request_data["format"] = "json"
 
                 # 添加系统提示（如果有）
                 system_messages = [

@@ -15,79 +15,79 @@ logger = logging.getLogger(__name__)
 
 class ThinkingMode(Enum):
     """思维模式"""
-    
-    ANALYTICAL = "analytical"    # 分析型
-    INTUITIVE = "intuitive"     # 直觉型
-    CREATIVE = "creative"       # 创造型
+
+    ANALYTICAL = "analytical"  # 分析型
+    INTUITIVE = "intuitive"  # 直觉型
+    CREATIVE = "creative"  # 创造型
 
 
 class ProcessingPreference(Enum):
     """信息处理偏好"""
-    
-    VISUAL = "visual"           # 视觉型
-    AUDITORY = "auditory"       # 听觉型
-    KINESTHETIC = "kinesthetic" # 动手型
+
+    VISUAL = "visual"  # 视觉型
+    AUDITORY = "auditory"  # 听觉型
+    KINESTHETIC = "kinesthetic"  # 动手型
 
 
 class LearningPace(Enum):
     """学习节奏"""
-    
-    FAST = "fast"               # 快速型
-    GRADUAL = "gradual"         # 渐进型
-    DEEP = "deep"               # 深入型
+
+    FAST = "fast"  # 快速型
+    GRADUAL = "gradual"  # 渐进型
+    DEEP = "deep"  # 深入型
 
 
 class FeedbackStyle(Enum):
     """反馈接收方式"""
-    
-    DIRECT = "direct"           # 直接型
-    GUIDED = "guided"           # 引导型
-    EXPLORATORY = "exploratory" # 探索型
+
+    DIRECT = "direct"  # 直接型
+    GUIDED = "guided"  # 引导型
+    EXPLORATORY = "exploratory"  # 探索型
 
 
 class KnowledgeConstruction(Enum):
     """知识建构方式"""
-    
-    LINEAR = "linear"           # 线性型
-    NETWORK = "network"         # 网络型
-    ITERATIVE = "iterative"     # 循环型
+
+    LINEAR = "linear"  # 线性型
+    NETWORK = "network"  # 网络型
+    ITERATIVE = "iterative"  # 循环型
 
 
 @dataclass
 class CognitiveAnalysisResult:
     """认知特征分析结果"""
-    
+
     thinking_mode: ThinkingMode
     cognitive_complexity: float  # 认知复杂度 (0.0-1.0)
-    abstraction_level: float     # 抽象思维能力 (0.0-1.0)
-    creativity_tendency: float   # 创造性思维倾向 (0.0-1.0)
-    reasoning_preference: str    # 推理偏好描述
-    confidence: float           # 分析置信度
-    analysis_basis: str         # 分析依据
+    abstraction_level: float  # 抽象思维能力 (0.0-1.0)
+    creativity_tendency: float  # 创造性思维倾向 (0.0-1.0)
+    reasoning_preference: str  # 推理偏好描述
+    confidence: float  # 分析置信度
+    analysis_basis: str  # 分析依据
     metadata: Optional[Dict[str, Any]] = None
 
 
 @dataclass
 class LearningStyleResult:
     """学习风格分析结果"""
-    
+
     processing_preference: ProcessingPreference
     learning_pace: LearningPace
     feedback_style: FeedbackStyle
     knowledge_construction: KnowledgeConstruction
-    interaction_density: float   # 交互密度偏好 (0.0-1.0)
-    detail_preference: float     # 细节偏好 (0.0-1.0)
-    example_preference: float    # 示例偏好 (0.0-1.0)
-    explanation: str            # 学习风格分析说明
+    interaction_density: float  # 交互密度偏好 (0.0-1.0)
+    detail_preference: float  # 细节偏好 (0.0-1.0)
+    example_preference: float  # 示例偏好 (0.0-1.0)
+    explanation: str  # 学习风格分析说明
     metadata: Optional[Dict[str, Any]] = None
 
 
 @dataclass
 class UserModelingConfig(LLMModuleConfig):
     """用户建模配置"""
-    
+
     analysis_type: str = "cognitive"  # "cognitive" 或 "learning_style"
-    
+
     def __post_init__(self):
         if not self.prompt_template_name:
             if self.analysis_type == "cognitive":
@@ -104,6 +104,64 @@ class LLMCognitiveAnalysisProvider(
     LLMModuleProvider[CognitiveAnalysisResult, UserModelingConfig]
 ):
     """基于大模型的认知特征分析提供商"""
+
+    @classmethod
+    def get_cognitive_analysis_schema(cls) -> dict[str, Any]:
+        """获取认知分析的JSON Schema"""
+        return {
+            "type": "object",
+            "properties": {
+                "thinking_mode": {
+                    "type": "string",
+                    "enum": [
+                        "analytical",
+                        "creative",
+                        "critical",
+                        "holistic",
+                        "sequential",
+                    ],
+                    "description": "思维模式类型",
+                },
+                "cognitive_complexity": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "maximum": 1.0,
+                    "description": "认知复杂度评分",
+                },
+                "abstraction_level": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "maximum": 1.0,
+                    "description": "抽象思维能力评分",
+                },
+                "creativity_tendency": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "maximum": 1.0,
+                    "description": "创造性思维倾向评分",
+                },
+                "reasoning_preference": {
+                    "type": "string",
+                    "description": "推理偏好的详细描述",
+                },
+                "confidence": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "maximum": 1.0,
+                    "description": "分析结果的置信度",
+                },
+                "analysis_basis": {"type": "string", "description": "分析依据的说明"},
+            },
+            "required": [
+                "thinking_mode",
+                "cognitive_complexity",
+                "abstraction_level",
+                "creativity_tendency",
+                "reasoning_preference",
+                "confidence",
+                "analysis_basis",
+            ],
+        }
 
     async def initialize(self) -> bool:
         """初始化LLM提供商"""
@@ -129,8 +187,11 @@ class LLMCognitiveAnalysisProvider(
 
         try:
             variables = self._prepare_prompt_variables(input_data, context)
+            # 使用JSON Schema确保结构化输出
             response = await self._call_llm_with_prompt(
-                self.config.prompt_template_name, variables
+                self.config.prompt_template_name,
+                variables,
+                json_schema=self.get_cognitive_analysis_schema(),
             )
             return self._parse_llm_response(response, input_data)
 
@@ -144,11 +205,11 @@ class LLMCognitiveAnalysisProvider(
         """准备认知分析提示词变量"""
         domain_context = ""
         historical_data = ""
-        
+
         if context:
             domain_context = context.get("domain_context", "")
             historical_data = context.get("historical_data", "")
-            
+
         return {
             "current_query": input_data,
             "domain_context": domain_context or "用户当前查询的领域背景",
@@ -169,7 +230,11 @@ class LLMCognitiveAnalysisProvider(
                 if "extracted_text" in parsed:
                     extracted_text = parsed["extracted_text"]
                     # 简单的关键词分析作为fallback
-                    thinking_mode = ThinkingMode.CREATIVE if "创造" in extracted_text or "创新" in extracted_text else ThinkingMode.ANALYTICAL
+                    thinking_mode = (
+                        ThinkingMode.CREATIVE
+                        if "创造" in extracted_text or "创新" in extracted_text
+                        else ThinkingMode.ANALYTICAL
+                    )
                     return CognitiveAnalysisResult(
                         thinking_mode=thinking_mode,
                         cognitive_complexity=0.6 if "复杂" in extracted_text else 0.5,
@@ -196,12 +261,20 @@ class LLMCognitiveAnalysisProvider(
 
             return CognitiveAnalysisResult(
                 thinking_mode=thinking_mode,
-                cognitive_complexity=min(1.0, max(0.0, parsed.get("cognitive_complexity", 0.5))),
-                abstraction_level=min(1.0, max(0.0, parsed.get("abstraction_level", 0.5))),
-                creativity_tendency=min(1.0, max(0.0, parsed.get("creativity_tendency", 0.5))),
+                cognitive_complexity=min(
+                    1.0, max(0.0, parsed.get("cognitive_complexity", 0.5))
+                ),
+                abstraction_level=min(
+                    1.0, max(0.0, parsed.get("abstraction_level", 0.5))
+                ),
+                creativity_tendency=min(
+                    1.0, max(0.0, parsed.get("creativity_tendency", 0.5))
+                ),
                 reasoning_preference=parsed.get("reasoning_preference", "逻辑推理为主"),
                 confidence=min(1.0, max(0.0, parsed.get("confidence", 0.7))),
-                analysis_basis=parsed.get("analysis_basis", "基于查询内容的认知模式分析"),
+                analysis_basis=parsed.get(
+                    "analysis_basis", "基于查询内容的认知模式分析"
+                ),
                 metadata={
                     "provider": "llm",
                     "model": self.config.model_name,
@@ -272,11 +345,11 @@ class LLMLearningStyleProvider(
         """准备学习风格分析提示词变量"""
         domain = ""
         interaction_history = ""
-        
+
         if context:
             domain = context.get("domain", "")
             interaction_history = context.get("interaction_history", "")
-            
+
         return {
             "query": input_data,
             "domain": domain or "通用领域",
@@ -297,7 +370,11 @@ class LLMLearningStyleProvider(
                 if "extracted_text" in parsed:
                     extracted_text = parsed["extracted_text"]
                     # 简单的关键词分析
-                    processing_pref = ProcessingPreference.VISUAL if "视觉" in extracted_text or "图像" in extracted_text else ProcessingPreference.VISUAL
+                    processing_pref = (
+                        ProcessingPreference.VISUAL
+                        if "视觉" in extracted_text or "图像" in extracted_text
+                        else ProcessingPreference.VISUAL
+                    )
                     return LearningStyleResult(
                         processing_preference=processing_pref,
                         learning_pace=LearningPace.GRADUAL,
@@ -349,9 +426,15 @@ class LLMLearningStyleProvider(
                 learning_pace=learning_pace,
                 feedback_style=feedback_style,
                 knowledge_construction=knowledge_construction,
-                interaction_density=min(1.0, max(0.0, parsed.get("interaction_density", 0.5))),
-                detail_preference=min(1.0, max(0.0, parsed.get("detail_preference", 0.5))),
-                example_preference=min(1.0, max(0.0, parsed.get("example_preference", 0.7))),
+                interaction_density=min(
+                    1.0, max(0.0, parsed.get("interaction_density", 0.5))
+                ),
+                detail_preference=min(
+                    1.0, max(0.0, parsed.get("detail_preference", 0.5))
+                ),
+                example_preference=min(
+                    1.0, max(0.0, parsed.get("example_preference", 0.7))
+                ),
                 explanation=parsed.get("explanation", "学习风格分析结果"),
                 metadata={
                     "provider": "llm",
@@ -380,7 +463,9 @@ class LLMLearningStyleProvider(
             )
 
 
-class CognitiveAnalysisManager(LLMModuleManager[CognitiveAnalysisResult, UserModelingConfig]):
+class CognitiveAnalysisManager(
+    LLMModuleManager[CognitiveAnalysisResult, UserModelingConfig]
+):
     """认知特征分析管理器"""
 
     def __init__(self):
