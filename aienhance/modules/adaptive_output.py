@@ -110,6 +110,45 @@ class LLMAdaptiveOutputProvider(
 ):
     """基于大模型的自适应输出提供商"""
 
+    @classmethod
+    def get_adaptive_output_schema(cls) -> dict[str, Any]:
+        """获取自适应输出的JSON Schema"""
+        return {
+            "type": "object",
+            "properties": {
+                "adapted_content": {"type": "string"},
+                "output_configuration": {
+                    "type": "object",
+                    "properties": {
+                        "information_density": {"type": "string", "enum": ["low", "medium", "high"]},
+                        "structure_type": {"type": "string", "enum": ["linear", "hierarchical", "network"]},
+                        "concept_granularity": {"type": "string", "enum": ["macro", "meso", "micro"]},
+                        "cognitive_load_limit": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                        "personalization_level": {"type": "string", "enum": ["minimal", "moderate", "extensive"]},
+                    },
+                    "required": [
+                        "information_density",
+                        "structure_type",
+                        "concept_granularity",
+                        "personalization_level",
+                    ],
+                },
+                "personalization_applied": {"type": "array", "items": {"type": "string"}},
+                "cognitive_load_score": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                "readability_score": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                "engagement_score": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                "adaptation_rationale": {"type": "string"},
+                "quality_metrics": {"type": "object"},
+                "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+            },
+            "required": [
+                "adapted_content",
+                "output_configuration",
+                "adaptation_rationale",
+                "confidence",
+            ],
+        }
+
     async def initialize(self) -> bool:
         """初始化LLM提供商"""
         try:
@@ -135,7 +174,9 @@ class LLMAdaptiveOutputProvider(
         try:
             variables = self._prepare_prompt_variables(input_data, context)
             response = await self._call_llm_with_prompt(
-                self.config.prompt_template_name, variables
+                self.config.prompt_template_name,
+                variables,
+                json_schema=self.get_adaptive_output_schema(),
             )
             return self._parse_llm_response(response, input_data)
 
@@ -185,6 +226,10 @@ class LLMAdaptiveOutputProvider(
         """解析自适应输出LLM响应"""
         try:
             parsed = self._extract_json_from_response(response)
+
+            if "error" in parsed:
+                logger.warning(f"LLM response parsing had errors: {parsed['error']}")
+                return self._get_fallback_result(original_input, parsed.get("error"))
 
             # 解析输出配置
             config_data = parsed.get("output_configuration", {})
@@ -260,36 +305,61 @@ class LLMAdaptiveOutputProvider(
 
         except Exception as e:
             logger.error(f"Failed to parse adaptive output response: {e}")
-            # 返回最小适配的安全输出
-            return AdaptiveOutputResult(
-                adapted_content=original_input,
-                output_config=OutputConfiguration(
-                    information_density=InformationDensity.MEDIUM,
-                    structure_type=OutputStructure.LINEAR,
-                    concept_granularity=ConceptGranularity.MESO,
-                    cognitive_load_limit=0.7,
-                    personalization_level=PersonalizationLevel.MINIMAL
-                ),
-                personalization_applied=[],
-                cognitive_load_score=0.5,
-                readability_score=0.5,
-                engagement_score=0.5,
-                adaptation_rationale="解析错误，使用最小适配策略",
-                quality_metrics={},
-                confidence=0.3,
-                metadata={
-                    "provider": "llm_fallback",
-                    "model": self.config.model_name,
-                    "original_content": original_input,
-                    "error": str(e),
-                },
-            )
+            return self._get_fallback_result(original_input, str(e))
+
+    def _get_fallback_result(self, original_input: str, error: str) -> AdaptiveOutputResult:
+        """获取回退的自适应输出结果"""
+        return AdaptiveOutputResult(
+            adapted_content=original_input,
+            output_config=OutputConfiguration(
+                information_density=InformationDensity.MEDIUM,
+                structure_type=OutputStructure.LINEAR,
+                concept_granularity=ConceptGranularity.MESO,
+                cognitive_load_limit=0.7,
+                personalization_level=PersonalizationLevel.MINIMAL,
+            ),
+            personalization_applied=[],
+            cognitive_load_score=0.5,
+            readability_score=0.5,
+            engagement_score=0.5,
+            adaptation_rationale="解析错误，使用最小适配策略",
+            quality_metrics={},
+            confidence=0.3,
+            metadata={
+                "provider": "llm_fallback",
+                "model": self.config.model_name,
+                "original_content": original_input,
+                "error": error,
+            },
+        )
 
 
 class LLMContentOptimizationProvider(
     LLMModuleProvider[ContentOptimizationResult, AdaptiveOutputConfig]
 ):
     """基于大模型的内容优化提供商"""
+
+    @classmethod
+    def get_content_optimization_schema(cls) -> dict[str, Any]:
+        """获取内容优化的JSON Schema"""
+        return {
+            "type": "object",
+            "properties": {
+                "optimized_content": {"type": "string"},
+                "optimization_type": {"type": "string", "enum": ["clarity", "engagement", "comprehension"]},
+                "improvements": {"type": "array", "items": {"type": "string"}},
+                "quality_score": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                "readability_improvement": {"type": "number"},
+                "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+            },
+            "required": [
+                "optimized_content",
+                "optimization_type",
+                "improvements",
+                "quality_score",
+                "confidence",
+            ],
+        }
 
     async def initialize(self) -> bool:
         """初始化LLM提供商"""
@@ -316,7 +386,9 @@ class LLMContentOptimizationProvider(
         try:
             variables = self._prepare_prompt_variables(input_data, context)
             response = await self._call_llm_with_prompt(
-                self.config.prompt_template_name, variables
+                self.config.prompt_template_name,
+                variables,
+                json_schema=self.get_content_optimization_schema(),
             )
             return self._parse_llm_response(response, input_data)
 
@@ -350,6 +422,10 @@ class LLMContentOptimizationProvider(
         try:
             parsed = self._extract_json_from_response(response)
 
+            if "error" in parsed:
+                logger.warning(f"LLM response parsing had errors: {parsed['error']}")
+                return self._get_fallback_result(original_input, parsed.get("error"))
+
             # 解析改进点
             improvements = parsed.get("improvements", [])
             if not isinstance(improvements, list):
@@ -372,20 +448,58 @@ class LLMContentOptimizationProvider(
 
         except Exception as e:
             logger.error(f"Failed to parse content optimization response: {e}")
-            return ContentOptimizationResult(
-                optimized_content=original_input,
-                optimization_type="fallback",
-                improvements=[],
-                quality_score=0.5,
-                readability_improvement=0.0,
-                confidence=0.3,
-                metadata={
-                    "provider": "llm_fallback",
-                    "model": self.config.model_name,
-                    "original_content": original_input,
-                    "error": str(e),
-                },
-            )
+            return self._get_fallback_result(original_input, str(e))
+
+    def _get_fallback_result(
+        self, original_input: str, error: str
+    ) -> ContentOptimizationResult:
+        """获取回退的内容优化结果"""
+        return ContentOptimizationResult(
+            optimized_content=original_input,
+            optimization_type="fallback",
+            improvements=[],
+            quality_score=0.5,
+            readability_improvement=0.0,
+            confidence=0.3,
+            metadata={
+                "provider": "llm_fallback",
+                "model": self.config.model_name,
+                "original_content": original_input,
+                "error": error,
+            },
+        )
+
+
+class AdaptiveOutputManager(LLMModuleManager[AdaptiveOutputResult, AdaptiveOutputConfig]):
+    """自适应输出管理器"""
+
+    def __init__(self):
+        super().__init__("adaptive_output")
+
+    async def adapt_output_async(
+        self,
+        content: str,
+        provider_name: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> AdaptiveOutputResult:
+        """自适应输出 - 提供向后兼容的方法名"""
+        return await self.process(content, provider_name, context)
+
+
+class ContentOptimizationManager(LLMModuleManager[ContentOptimizationResult, AdaptiveOutputConfig]):
+    """内容优化管理器"""
+
+    def __init__(self):
+        super().__init__("content_optimization")
+
+    async def optimize_content_async(
+        self,
+        content: str,
+        provider_name: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> ContentOptimizationResult:
+        """内容优化 - 提供向后兼容的方法名"""
+        return await self.process(content, provider_name, context)
 
 
 class AdaptiveOutputManager(LLMModuleManager[AdaptiveOutputResult, AdaptiveOutputConfig]):

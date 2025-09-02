@@ -137,6 +137,50 @@ class LLMMultiPerspectiveProvider(
 ):
     """基于大模型的多视角生成提供商"""
 
+    @classmethod
+    def get_multi_perspective_schema(cls) -> dict[str, Any]:
+        """获取多视角生成的JSON Schema"""
+        return {
+            "type": "object",
+            "properties": {
+                "perspectives": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "enum": [
+                                    "analytical",
+                                    "creative",
+                                    "critical",
+                                    "practical",
+                                    "theoretical",
+                                    "ethical",
+                                ],
+                            },
+                            "content": {"type": "string"},
+                            "reasoning": {"type": "string"},
+                            "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                            "supporting_evidence": {"type": "array", "items": {"type": "string"}},
+                        },
+                        "required": ["type", "content", "reasoning", "confidence"],
+                    },
+                },
+                "synthesis": {"type": "string"},
+                "conflicts": {"type": "array", "items": {"type": "object"}},
+                "complementarities": {"type": "array", "items": {"type": "object"}},
+                "dominant_theme": {"type": "string"},
+                "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+            },
+            "required": [
+                "perspectives",
+                "synthesis",
+                "dominant_theme",
+                "confidence",
+            ],
+        }
+
     async def initialize(self) -> bool:
         """初始化LLM提供商"""
         try:
@@ -162,7 +206,9 @@ class LLMMultiPerspectiveProvider(
         try:
             variables = self._prepare_prompt_variables(input_data, context)
             response = await self._call_llm_with_prompt(
-                self.config.prompt_template_name, variables
+                self.config.prompt_template_name,
+                variables,
+                json_schema=self.get_multi_perspective_schema(),
             )
             return self._parse_llm_response(response, input_data)
 
@@ -197,6 +243,10 @@ class LLMMultiPerspectiveProvider(
         """解析多视角生成LLM响应"""
         try:
             parsed = self._extract_json_from_response(response)
+
+            if "error" in parsed:
+                logger.warning(f"LLM response parsing had errors: {parsed['error']}")
+                return self._get_fallback_result(original_input, parsed.get("error"))
 
             # 解析视角列表
             perspectives = []
@@ -248,36 +298,89 @@ class LLMMultiPerspectiveProvider(
 
         except Exception as e:
             logger.error(f"Failed to parse multi-perspective response: {e}")
-            # 返回基本的单视角结果作为降级
-            return MultiPerspectiveResult(
-                perspectives=[
-                    Perspective(
-                        perspective_type=PerspectiveType.ANALYTICAL,
-                        content=f"对「{original_input}」的基础分析视角",
-                        reasoning="解析错误时的降级分析",
-                        confidence=0.3,
-                        supporting_evidence=[],
-                        metadata={"fallback": True}
-                    )
-                ],
-                synthesis="解析错误，提供基础分析",
-                conflicts=[],
-                complementarities=[],
-                dominant_theme="基础分析主题",
-                confidence=0.3,
-                metadata={
-                    "provider": "llm_fallback",
-                    "model": self.config.model_name,
-                    "original_topic": original_input,
-                    "error": str(e),
-                },
-            )
+            return self._get_fallback_result(original_input, str(e))
+
+    def _get_fallback_result(
+        self, original_input: str, error: str
+    ) -> MultiPerspectiveResult:
+        """获取回退的多视角结果"""
+        return MultiPerspectiveResult(
+            perspectives=[
+                Perspective(
+                    perspective_type=PerspectiveType.ANALYTICAL,
+                    content=f"对「{original_input}」的基础分析视角",
+                    reasoning="解析错误时的降级分析",
+                    confidence=0.3,
+                    supporting_evidence=[],
+                    metadata={"fallback": True},
+                )
+            ],
+            synthesis="解析错误，提供基础分析",
+            conflicts=[],
+            complementarities=[],
+            dominant_theme="基础分析主题",
+            confidence=0.3,
+            metadata={
+                "provider": "llm_fallback",
+                "model": self.config.model_name,
+                "original_topic": original_input,
+                "error": error,
+            },
+        )
 
 
 class LLMChallengeGenerationProvider(
     LLMModuleProvider[ChallengeGenerationResult, CollaborativeReasoningConfig]
 ):
     """基于大模型的认知挑战生成提供商"""
+
+    @classmethod
+    def get_challenge_generation_schema(cls) -> dict[str, Any]:
+        """获取认知挑战生成的JSON Schema"""
+        return {
+            "type": "object",
+            "properties": {
+                "challenges": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "enum": [
+                                    "assumption",
+                                    "logic",
+                                    "evidence",
+                                    "alternative",
+                                    "implication",
+                                ],
+                            },
+                            "target_assumption": {"type": "string"},
+                            "challenge_question": {"type": "string"},
+                            "alternative_perspective": {"type": "string"},
+                            "evidence_analysis": {"type": "string"},
+                            "impact_assessment": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                        },
+                        "required": [
+                            "type",
+                            "target_assumption",
+                            "challenge_question",
+                        ],
+                    },
+                },
+                "critical_points": {"type": "array", "items": {"type": "string"}},
+                "reasoning_gaps": {"type": "array", "items": {"type": "string"}},
+                "improvement_suggestions": {"type": "array", "items": {"type": "string"}},
+                "overall_assessment": {"type": "string"},
+                "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+            },
+            "required": [
+                "challenges",
+                "critical_points",
+                "overall_assessment",
+                "confidence",
+            ],
+        }
 
     async def initialize(self) -> bool:
         """初始化LLM提供商"""
@@ -304,7 +407,9 @@ class LLMChallengeGenerationProvider(
         try:
             variables = self._prepare_prompt_variables(input_data, context)
             response = await self._call_llm_with_prompt(
-                self.config.prompt_template_name, variables
+                self.config.prompt_template_name,
+                variables,
+                json_schema=self.get_challenge_generation_schema(),
             )
             return self._parse_llm_response(response, input_data)
 
@@ -346,6 +451,10 @@ class LLMChallengeGenerationProvider(
         """解析挑战生成LLM响应"""
         try:
             parsed = self._extract_json_from_response(response)
+
+            if "error" in parsed:
+                logger.warning(f"LLM response parsing had errors: {parsed['error']}")
+                return self._get_fallback_result(original_input, parsed.get("error"))
 
             # 解析挑战列表
             challenges = []
@@ -402,20 +511,40 @@ class LLMChallengeGenerationProvider(
 
         except Exception as e:
             logger.error(f"Failed to parse challenge generation response: {e}")
-            return ChallengeGenerationResult(
-                challenges=[],
-                critical_points=[],
-                reasoning_gaps=[],
-                improvement_suggestions=["解析错误，建议重新分析"],
-                overall_assessment="解析错误，无法生成有效挑战",
-                confidence=0.3,
-                metadata={
-                    "provider": "llm_fallback",
-                    "model": self.config.model_name,
-                    "original_statement": original_input,
-                    "error": str(e),
-                },
-            )
+            return self._get_fallback_result(original_input, str(e))
+
+    def _get_fallback_result(
+        self, original_input: str, error: str
+    ) -> ChallengeGenerationResult:
+        """获取回退的挑战生成结果"""
+        return ChallengeGenerationResult(
+            challenges=[],
+            critical_points=[],
+            reasoning_gaps=[],
+            improvement_suggestions=["解析错误，建议重新分析"],
+            overall_assessment="解析错误，无法生成有效挑战",
+            confidence=0.3,
+            metadata={
+                "provider": "llm_fallback",
+                "model": self.config.model_name,
+                "original_statement": original_input,
+                "error": error,
+            },
+        )
+
+
+class MultiPerspectiveManager(LLMModuleManager[MultiPerspectiveResult, CollaborativeReasoningConfig]):
+    """多视角生成管理器"""
+
+    def __init__(self):
+        super().__init__("multi_perspective")
+
+
+class ChallengeGenerationManager(LLMModuleManager[ChallengeGenerationResult, CollaborativeReasoningConfig]):
+    """认知挑战生成管理器"""
+
+    def __init__(self):
+        super().__init__("challenge_generation")
 
 
 class MultiPerspectiveManager(LLMModuleManager[MultiPerspectiveResult, CollaborativeReasoningConfig]):

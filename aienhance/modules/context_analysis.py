@@ -72,6 +72,74 @@ class LLMContextAnalysisProvider(
 ):
     """基于大模型的情境分析提供商"""
 
+    @classmethod
+    def get_context_analysis_schema(cls) -> dict[str, Any]:
+        """获取情境分析的JSON Schema"""
+        return {
+            "type": "object",
+            "properties": {
+                "task_type": {
+                    "type": "string",
+                    "enum": ["exploratory", "analytical", "creative", "retrieval"],
+                    "description": "任务类型",
+                },
+                "urgency_level": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "maximum": 1.0,
+                    "description": "紧急程度评分 (0.0-1.0)",
+                },
+                "complexity_score": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "maximum": 1.0,
+                    "description": "复杂度评分 (0.0-1.0)",
+                },
+                "resource_constraints": {
+                    "type": "object",
+                    "properties": {
+                        "time_pressure": {"type": "number"},
+                        "knowledge_gap": {"type": "number"},
+                        "tool_availability": {"type": "number"},
+                    },
+                    "description": "资源约束评分",
+                },
+                "social_context": {
+                    "type": "object",
+                    "properties": {
+                        "collaboration_needed": {"type": "boolean"},
+                        "audience_type": {"type": "string"},
+                        "communication_formality": {"type": "number"},
+                    },
+                    "description": "社交情境",
+                },
+                "environmental_factors": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "关键环境影响因素",
+                },
+                "recommended_approach": {
+                    "type": "string",
+                    "description": "建议的处理方式",
+                },
+                "context_summary": {"type": "string", "description": "情境总结"},
+                "confidence": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "maximum": 1.0,
+                    "description": "分析置信度",
+                },
+            },
+            "required": [
+                "task_type",
+                "urgency_level",
+                "complexity_score",
+                "recommended_approach",
+                "context_summary",
+                "confidence",
+            ],
+        }
+
     async def initialize(self) -> bool:
         """初始化LLM提供商"""
         try:
@@ -100,7 +168,9 @@ class LLMContextAnalysisProvider(
 
             # 调用LLM
             response = await self._call_llm_with_prompt(
-                self.config.prompt_template_name, variables
+                self.config.prompt_template_name,
+                variables,
+                json_schema=self.get_context_analysis_schema(),
             )
 
             # 解析响应
@@ -139,6 +209,10 @@ class LLMContextAnalysisProvider(
         try:
             # 使用基类的JSON提取方法
             parsed = self._extract_json_from_response(response)
+
+            if "error" in parsed:
+                logger.warning(f"LLM response parsing had errors: {parsed['error']}")
+                return self._get_fallback_result(original_input, parsed.get("error"))
 
             # 解析任务类型
             task_type_str = parsed.get("task_type", "analytical").lower()
@@ -208,32 +282,53 @@ class LLMContextAnalysisProvider(
 
         except Exception as e:
             logger.error(f"Failed to parse context analysis response: {e}")
-            # 返回默认结果而不是抛出异常，确保系统鲁棒性
-            return ContextAnalysisResult(
-                task_type=TaskType.ANALYTICAL,
-                urgency_level=UrgencyLevel.MEDIUM,
-                complexity_level=ComplexityLevel.MEDIUM,
-                resource_constraints={
-                    "time_pressure": 0.5,
-                    "knowledge_gap": 0.5,
-                    "tool_availability": 0.5,
-                },
-                social_context={
-                    "collaboration_needed": False,
-                    "audience_type": "self",
-                    "communication_formality": 0.5,
-                },
-                environmental_factors=[],
-                recommended_approach="采用标准分析方法处理",
-                context_summary="情境分析遇到解析问题，使用默认评估",
-                confidence=0.3,
-                metadata={
-                    "provider": "llm_fallback",
-                    "model": self.config.model_name,
-                    "original_query": original_input,
-                    "error": str(e),
-                },
-            )
+            return self._get_fallback_result(original_input, str(e))
+
+    def _get_fallback_result(
+        self, original_input: str, error: str
+    ) -> ContextAnalysisResult:
+        """获取回退的分析结果"""
+        return ContextAnalysisResult(
+            task_type=TaskType.ANALYTICAL,
+            urgency_level=UrgencyLevel.MEDIUM,
+            complexity_level=ComplexityLevel.MEDIUM,
+            resource_constraints={
+                "time_pressure": 0.5,
+                "knowledge_gap": 0.5,
+                "tool_availability": 0.5,
+            },
+            social_context={
+                "collaboration_needed": False,
+                "audience_type": "self",
+                "communication_formality": 0.5,
+            },
+            environmental_factors=[],
+            recommended_approach="采用标准分析方法处理",
+            context_summary="情境分析遇到解析问题，使用默认评估",
+            confidence=0.3,
+            metadata={
+                "provider": "llm_fallback",
+                "model": self.config.model_name,
+                "original_query": original_input,
+                "error": error,
+            },
+        )
+
+
+class ContextAnalysisManager(LLMModuleManager[ContextAnalysisResult, ContextAnalysisConfig]):
+    """情境分析管理器"""
+
+    def __init__(self):
+        super().__init__("context_analysis")
+
+    async def analyze_context_async(
+        self,
+        query: str,
+        provider_name: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> ContextAnalysisResult:
+        """分析情境 - 提供向后兼容的方法名"""
+        return await self.process(query, provider_name, context)
 
 
 class ContextAnalysisManager(LLMModuleManager[ContextAnalysisResult, ContextAnalysisConfig]):
