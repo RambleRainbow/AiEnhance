@@ -20,7 +20,7 @@ class AiEnhanceCliTool:
     """AiEnhance命令行工具"""
 
     def __init__(self):
-        self.system = None  # type: Optional[aienhance.LayeredCognitiveSystem]
+        self.system = None  # type: Optional[aienhance.CognitiveSystem]
 
     async def check_ollama(self):
         """检查Ollama服务状态"""
@@ -53,36 +53,67 @@ class AiEnhanceCliTool:
             )
 
             if use_memory:
-                # 使用新的分层认知系统，带记忆功能
-                self.system = aienhance.create_layered_system(
-                    system_type=system_type,
-                    llm_provider=os.getenv("DEFAULT_LLM_PROVIDER", "ollama"),
-                    llm_model_name=os.getenv("DEFAULT_LLM_MODEL", "qwen3:8b"),
-                    llm_api_base=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
-                    llm_temperature=temperature,
-                    llm_max_tokens=int(os.getenv("DEFAULT_LLM_MAX_TOKENS", "800")),
-                    embedding_provider=os.getenv(
-                        "DEFAULT_EMBEDDING_PROVIDER", "ollama"
-                    ),
-                    embedding_model_name=os.getenv("DEFAULT_EMBEDDING_MODEL", "bge-m3")
-                    + ":latest",
-                    memory_system_type=os.getenv(
-                        "DEFAULT_MEMORY_SYSTEM", "graphiti_http"
-                    ),
-                    use_unified_llm=True,
-                )
+                # 使用新的层-模块-子模块认知系统，带记忆功能
+                if system_type == "educational":
+                    self.system = aienhance.create_educational_system(
+                        llm_provider=os.getenv("DEFAULT_LLM_PROVIDER", "ollama"),
+                        llm_model_name=os.getenv("DEFAULT_LLM_MODEL", "qwen3:8b"),
+                        memory_provider=os.getenv("DEFAULT_MEMORY_SYSTEM", "graphiti"),
+                        config={
+                            "temperature": temperature,
+                            "max_tokens": int(os.getenv("DEFAULT_LLM_MAX_TOKENS", "800")),
+                            "ollama_base_url": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+                        }
+                    )
+                elif system_type == "research":
+                    self.system = aienhance.create_research_system(
+                        llm_provider=os.getenv("DEFAULT_LLM_PROVIDER", "ollama"),
+                        llm_model_name=os.getenv("DEFAULT_LLM_MODEL", "qwen3:8b"),
+                        memory_provider=os.getenv("DEFAULT_MEMORY_SYSTEM", "graphiti"),
+                        config={
+                            "temperature": temperature,
+                            "max_tokens": int(os.getenv("DEFAULT_LLM_MAX_TOKENS", "800")),
+                            "ollama_base_url": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+                        }
+                    )
+                elif system_type == "creative":
+                    self.system = aienhance.create_creative_system(
+                        llm_provider=os.getenv("DEFAULT_LLM_PROVIDER", "ollama"),
+                        llm_model_name=os.getenv("DEFAULT_LLM_MODEL", "qwen3:8b"),
+                        memory_provider=os.getenv("DEFAULT_MEMORY_SYSTEM", "graphiti"),
+                        config={
+                            "temperature": temperature,
+                            "max_tokens": int(os.getenv("DEFAULT_LLM_MAX_TOKENS", "800")),
+                            "ollama_base_url": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+                        }
+                    )
+                else:
+                    # 默认使用教育系统
+                    self.system = aienhance.create_educational_system(
+                        llm_provider=os.getenv("DEFAULT_LLM_PROVIDER", "ollama"),
+                        llm_model_name=os.getenv("DEFAULT_LLM_MODEL", "qwen3:8b"),
+                        memory_provider=os.getenv("DEFAULT_MEMORY_SYSTEM", "graphiti"),
+                        config={
+                            "temperature": temperature,
+                            "max_tokens": int(os.getenv("DEFAULT_LLM_MAX_TOKENS", "800")),
+                            "ollama_base_url": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+                        }
+                    )
             else:
                 # 简化配置，仅使用LLM功能（轻量级系统）
                 print("⚠️  简化模式：使用轻量级系统，无记忆功能")
-                self.system = aienhance.create_lightweight_layered_system(
-                    model_name=os.getenv("DEFAULT_LLM_MODEL", "qwen3:8b"),
-                    ollama_base=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
-                    llm_temperature=temperature,
-                    llm_max_tokens=int(os.getenv("DEFAULT_LLM_MAX_TOKENS", "800")),
+                self.system = aienhance.create_lightweight_system(
+                    llm_provider=os.getenv("DEFAULT_LLM_PROVIDER", "ollama"),
+                    llm_model_name=os.getenv("DEFAULT_LLM_MODEL", "qwen3:8b"),
+                    config={
+                        "llm_temperature": temperature,
+                        "llm_max_tokens": int(os.getenv("DEFAULT_LLM_MAX_TOKENS", "800")),
+                        "ollama_base_url": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+                    }
                 )
 
-            # 初始化分层系统
-            await self.system.initialize_layers()
+            # 初始化新架构系统
+            await self.system.initialize()
             return True
         except Exception as e:
             print(f"❌ 系统初始化失败: {e}")
@@ -110,15 +141,16 @@ class AiEnhanceCliTool:
             print("=" * 50)
 
             content_parts = []
-            async for chunk in self.system.process_stream(
-                query=query, user_id="cli_user", context={"source": "cli"}
-            ):
-                print(chunk, end="", flush=True)
-                # 收集内容用于详细信息显示
-                if not chunk.startswith(
-                    ("🚀", "🧠", "💾", "⚙️", "🤝", "✅", "❌", "⚠️", "🎯")
-                ):
-                    content_parts.append(chunk)
+            result = await self.system.process(
+                user_id="cli_user", 
+                query=query, 
+                session_context={"source": "cli"}
+            )
+            
+            if result.success and "final_response" in result.data:
+                print(result.data["final_response"])
+            else:
+                print("❌ 处理失败:", result.error_message if hasattr(result, 'error_message') else "未知错误")
 
             if show_details:
                 # 获取系统状态用于详细信息显示
@@ -182,17 +214,16 @@ class AiEnhanceCliTool:
                 print("🤖 AI: ", end="", flush=True)
 
                 content_parts = []
-                async for chunk in self.system.process_stream(
-                    query=user_input,
+                result = await self.system.process(
                     user_id="interactive_user",
-                    context={"session": session_count},
-                ):
-                    # 过滤掉系统状态信息，只显示AI生成的内容
-                    if not chunk.startswith(
-                        ("🚀", "🧠", "💾", "⚙️", "🤝", "✅", "❌", "⚠️", "🎯")
-                    ):
-                        print(chunk, end="", flush=True)
-                        content_parts.append(chunk)
+                    query=user_input,
+                    session_context={"session": session_count}
+                )
+                
+                if result.success and "final_response" in result.data:
+                    print(result.data["final_response"])
+                else:
+                    print("❌ 处理失败:", result.error_message if hasattr(result, 'error_message') else "未知错误")
 
                 if not content_parts:
                     print("(无法生成响应)")
@@ -235,15 +266,16 @@ class AiEnhanceCliTool:
                 print("🤖 AI: ", end="", flush=True)
 
                 content_parts = []
-                async for chunk in self.system.process_stream(
-                    query=query, user_id="demo_user", context={"demo_type": category}
-                ):
-                    # 只显示AI生成的内容，过滤掉处理状态信息
-                    if not chunk.startswith(
-                        ("🚀", "🧠", "💾", "⚙️", "🤝", "✅", "❌", "⚠️", "🎯")
-                    ):
-                        print(chunk, end="", flush=True)
-                        content_parts.append(chunk)
+                result = await self.system.process(
+                    user_id="demo_user",
+                    query=query,
+                    session_context={"demo_type": category}
+                )
+                
+                if result.success and "final_response" in result.data:
+                    print(result.data["final_response"])
+                else:
+                    print("❌ 处理失败:", result.error_message if hasattr(result, 'error_message') else "未知错误")
 
                 if not content_parts:
                     print("(无响应生成)")

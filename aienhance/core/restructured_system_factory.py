@@ -17,8 +17,10 @@ from aienhance.collaboration.collaboration_layer import CollaborationLayer
 from aienhance.llm.adapters.ollama_adapter import OllamaLLMAdapter
 from aienhance.llm.adapters.openai_adapter import OpenAILLMAdapter
 from aienhance.llm.adapters.anthropic_adapter import AnthropicLLMAdapter
+from aienhance.llm.interfaces import ModelConfig
 from aienhance.memory.adapters.graphiti_http_adapter import GraphitiHttpAdapter
 from aienhance.memory.adapters.mem0_adapter import Mem0Adapter
+from aienhance.memory.interfaces import MemorySystemConfig
 
 logger = logging.getLogger(__name__)
 
@@ -134,20 +136,32 @@ def _get_system_type_config(system_type: str) -> Dict[str, Any]:
 def _create_llm_adapter(provider: str, model_name: str, config: Dict[str, Any]):
     """创建LLM适配器"""
     
-    model_config = {
-        "model_name": model_name,
-        "temperature": config.get("temperature", 0.7),
-        "max_tokens": config.get("max_tokens", 800)
-    }
-    
     if provider == "ollama":
-        model_config["base_url"] = config.get("ollama_base_url", "http://localhost:11434")
+        model_config = ModelConfig(
+            provider=provider,
+            model_name=model_name,
+            api_base=config.get("ollama_base_url", "http://localhost:11434"),
+            temperature=config.get("temperature", 0.7),
+            max_tokens=config.get("max_tokens", 800)
+        )
         return OllamaLLMAdapter(model_config)
     elif provider == "openai":
-        model_config["api_key"] = config.get("openai_api_key")
+        model_config = ModelConfig(
+            provider=provider,
+            model_name=model_name,
+            api_key=config.get("openai_api_key"),
+            temperature=config.get("temperature", 0.7),
+            max_tokens=config.get("max_tokens", 800)
+        )
         return OpenAILLMAdapter(model_config)
     elif provider == "anthropic":
-        model_config["api_key"] = config.get("anthropic_api_key")
+        model_config = ModelConfig(
+            provider=provider,
+            model_name=model_name,
+            api_key=config.get("anthropic_api_key"),
+            temperature=config.get("temperature", 0.7),
+            max_tokens=config.get("max_tokens", 800)
+        )
         return AnthropicLLMAdapter(model_config)
     else:
         raise ValueError(f"Unsupported LLM provider: {provider}")
@@ -157,17 +171,21 @@ def _create_memory_adapter(provider: str, config: Dict[str, Any]):
     """创建记忆适配器"""
     
     if provider == "graphiti":
-        memory_config = {
-            "api_url": config.get("graphiti_api_url", "http://localhost:8000"),
-            "neo4j_uri": config.get("neo4j_uri", "bolt://localhost:7687"),
-            "neo4j_user": config.get("neo4j_user", "neo4j"),
-            "neo4j_password": config.get("neo4j_password", "neo4j_passwd")
-        }
+        memory_config = MemorySystemConfig(
+            system_type="graphiti_http",
+            api_base_url=config.get("graphiti_api_url", "http://localhost:8000"),
+            custom_config={
+                "neo4j_uri": config.get("neo4j_uri", "bolt://localhost:7687"),
+                "neo4j_user": config.get("neo4j_user", "neo4j"),
+                "neo4j_password": config.get("neo4j_password", "neo4j_passwd")
+            }
+        )
         return GraphitiHttpAdapter(memory_config)
     elif provider == "mem0":
-        memory_config = {
-            "config": config.get("mem0_config", {})
-        }
+        memory_config = MemorySystemConfig(
+            system_type="mem0",
+            custom_config=config.get("mem0_config", {})
+        )
         return Mem0Adapter(memory_config)
     else:
         raise ValueError(f"Unsupported memory provider: {provider}")

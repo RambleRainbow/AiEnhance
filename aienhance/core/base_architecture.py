@@ -111,10 +111,8 @@ class BaseSubModule(ABC):
             raise ValueError(f"SubModule {self.name} requires LLM adapter")
         
         try:
-            response = await self.llm_adapter.generate_response(
-                prompt=prompt,
-                context=context.session_context
-            )
+            # 使用completion方法进行文本生成
+            response = await self.llm_adapter.completion(prompt)
             return response
         except Exception as e:
             logger.error(f"LLM processing failed in {self.name}: {e}")
