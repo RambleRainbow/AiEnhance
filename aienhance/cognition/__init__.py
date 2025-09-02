@@ -1,7 +1,12 @@
 """
 认知层模块 - 对应设计文档第5章
 包含多层次记忆激活、语义补充、类比推理等核心认知功能
+
+重构后的认知层采用新的层-模块-子模块架构。
 """
+
+# 新架构的主要入口点
+from .cognition_layer import CognitionLayer
 
 from .analogy_reasoning import (
     AnalogyMapping,
@@ -39,7 +44,9 @@ from .semantic_enhancement import (
 )
 
 __all__ = [
-    # Memory Activation
+    # 新架构 - 推荐使用
+    "CognitionLayer",
+    # 原有架构 - 向后兼容
     "MemoryFragment",
     "ActivationResult",
     "MultiLevelMemoryActivator",
@@ -48,7 +55,6 @@ __all__ = [
     "MetaActivator",
     "ActivationLevel",
     "RelationType",
-    # Semantic Enhancement
     "ConceptGap",
     "SemanticBridge",
     "IntegrationResult",
@@ -59,7 +65,6 @@ __all__ = [
     "GapType",
     "BridgingStrategy",
     "IntegrationLevel",
-    # Analogy Reasoning
     "AnalogyMapping",
     "ThinkingFramework",
     "CreativeAssociation",
