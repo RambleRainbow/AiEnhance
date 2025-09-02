@@ -2,18 +2,8 @@
 行为层模块
 """
 
-from .adaptive_output import (
-    AdaptedContent,
-    ConceptGranularity,
-    InformationDensity,
-    IntegratedAdaptiveOutput,
-    OutputStructure,
-)
+from .behavior_layer import BehaviorLayer
 
 __all__ = [
-    "IntegratedAdaptiveOutput",
-    "AdaptedContent",
-    "InformationDensity",
-    "OutputStructure",
-    "ConceptGranularity",
+    "BehaviorLayer",
 ]

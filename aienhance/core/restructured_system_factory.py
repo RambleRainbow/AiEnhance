@@ -17,8 +17,8 @@ from aienhance.collaboration.collaboration_layer import CollaborationLayer
 from aienhance.llm.adapters.ollama_adapter import OllamaLLMAdapter
 from aienhance.llm.adapters.openai_adapter import OpenAILLMAdapter
 from aienhance.llm.adapters.anthropic_adapter import AnthropicLLMAdapter
-from aienhance.memory.adapters.graphiti_adapter import GraphitiMemoryAdapter
-from aienhance.memory.adapters.mem0_adapter import Mem0MemoryAdapter
+from aienhance.memory.adapters.graphiti_http_adapter import GraphitiHttpAdapter
+from aienhance.memory.adapters.mem0_adapter import Mem0Adapter
 
 logger = logging.getLogger(__name__)
 
@@ -163,12 +163,12 @@ def _create_memory_adapter(provider: str, config: Dict[str, Any]):
             "neo4j_user": config.get("neo4j_user", "neo4j"),
             "neo4j_password": config.get("neo4j_password", "neo4j_passwd")
         }
-        return GraphitiMemoryAdapter(memory_config)
+        return GraphitiHttpAdapter(memory_config)
     elif provider == "mem0":
         memory_config = {
             "config": config.get("mem0_config", {})
         }
-        return Mem0MemoryAdapter(memory_config)
+        return Mem0Adapter(memory_config)
     else:
         raise ValueError(f"Unsupported memory provider: {provider}")
 

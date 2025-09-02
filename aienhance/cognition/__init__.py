@@ -7,72 +7,10 @@
 
 # 新架构的主要入口点
 from .cognition_layer import CognitionLayer
-
-from .analogy_reasoning import (
-    AnalogyMapping,
-    AnalogyRetriever,
-    AssociationType,
-    CreativeAssociation,
-    CreativeAssociationGenerator,
-    FrameworkType,
-    IntegratedAnalogyReasoner,
-    SimilarityType,
-    ThinkingFramework,
-    ThinkingFrameworkMatcher,
-)
-from .memory_activation import (
-    ActivationLevel,
-    ActivationResult,
-    DeepActivator,
-    MemoryFragment,
-    MetaActivator,
-    MultiLevelMemoryActivator,
-    RelationType,
-    SurfaceActivator,
-)
-from .semantic_enhancement import (
-    BridgingStrategy,
-    ConceptGap,
-    ConceptGapIdentifier,
-    ContextualIntegrator,
-    GapType,
-    IntegratedSemanticEnhancer,
-    IntegrationLevel,
-    IntegrationResult,
-    SemanticBridge,
-    SemanticBridgeBuilder,
-)
+from .memory_activation import MemoryFragment
 
 __all__ = [
     # 新架构 - 推荐使用
     "CognitionLayer",
-    # 原有架构 - 向后兼容
     "MemoryFragment",
-    "ActivationResult",
-    "MultiLevelMemoryActivator",
-    "SurfaceActivator",
-    "DeepActivator",
-    "MetaActivator",
-    "ActivationLevel",
-    "RelationType",
-    "ConceptGap",
-    "SemanticBridge",
-    "IntegrationResult",
-    "IntegratedSemanticEnhancer",
-    "ConceptGapIdentifier",
-    "SemanticBridgeBuilder",
-    "ContextualIntegrator",
-    "GapType",
-    "BridgingStrategy",
-    "IntegrationLevel",
-    "AnalogyMapping",
-    "ThinkingFramework",
-    "CreativeAssociation",
-    "IntegratedAnalogyReasoner",
-    "AnalogyRetriever",
-    "ThinkingFrameworkMatcher",
-    "CreativeAssociationGenerator",
-    "SimilarityType",
-    "FrameworkType",
-    "AssociationType",
 ]

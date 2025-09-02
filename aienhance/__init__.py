@@ -6,33 +6,24 @@ AiEnhance - 记忆-认知协同系统
 __version__ = "0.1.0"
 
 from .core import (
-    BehaviorLayer,
-    CognitionLayer,
-    CollaborationLayer,
-    ContextProfile,
-    IBehaviorLayer,
-    ICognitionLayer,
-    ICognitiveLayers,
-    ICollaborationLayer,
-    InformationFlow,
-    IPerceptionLayer,
-    # 分层架构 (推荐)
-    LayeredCognitiveSystem,
-    LayeredSystemFactory,
-    PerceptionLayer,
-    ProcessingStatus,
-    UserProfile,
+    # 新架构 - 层-模块-子模块
+    BaseLayer,
+    BaseModule,
+    BaseSubModule,
+    CognitiveSystem,
+    ProcessingContext,
+    ProcessingResult,
+    create_restructured_cognitive_system,
+    create_educational_system,
+    create_research_system,
+    create_creative_system,
+    create_lightweight_system,
 )
-from .enhanced_system_factory import (
-    create_creative_layered_system,
-    create_educational_layered_system,
-    # 分层架构工厂函数 (推荐)
-    create_layered_system,
-    create_lightweight_layered_system,
-    create_research_layered_system,
-    get_layered_system_info,
-    get_system_info,
-)
+from .perception import PerceptionLayer
+from .cognition import CognitionLayer
+from .behavior import BehaviorLayer
+from .collaboration import CollaborationLayer
+# Note: enhanced_system_factory removed - use new architecture factory functions above
 from .llm import (
     EmbeddingProviderFactory,
     LLMProviderFactory,
@@ -51,22 +42,22 @@ from .memory import (
 
 # 便捷接口
 __all__ = [
-    # 分层架构 (核心)
-    "LayeredCognitiveSystem",
-    "LayeredSystemFactory",
+    # 新架构 - 层-模块-子模块
+    "BaseLayer",
+    "BaseModule",
+    "BaseSubModule",
+    "CognitiveSystem",
+    "ProcessingContext",
+    "ProcessingResult",
     "PerceptionLayer",
     "CognitionLayer",
     "BehaviorLayer",
     "CollaborationLayer",
-    "IPerceptionLayer",
-    "ICognitionLayer",
-    "IBehaviorLayer",
-    "ICollaborationLayer",
-    "ICognitiveLayers",
-    "UserProfile",
-    "ContextProfile",
-    "InformationFlow",
-    "ProcessingStatus",
+    "create_restructured_cognitive_system",
+    "create_educational_system",
+    "create_research_system",
+    "create_creative_system",
+    "create_lightweight_system",
     # 记忆系统
     "MemorySystemFactory",
     "MemorySystemConfig",
@@ -80,14 +71,7 @@ __all__ = [
     "MessageRole",
     "create_model_config",
     "create_chat_message",
-    # 分层系统工厂函数
-    "create_layered_system",
-    "create_educational_layered_system",
-    "create_research_layered_system",
-    "create_creative_layered_system",
-    "create_lightweight_layered_system",
-    "get_layered_system_info",
-    "get_system_info",
+    # 分层系统工厂函数已移除 - 使用 create_restructured_cognitive_system 等
     # 便捷函数
     "create_memory_system",
     "__version__",

@@ -2,12 +2,10 @@
 认知系统核心模块
 提供记忆-认知协同系统的核心功能
 
-包含两套架构：
-1. 重构后的层-模块-子模块架构（推荐使用）
-2. 原有的分层架构（向后兼容）
+基于层-模块-子模块三层架构设计
 """
 
-# 重构后的架构 - 推荐使用
+# 新架构 - 层-模块-子模块架构
 from .base_architecture import (
     BaseLayer,
     BaseModule, 
@@ -27,30 +25,10 @@ from .restructured_system_factory import (
     initialize_system_async
 )
 
-# 原有的分层架构 - 向后兼容
-from ..layers import (
-    BehaviorLayer as LegacyBehaviorLayer,
-    CognitionLayer as LegacyCognitionLayer,
-    CollaborationLayer as LegacyCollaborationLayer,
-    PerceptionLayer as LegacyPerceptionLayer,
-)
-from ..layers.layer_interfaces import (
-    ContextProfile,
-    IBehaviorLayer,
-    ICognitionLayer,
-    ICognitiveLayers,
-    ICollaborationLayer,
-    InformationFlow,
-    IPerceptionLayer,
-    ProcessingStatus,
-    SystemResponse,
-    UserProfile,
-)
-from .layered_cognitive_system import LayeredCognitiveSystem
-from .layered_system_factory import LayeredSystemFactory
+# 向后兼容接口已移除，使用新架构
 
 __all__ = [
-    # 重构后的架构 - 推荐使用
+    # 层-模块-子模块架构
     "BaseLayer",
     "BaseModule", 
     "BaseSubModule",
@@ -65,21 +43,4 @@ __all__ = [
     "create_lightweight_system",
     "create_system_from_config",
     "initialize_system_async",
-    # 原有架构 - 向后兼容
-    "IPerceptionLayer",
-    "ICognitionLayer",
-    "IBehaviorLayer",
-    "ICollaborationLayer",
-    "ICognitiveLayers",
-    "SystemResponse",
-    "UserProfile",
-    "ContextProfile",
-    "InformationFlow",
-    "ProcessingStatus",
-    "LegacyPerceptionLayer",
-    "LegacyCognitionLayer",
-    "LegacyBehaviorLayer",
-    "LegacyCollaborationLayer",
-    "LayeredCognitiveSystem",
-    "LayeredSystemFactory",
 ]

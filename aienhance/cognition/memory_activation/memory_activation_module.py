@@ -4,11 +4,27 @@
 基于设计文档第5.1节，系统采用表层-深层-元层三层记忆激活机制，模拟人类记忆的层次性组织和激活过程。
 """
 
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
+from dataclasses import dataclass
 import logging
 from aienhance.core.base_architecture import BaseModule, ProcessingContext, ProcessingResult
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class MemoryFragment:
+    """记忆片段数据类"""
+    content: str
+    fragment_id: str
+    source: str
+    relevance_score: float
+    activation_strength: float
+    metadata: Optional[Dict[str, Any]] = None
+    
+    def __post_init__(self):
+        if self.metadata is None:
+            self.metadata = {}
 
 
 class MemoryActivationModule(BaseModule):
