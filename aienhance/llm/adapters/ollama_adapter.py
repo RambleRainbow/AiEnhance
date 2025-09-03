@@ -21,7 +21,6 @@ from ..interfaces import (
     MessageRole,
     ModelConfig,
     ResponseFormat,
-    JsonSchema,
 )
 
 logger = logging.getLogger(__name__)
@@ -183,7 +182,7 @@ class OllamaLLMAdapter(LLMProvider):
                 logger.error(f"Ollama流式聊天失败: {e}")
                 raise
 
-    async def completion(self, prompt: str, **kwargs) -> str:
+    async def completion(self, prompt: str, response_format=None, **kwargs) -> str:
         """Ollama文本完成接口"""
         if not self.is_initialized:
             raise RuntimeError("Ollama LLM未初始化")
@@ -199,6 +198,13 @@ class OllamaLLMAdapter(LLMProvider):
                     "options": self._build_generation_options(**kwargs),
                 }
 
+                # 使用Ollama原生JSON Schema支持
+                if response_format:
+                    if response_format.type == "json_schema" and response_format.json_schema:
+                        request_data["format"] = response_format.json_schema.schema
+                    elif response_format.type == "json_object":
+                        request_data["format"] = "json"
+
                 async with session.post(
                     f"{self.base_url}/api/generate", json=request_data
                 ) as response:
@@ -211,7 +217,7 @@ class OllamaLLMAdapter(LLMProvider):
             logger.error(f"Ollama文本完成失败: {e}")
             raise
 
-    async def completion_stream(self, prompt: str, **kwargs) -> AsyncIterator[str]:
+    async def completion_stream(self, prompt: str, response_format=None, **kwargs) -> AsyncIterator[str]:
         """Ollama流式文本完成接口"""
         if not self.is_initialized:
             raise RuntimeError("Ollama LLM未初始化")
@@ -228,6 +234,13 @@ class OllamaLLMAdapter(LLMProvider):
                     "options": self._build_generation_options(**kwargs),
                 }
 
+                # 使用Ollama原生JSON Schema支持
+                if response_format:
+                    if response_format.type == "json_schema" and response_format.json_schema:
+                        request_data["format"] = response_format.json_schema.schema
+                    elif response_format.type == "json_object":
+                        request_data["format"] = "json"
+
                 async with session.post(
                     f"{self.base_url}/api/generate", json=request_data
                 ) as response:
@@ -242,18 +255,19 @@ class OllamaLLMAdapter(LLMProvider):
                                     text_chunk = chunk_data['response']
                                     if text_chunk:  # 只yield非空内容
                                         yield text_chunk
-                                        
+
                                 # 检查是否完成
                                 if chunk_data.get('done', False):
                                     break
-                                    
+
                             except json.JSONDecodeError:
                                 # 跳过无法解析的行
                                 continue
-                                
+
             except Exception as e:
                 logger.error(f"Ollama流式文本完成失败: {e}")
                 raise
+
 
     async def _check_ollama_health(self):
         """检查Ollama服务健康状态"""
