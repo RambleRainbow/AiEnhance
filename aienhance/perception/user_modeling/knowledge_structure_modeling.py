@@ -32,11 +32,27 @@ class KnowledgeStructureModelingSubModule(BaseSubModule):
                 context.user_id
             )
             
-            # 使用LLM分析用户知识结构
-            analysis_result = await self.process_with_llm(analysis_prompt, context)
+            # 获取JSON Schema
+            knowledge_schema = self._get_knowledge_structure_schema()
             
-            # 解析LLM输出为结构化数据
-            knowledge_profile = self._parse_llm_output(analysis_result)
+            # 使用LLM流式分析用户知识结构
+            logger.info("开始流式知识结构建模分析...")
+            analysis_result = ""
+            chunk_count = 0
+            async for chunk in self.process_with_llm_stream_json(
+                analysis_prompt, 
+                knowledge_schema, 
+                context
+            ):
+                analysis_result += chunk
+                chunk_count += 1
+                if chunk_count % 10 == 0:
+                    logger.debug(f"知识建模已接收 {chunk_count} 个片段，当前长度: {len(analysis_result)}")
+            
+            logger.info(f"流式知识建模完成，总共接收 {chunk_count} 个片段，总长度: {len(analysis_result)}")
+            
+            # 解析JSON结构化数据
+            knowledge_profile = self._parse_json_output(analysis_result)
             
             return ProcessingResult(
                 success=True,
@@ -61,6 +77,89 @@ class KnowledgeStructureModelingSubModule(BaseSubModule):
                 metadata={"error": str(e)},
                 error_message=str(e)
             )
+    
+    def _get_knowledge_structure_schema(self) -> dict:
+        """获取知识结构分析的JSON Schema"""
+        return {
+            "type": "object",
+            "properties": {
+                "professional_background": {
+                    "type": "object",
+                    "properties": {
+                        "primary_domain": {"type": "string"},
+                        "secondary_domains": {"type": "array", "items": {"type": "string"}},
+                        "experience_level": {"type": "string", "enum": ["novice", "intermediate", "advanced", "expert"]},
+                        "role_identity": {"type": "string"},
+                        "professional_indicators": {"type": "array", "items": {"type": "string"}}
+                    },
+                    "required": ["primary_domain", "secondary_domains", "experience_level", "role_identity", "professional_indicators"]
+                },
+                "domain_expertise": {
+                    "type": "object",
+                    "patternProperties": {
+                        ".*": {
+                            "type": "object",
+                            "properties": {
+                                "depth_level": {"type": "string", "enum": ["surface", "functional", "conceptual", "expert"]},
+                                "breadth_score": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                                "key_concepts": {"type": "array", "items": {"type": "string"}},
+                                "knowledge_gaps": {"type": "array", "items": {"type": "string"}},
+                                "learning_preferences": {"type": "array", "items": {"type": "string"}}
+                            },
+                            "required": ["depth_level", "breadth_score", "key_concepts", "knowledge_gaps", "learning_preferences"]
+                        }
+                    }
+                },
+                "cognitive_frameworks": {
+                    "type": "object",
+                    "properties": {
+                        "dominant_frameworks": {"type": "array", "items": {"type": "string"}},
+                        "thinking_models": {"type": "array", "items": {"type": "string"}},
+                        "problem_solving_approaches": {"type": "array", "items": {"type": "string"}},
+                        "knowledge_organization": {"type": "string", "enum": ["hierarchical", "network", "categorical", "procedural"]}
+                    },
+                    "required": ["dominant_frameworks", "thinking_models", "problem_solving_approaches", "knowledge_organization"]
+                },
+                "learning_patterns": {
+                    "type": "object",
+                    "properties": {
+                        "preferred_learning_style": {"type": "string", "enum": ["visual", "auditory", "kinesthetic", "reading", "mixed"]},
+                        "information_processing_speed": {"type": "string", "enum": ["slow_deep", "moderate", "fast_surface"]},
+                        "retention_patterns": {"type": "array", "items": {"type": "string"}},
+                        "knowledge_transfer_ability": {"type": "number", "minimum": 0.0, "maximum": 1.0}
+                    },
+                    "required": ["preferred_learning_style", "information_processing_speed", "retention_patterns", "knowledge_transfer_ability"]
+                },
+                "personal_knowledge_graph": {
+                    "type": "object",
+                    "properties": {
+                        "core_concepts": {"type": "array", "items": {"type": "string"}},
+                        "concept_connections": {"type": "array", "items": {
+                            "type": "object",
+                            "properties": {
+                                "from": {"type": "string"},
+                                "to": {"type": "string"},
+                                "relationship": {"type": "string"}
+                            },
+                            "required": ["from", "to", "relationship"]
+                        }},
+                        "knowledge_clusters": {"type": "array", "items": {
+                            "type": "object",
+                            "properties": {
+                                "cluster_name": {"type": "string"},
+                                "concepts": {"type": "array", "items": {"type": "string"}},
+                                "centrality_score": {"type": "number", "minimum": 0.0, "maximum": 1.0}
+                            },
+                            "required": ["cluster_name", "concepts", "centrality_score"]
+                        }}
+                    },
+                    "required": ["core_concepts", "concept_connections", "knowledge_clusters"]
+                },
+                "confidence_score": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                "analysis_notes": {"type": "string"}
+            },
+            "required": ["professional_background", "domain_expertise", "cognitive_frameworks", "learning_patterns", "personal_knowledge_graph", "confidence_score", "analysis_notes"]
+        }
     
     def _build_knowledge_analysis_prompt(self, query: str, session_context: Dict[str, Any], user_id: str) -> str:
         """构建知识结构分析提示词"""
@@ -181,6 +280,19 @@ class KnowledgeStructureModelingSubModule(BaseSubModule):
 """
         
         return prompt
+    
+    def _parse_json_output(self, json_output: str) -> Dict[str, Any]:
+        """解析JSON Schema约束的LLM输出"""
+        try:
+            import json
+            # 直接解析JSON，因为通过Schema约束应该确保格式正确
+            knowledge_profile = json.loads(json_output)
+            logger.info("成功解析JSON Schema约束的知识结构分析结果")
+            return knowledge_profile
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON Schema输出解析失败: {e}")
+            logger.warning("回退到默认知识结构画像")
+            return self._create_default_knowledge_profile(json_output)
     
     def _parse_llm_output(self, llm_output: str) -> Dict[str, Any]:
         """解析LLM输出为结构化知识画像数据"""

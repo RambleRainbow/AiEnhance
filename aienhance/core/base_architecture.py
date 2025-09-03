@@ -135,6 +135,39 @@ class BaseSubModule(ABC):
             logger.error(f"LLM streaming processing failed in {self.name}: {e}")
             raise
     
+    async def process_with_llm_stream_json(self, prompt: str, json_schema: dict, context: ProcessingContext):
+        """使用LLM流式处理并返回JSON结构化数据的通用方法"""
+        if not self.llm_adapter:
+            raise ValueError(f"SubModule {self.name} requires LLM adapter")
+        
+        try:
+            from aienhance.llm.interfaces import ResponseFormat, JsonSchema
+            
+            # 创建JSON Schema响应格式
+            schema_obj = JsonSchema(
+                name="structured_output",
+                description="Structured output for cognitive analysis",
+                schema=json_schema,
+                strict=True
+            )
+            response_format = ResponseFormat(
+                type="json_schema",
+                json_schema=schema_obj
+            )
+            
+            # 使用流式生成结构化数据
+            result_text = ""
+            async for chunk in self.llm_adapter.completion_stream(
+                prompt, 
+                response_format=response_format
+            ):
+                result_text += chunk
+                yield chunk
+                
+        except Exception as e:
+            logger.error(f"LLM streaming JSON processing failed in {self.name}: {e}")
+            raise
+    
     def is_enabled(self) -> bool:
         """检查子模块是否启用"""
         return self.enabled

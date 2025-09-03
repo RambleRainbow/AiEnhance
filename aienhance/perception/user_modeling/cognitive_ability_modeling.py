@@ -32,11 +32,27 @@ class CognitiveAbilityModelingSubModule(BaseSubModule):
                 context.user_id
             )
             
-            # 使用LLM分析用户认知能力特征
-            analysis_result = await self.process_with_llm(analysis_prompt, context)
+            # 获取JSON Schema
+            cognitive_schema = self._get_cognitive_analysis_schema()
             
-            # 解析LLM输出为结构化数据
-            cognitive_profile = self._parse_llm_output(analysis_result)
+            # 使用LLM流式分析用户认知能力特征
+            logger.info("开始流式认知能力建模分析...")
+            analysis_result = ""
+            chunk_count = 0
+            async for chunk in self.process_with_llm_stream_json(
+                analysis_prompt, 
+                cognitive_schema, 
+                context
+            ):
+                analysis_result += chunk
+                chunk_count += 1
+                if chunk_count % 10 == 0:
+                    logger.debug(f"认知建模已接收 {chunk_count} 个片段，当前长度: {len(analysis_result)}")
+            
+            logger.info(f"流式认知建模完成，总共接收 {chunk_count} 个片段，总长度: {len(analysis_result)}")
+            
+            # 解析JSON结构化数据
+            cognitive_profile = self._parse_json_output(analysis_result)
             
             return ProcessingResult(
                 success=True,
@@ -61,6 +77,97 @@ class CognitiveAbilityModelingSubModule(BaseSubModule):
                 error_message=str(e)
             )
     
+    def _get_cognitive_analysis_schema(self) -> dict:
+        """获取认知分析的JSON Schema"""
+        return {
+            "type": "object",
+            "properties": {
+                "thinking_style": {
+                    "type": "object",
+                    "properties": {
+                        "abstract_vs_concrete": {
+                            "type": "object",
+                            "properties": {
+                                "score": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                                "description": {"type": "string"},
+                                "evidence": {"type": "array", "items": {"type": "string"}}
+                            },
+                            "required": ["score", "description", "evidence"]
+                        },
+                        "deductive_vs_inductive": {
+                            "type": "object",
+                            "properties": {
+                                "score": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                                "description": {"type": "string"},
+                                "evidence": {"type": "array", "items": {"type": "string"}}
+                            },
+                            "required": ["score", "description", "evidence"]
+                        },
+                        "analogy_usage": {
+                            "type": "object",
+                            "properties": {
+                                "frequency": {"type": "string", "enum": ["low", "medium", "high"]},
+                                "quality": {"type": "string", "enum": ["basic", "advanced"]},
+                                "examples": {"type": "array", "items": {"type": "string"}}
+                            },
+                            "required": ["frequency", "quality", "examples"]
+                        }
+                    },
+                    "required": ["abstract_vs_concrete", "deductive_vs_inductive", "analogy_usage"]
+                },
+                "cognitive_complexity": {
+                    "type": "object",
+                    "properties": {
+                        "concept_depth": {
+                            "type": "object",
+                            "properties": {
+                                "level": {"type": "string", "enum": ["basic", "intermediate", "advanced"]},
+                                "evidence": {"type": "array", "items": {"type": "string"}}
+                            },
+                            "required": ["level", "evidence"]
+                        },
+                        "relation_understanding": {
+                            "type": "object",
+                            "properties": {
+                                "score": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                                "types": {"type": "array", "items": {"type": "string"}},
+                                "examples": {"type": "array", "items": {"type": "string"}}
+                            },
+                            "required": ["score", "types", "examples"]
+                        }
+                    },
+                    "required": ["concept_depth", "relation_understanding"]
+                },
+                "creativity_tendency": {
+                    "type": "object",
+                    "properties": {
+                        "divergent_vs_convergent": {
+                            "type": "object",
+                            "properties": {
+                                "score": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                                "description": {"type": "string"},
+                                "evidence": {"type": "array", "items": {"type": "string"}}
+                            },
+                            "required": ["score", "description", "evidence"]
+                        },
+                        "cross_domain_thinking": {
+                            "type": "object",
+                            "properties": {
+                                "frequency": {"type": "string", "enum": ["rare", "occasional", "frequent"]},
+                                "domains": {"type": "array", "items": {"type": "string"}},
+                                "examples": {"type": "array", "items": {"type": "string"}}
+                            },
+                            "required": ["frequency", "domains", "examples"]
+                        }
+                    },
+                    "required": ["divergent_vs_convergent", "cross_domain_thinking"]
+                },
+                "confidence_score": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                "analysis_notes": {"type": "string"}
+            },
+            "required": ["thinking_style", "cognitive_complexity", "creativity_tendency", "confidence_score", "analysis_notes"]
+        }
+    
     def _build_analysis_prompt(self, query: str, session_context: Dict[str, Any], user_id: str) -> str:
         """构建认知能力分析提示词"""
         
@@ -75,79 +182,42 @@ class CognitiveAbilityModelingSubModule(BaseSubModule):
 
 历史问题模式：{previous_queries}
 
-请从以下维度分析用户的认知特征，并输出JSON格式结果：
+请从以下维度分析用户的认知特征：
 
 ## 分析维度
 
 ### 1. 思维模式识别
-- 形象思维倾向 vs 逻辑推理倾向
-- 问题表述方式分析
-- 论证结构偏好
-- 概念使用习惯
+- 抽象思维 vs 具体思维倾向（0.0=极具体，1.0=极抽象）
+- 演绎推理 vs 归纳推理偏好（0.0=演绎，1.0=归纳）
+- 类比使用频率和质量
 
-### 2. 认知复杂度评估
+### 2. 认知复杂度评估  
+- 概念深度水平：basic/intermediate/advanced
+- 关系理解能力和类型（因果、条件、类比等）
 - 多层次概念处理能力
-- 抽象关系理解能力
-- 认知处理深度
 
 ### 3. 创造性思维倾向
-- 收敛性解决 vs 发散性探索
+- 发散 vs 收敛思维倾向（0.0=收敛，1.0=发散）
+- 跨领域思维频率和涉及领域
 - 创新性问题处理方式
-- 跨领域联想能力
 
-## 输出格式（JSON）
-
-```json
-{{
-    "thinking_style": {{
-        "abstract_vs_concrete": {{
-            "score": 0.0-1.0,
-            "description": "抽象思维倾向程度",
-            "evidence": ["具体证据"]
-        }},
-        "deductive_vs_inductive": {{
-            "score": 0.0-1.0,
-            "description": "演绎vs归纳推理偏好",
-            "evidence": ["具体证据"]
-        }},
-        "analogy_usage": {{
-            "frequency": "low|medium|high",
-            "quality": "basic|advanced",
-            "examples": ["类比使用例子"]
-        }}
-    }},
-    "cognitive_complexity": {{
-        "concept_depth": {{
-            "level": "basic|intermediate|advanced",
-            "evidence": ["层次概念使用证据"]
-        }},
-        "relation_understanding": {{
-            "score": 0.0-1.0,
-            "types": ["因果", "条件", "类比等"],
-            "examples": ["关系理解例子"]
-        }}
-    }},
-    "creativity_tendency": {{
-        "divergent_vs_convergent": {{
-            "score": 0.0-1.0,
-            "description": "发散vs收敛思维倾向",
-            "evidence": ["具体行为证据"]
-        }},
-        "cross_domain_thinking": {{
-            "frequency": "rare|occasional|frequent",
-            "domains": ["涉及的领域"],
-            "examples": ["跨域思考例子"]
-        }}
-    }},
-    "confidence_score": 0.0-1.0,
-    "analysis_notes": "详细的分析说明"
-}}
-```
-
-请基于提供的信息进行详细分析：
+请基于用户问题的表述方式、概念使用、逻辑结构等特征进行深入分析，提供具体的行为证据和例子。
 """
         
         return prompt
+    
+    def _parse_json_output(self, json_output: str) -> Dict[str, Any]:
+        """解析JSON Schema约束的LLM输出"""
+        try:
+            import json
+            # 直接解析JSON，因为通过Schema约束应该确保格式正确
+            cognitive_profile = json.loads(json_output)
+            logger.info("成功解析JSON Schema约束的认知分析结果")
+            return cognitive_profile
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON Schema输出解析失败: {e}")
+            logger.warning("回退到默认认知画像")
+            return self._create_default_profile(json_output)
     
     def _parse_llm_output(self, llm_output: str) -> Dict[str, Any]:
         """解析LLM输出为结构化认知画像数据"""
