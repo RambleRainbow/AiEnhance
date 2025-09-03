@@ -6,6 +6,7 @@ AiEnhance 命令行工具
 
 import argparse
 import asyncio
+import logging
 import os
 import sys
 from pathlib import Path
@@ -14,6 +15,38 @@ import aienhance
 
 # 添加项目路径
 sys.path.insert(0, str(Path(__file__).parent))
+
+def setup_logging():
+    """设置日志配置"""
+    # 从环境变量读取日志级别，默认为INFO
+    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+    
+    # 验证日志级别
+    valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+    if log_level not in valid_levels:
+        log_level = "INFO"
+    
+    # 设置日志格式
+    log_format = os.getenv("LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    
+    # 配置根日志器
+    logging.basicConfig(
+        level=getattr(logging, log_level),
+        format=log_format,
+        handlers=[
+            logging.StreamHandler(sys.stdout)
+        ],
+        force=True  # 强制重新配置
+    )
+    
+    # 设置 aienhance 模块的日志级别
+    aienhance_logger = logging.getLogger('aienhance')
+    aienhance_logger.setLevel(getattr(logging, log_level))
+    
+    return logging.getLogger(__name__)
+
+# 配置控制台日志输出
+logger = setup_logging()
 
 
 class AiEnhanceCliTool:
@@ -51,6 +84,8 @@ class AiEnhanceCliTool:
                 if use_memory is not None
                 else os.getenv("ENABLE_MEMORY_SYSTEM", "true").lower() == "true"
             )
+            
+            logger.info(f"正在初始化认知系统 - 类型: {system_type}, 温度: {temperature}, 记忆系统: {use_memory}")
 
             if use_memory:
                 # 使用新的层-模块-子模块认知系统，带记忆功能
@@ -113,8 +148,13 @@ class AiEnhanceCliTool:
                 )
 
             # 初始化新架构系统
-            await self.system.initialize()
-            return True
+            logger.info("开始系统初始化过程...")
+            success = await self.system.initialize()
+            if success:
+                logger.info("✅ 认知系统初始化完成")
+            else:
+                logger.warning("⚠️ 系统初始化完成，但存在部分警告")
+            return success
         except Exception as e:
             print(f"❌ 系统初始化失败: {e}")
             # 如果完整模式失败，尝试简化模式
@@ -134,6 +174,7 @@ class AiEnhanceCliTool:
             return
 
         print("🤔 处理查询中...")
+        logger.info(f"开始处理用户查询: {query[:50]}{'...' if len(query) > 50 else ''}")
         try:
             # 默认使用流式处理
             print("\n" + "=" * 50)
