@@ -1,46 +1,17 @@
 """
 情境分析模块
+
+包含任务类型识别、认知需求预测、情境要素提取三个子模块
 """
 
+from .cognitive_needs_prediction import CognitiveNeedsPredictionSubModule
 from .context_analysis_module import ContextAnalysisModule
-
-# 为了向后兼容，提供一些基础类的占位符
-class AbstractionLevel:
-    pass
-
-class CognitiveNeeds:
-    pass
-
-class ContextProfile:
-    pass
-
-class ContextualElements:
-    pass
-
-class IntegratedContextAnalyzer:
-    pass
-
-class PurposeType:
-    pass
-
-class TaskCharacteristics:
-    pass
-
-class TaskType:
-    pass
-
-class TimeDimension:
-    pass
+from .context_elements_extraction import ContextElementsExtractionSubModule
+from .task_type_identification import TaskTypeIdentificationSubModule
 
 __all__ = [
-    'ContextAnalysisModule',
-    'AbstractionLevel',
-    'CognitiveNeeds', 
-    'ContextProfile',
-    'ContextualElements',
-    'IntegratedContextAnalyzer',
-    'PurposeType',
-    'TaskCharacteristics',
-    'TaskType',
-    'TimeDimension'
+    "ContextAnalysisModule",
+    "TaskTypeIdentificationSubModule",
+    "CognitiveNeedsPredictionSubModule",
+    "ContextElementsExtractionSubModule",
 ]
