@@ -202,6 +202,9 @@ The system uses **Graphiti** as the primary memory system, which provides:
 - Use STREAMING style when calling LLM
 - Use JSON SCHEMA to contrain the format of LLM output 
 
+### use LATEST API docs
+- If you think this API interface cannot implement the specified function, first use the MCP tool (context7) to check the latest API documentation.
+
 ## Configuration Management
 
 ### Environment Variables
