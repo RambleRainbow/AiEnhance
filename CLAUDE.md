@@ -36,6 +36,7 @@ uv run python gradio_interface.py
 ```
 
 ### Code Quality & Linting
+Run ruff to lint codes BEFORE commit
 ```bash
 # Code checking
 uv run ruff check .

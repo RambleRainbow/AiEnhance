@@ -8,6 +8,7 @@ from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 import logging
 from aienhance.core.base_architecture import BaseModule, ProcessingContext, ProcessingResult
+from aienhance.memory.interfaces import MemoryQuery, UserContext
 
 logger = logging.getLogger(__name__)
 
@@ -89,19 +90,25 @@ class MemoryActivationModule(BaseModule):
         
         if self.memory_adapter:
             try:
-                # 使用记忆适配器进行语义搜索
-                search_results = await self.memory_adapter.search_memories(
+                # 创建用户上下文
+                user_context = UserContext(user_id=context.user_id)
+                
+                # 创建记忆查询
+                memory_query = MemoryQuery(
                     query=context.query,
-                    user_id=context.user_id,
+                    user_context=user_context,
                     limit=10
                 )
                 
-                for result in search_results:
+                # 使用记忆适配器进行语义搜索
+                search_result = await self.memory_adapter.search_memories(memory_query)
+                
+                for memory_entry in search_result.memories:
                     surface_memories.append({
-                        "content": result.get("content", ""),
-                        "relevance_score": result.get("score", 0.5),
+                        "content": memory_entry.content,
+                        "relevance_score": memory_entry.confidence,
                         "source": "surface_activation",
-                        "memory_type": result.get("type", "unknown"),
+                        "memory_type": memory_entry.memory_type.value,
                         "activation_layer": "surface"
                     })
                     
@@ -131,17 +138,23 @@ class MemoryActivationModule(BaseModule):
         for concept in key_concepts:
             if self.memory_adapter:
                 try:
-                    # 概念相关记忆搜索
-                    concept_memories = await self.memory_adapter.search_by_concept(
-                        concept=concept,
-                        user_id=context.user_id,
+                    # 创建用户上下文
+                    user_context = UserContext(user_id=context.user_id)
+                    
+                    # 创建概念相关的记忆查询
+                    concept_query = MemoryQuery(
+                        query=concept,
+                        user_context=user_context,
                         limit=5
                     )
                     
-                    for memory in concept_memories:
+                    # 概念相关记忆搜索
+                    concept_result = await self.memory_adapter.search_memories(concept_query)
+                    
+                    for memory_entry in concept_result.memories:
                         deep_memories.append({
-                            "content": memory.get("content", ""),
-                            "relevance_score": memory.get("score", 0.4) * 0.8,  # 降权
+                            "content": memory_entry.content,
+                            "relevance_score": memory_entry.confidence * 0.8,  # 降权
                             "source": "deep_activation",
                             "related_concept": concept,
                             "activation_layer": "deep"

@@ -210,8 +210,8 @@ class BehaviorLayer(BaseLayer):
 请生成适合用户的个性化回答，体现认知支持和启发引导。
 """
                 
-                response_content = await self.llm_adapter.generate_response(
-                    response_prompt, context.session_context
+                response_content = await self.llm_adapter.completion(
+                    response_prompt
                 )
                 
                 final_response["response_content"] = response_content

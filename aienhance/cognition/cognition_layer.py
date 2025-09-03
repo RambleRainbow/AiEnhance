@@ -202,9 +202,8 @@ class CognitionLayer(BaseLayer):
 要求简洁明确，不超过200字。
 """
                 
-                synthesis_response = await self.llm_adapter.generate_response(
-                    prompt=synthesis_prompt,
-                    context=context.session_context
+                synthesis_response = await self.llm_adapter.completion(
+                    synthesis_prompt
                 )
                 
                 synthesis["synthesis_notes"] = synthesis_response

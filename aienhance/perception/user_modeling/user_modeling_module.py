@@ -7,7 +7,10 @@
 
 from typing import Dict, Any
 import logging
+import json
+import datetime
 from aienhance.core.base_architecture import BaseModule, ProcessingContext, ProcessingResult
+from aienhance.memory.interfaces import MemoryEntry, UserContext, MemoryType
 from .cognitive_ability_modeling import CognitiveAbilityModelingSubModule
 from .knowledge_structure_modeling import KnowledgeStructureModelingSubModule
 from .interaction_pattern_modeling import InteractionPatternModelingSubModule
@@ -184,8 +187,24 @@ class UserModelingModule(BaseModule):
             return
         
         try:
-            # 将用户画像存储到记忆系统
-            await self.memory_adapter.store_user_profile(user_id, profile)
+            # 将用户画像作为记忆条目存储到记忆系统
+            user_context = UserContext(user_id=user_id)
+            
+            # 序列化profile，处理datetime对象
+            def json_serializer(obj):
+                if hasattr(obj, 'isoformat'):
+                    return obj.isoformat()
+                raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+            
+            profile_memory = MemoryEntry(
+                content=f"User Profile: {json.dumps(profile, ensure_ascii=False, default=json_serializer)}",
+                memory_type=MemoryType.SEMANTIC,
+                user_context=user_context,
+                timestamp=datetime.datetime.now(),
+                metadata={"type": "user_profile", "profile_version": "1.0"}
+            )
+            
+            await self.memory_adapter.add_memory(profile_memory)
             logger.info(f"Updated user profile for {user_id} in memory system")
         except Exception as e:
             logger.warning(f"Failed to update user profile in memory: {e}")

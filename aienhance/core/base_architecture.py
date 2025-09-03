@@ -10,12 +10,16 @@
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List, Optional, Union
+from typing import Dict, Any, List, Optional, Union, TYPE_CHECKING
 from dataclasses import dataclass
 from enum import Enum
 import asyncio
 import logging
 from datetime import datetime
+
+if TYPE_CHECKING:
+    from aienhance.llm.interfaces import BaseLLMAdapter
+    from aienhance.memory.interfaces import BaseMemoryAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -337,10 +341,21 @@ class CognitiveSystem:
         self.layers = layers
         self.config = config or {}
         self.phase = ProcessingPhase.INITIALIZING
+        self._llm_adapter: Optional['BaseLLMAdapter'] = None
+        self._memory_adapter: Optional['BaseMemoryAdapter'] = None
         
     async def initialize(self) -> bool:
         """初始化所有层"""
         try:
+            # 首先初始化共享的适配器
+            if self._llm_adapter:
+                await self._llm_adapter.initialize()
+                logger.info("LLM adapter initialized successfully")
+            
+            if self._memory_adapter:
+                await self._memory_adapter.initialize()
+                logger.info("Memory adapter initialized successfully")
+            
             # 初始化所有层
             init_results = await asyncio.gather(
                 *[layer.initialize() for layer in self.layers],

@@ -90,7 +90,7 @@ class AnalogyReasoningModule(BaseModule):
 要求简洁明确。
 """
                 
-                response = await self.llm_adapter.generate_response(analogy_prompt, context.session_context)
+                response = await self.llm_adapter.completion(analogy_prompt)
                 
                 # 解析响应为结构化数据
                 analogies = self._parse_analogy_response(response)

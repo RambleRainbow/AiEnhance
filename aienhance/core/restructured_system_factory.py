@@ -88,6 +88,10 @@ def create_restructured_cognitive_system(
         # 创建认知系统
         system = CognitiveSystem(layers, config)
         
+        # 存储适配器引用供后续初始化
+        system._llm_adapter = llm_adapter
+        system._memory_adapter = memory_adapter
+        
         logger.info(f"Successfully created restructured cognitive system with {len(layers)} layers")
         return system
         

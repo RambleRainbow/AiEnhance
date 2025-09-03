@@ -105,7 +105,7 @@ class SemanticEnhancementModule(BaseModule):
 }}
 """
             
-            response = await self.llm_adapter.generate_response(gap_analysis_prompt, context.session_context)
+            response = await self.llm_adapter.completion(gap_analysis_prompt)
             
             # 解析JSON响应
             try:
@@ -171,7 +171,7 @@ class SemanticEnhancementModule(BaseModule):
 请生成简洁明确的桥接内容，帮助用户理解：
 """
                 
-                return await self.llm_adapter.generate_response(bridge_prompt, context.session_context)
+                return await self.llm_adapter.completion(bridge_prompt)
                 
             except Exception as e:
                 logger.warning(f"Bridge content generation failed: {e}")
@@ -211,7 +211,7 @@ class SemanticEnhancementModule(BaseModule):
 请创建一个连贯、有逻辑的知识整合叙述，不超过300字：
 """
                 
-                return await self.llm_adapter.generate_response(integration_prompt, context.session_context)
+                return await self.llm_adapter.completion(integration_prompt)
                 
             except Exception as e:
                 logger.warning(f"Integrated narrative creation failed: {e}")
