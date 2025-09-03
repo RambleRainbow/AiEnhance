@@ -197,6 +197,11 @@ The system uses **Graphiti** as the primary memory system, which provides:
 - Collaboration layer failures → Continue with core 3 layers
 - Individual layer failures → Stop processing with detailed error info
 
+### Working with LLM
+**LLM devloping best practice**
+- Use STREAMING style when calling LLM
+- Use JSON SCHEMA to contrain the format of LLM output 
+
 ## Configuration Management
 
 ### Environment Variables

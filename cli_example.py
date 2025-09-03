@@ -96,7 +96,7 @@ class AiEnhanceCliTool:
                         memory_provider=os.getenv("DEFAULT_MEMORY_SYSTEM", "graphiti"),
                         config={
                             "temperature": temperature,
-                            "max_tokens": int(os.getenv("DEFAULT_LLM_MAX_TOKENS", "800")),
+                            "max_tokens": None,  # 无长度限制，避免截断
                             "ollama_base_url": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
                         }
                     )
@@ -107,7 +107,7 @@ class AiEnhanceCliTool:
                         memory_provider=os.getenv("DEFAULT_MEMORY_SYSTEM", "graphiti"),
                         config={
                             "temperature": temperature,
-                            "max_tokens": int(os.getenv("DEFAULT_LLM_MAX_TOKENS", "800")),
+                            "max_tokens": None,  # 无长度限制，避免截断
                             "ollama_base_url": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
                         }
                     )
@@ -118,7 +118,7 @@ class AiEnhanceCliTool:
                         memory_provider=os.getenv("DEFAULT_MEMORY_SYSTEM", "graphiti"),
                         config={
                             "temperature": temperature,
-                            "max_tokens": int(os.getenv("DEFAULT_LLM_MAX_TOKENS", "800")),
+                            "max_tokens": None,  # 无长度限制，避免截断
                             "ollama_base_url": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
                         }
                     )
@@ -130,7 +130,7 @@ class AiEnhanceCliTool:
                         memory_provider=os.getenv("DEFAULT_MEMORY_SYSTEM", "graphiti"),
                         config={
                             "temperature": temperature,
-                            "max_tokens": int(os.getenv("DEFAULT_LLM_MAX_TOKENS", "800")),
+                            "max_tokens": None,  # 无长度限制，避免截断
                             "ollama_base_url": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
                         }
                     )
@@ -142,7 +142,7 @@ class AiEnhanceCliTool:
                     llm_model_name=os.getenv("DEFAULT_LLM_MODEL", "qwen3:8b"),
                     config={
                         "llm_temperature": temperature,
-                        "llm_max_tokens": int(os.getenv("DEFAULT_LLM_MAX_TOKENS", "800")),
+                        "llm_max_tokens": None,  # 无长度限制，避免截断
                         "ollama_base_url": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
                     }
                 )

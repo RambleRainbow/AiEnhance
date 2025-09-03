@@ -106,28 +106,28 @@ def _get_system_type_config(system_type: str) -> Dict[str, Any]:
     configs = {
         "educational": {
             "temperature": 0.7,
-            "max_tokens": 800,
+            "max_tokens": None,  # 无长度限制，避免截断
             "enable_metacognitive_guidance": True,
             "cognitive_challenge_level": "moderate",
             "explanation_detail_level": "detailed"
         },
         "research": {
             "temperature": 0.6,
-            "max_tokens": 1200,
+            "max_tokens": None,  # 无长度限制，避免截断
             "enable_dialectical_perspectives": True,
             "analogy_depth": "deep",
             "evidence_requirement": "strict"
         },
         "creative": {
             "temperature": 0.9,
-            "max_tokens": 1000,
+            "max_tokens": None,  # 无长度限制，避免截断
             "enable_creative_associations": True,
             "thinking_diversity": "high",
             "exploration_tendency": "strong"
         },
         "lightweight": {
             "temperature": 0.5,
-            "max_tokens": 500,
+            "max_tokens": None,  # 无长度限制，避免截断
             "enable_collaboration_layer": False,
             "simplified_processing": True,
             "response_conciseness": "high"
@@ -146,7 +146,7 @@ def _create_llm_adapter(provider: str, model_name: str, config: Dict[str, Any]):
             model_name=model_name,
             api_base=config.get("ollama_base_url", "http://localhost:11434"),
             temperature=config.get("temperature", 0.7),
-            max_tokens=config.get("max_tokens", 800)
+            max_tokens=config.get("max_tokens", None)
         )
         return OllamaLLMAdapter(model_config)
     elif provider == "openai":
@@ -155,7 +155,7 @@ def _create_llm_adapter(provider: str, model_name: str, config: Dict[str, Any]):
             model_name=model_name,
             api_key=config.get("openai_api_key"),
             temperature=config.get("temperature", 0.7),
-            max_tokens=config.get("max_tokens", 800)
+            max_tokens=config.get("max_tokens", None)
         )
         return OpenAILLMAdapter(model_config)
     elif provider == "anthropic":
@@ -164,7 +164,7 @@ def _create_llm_adapter(provider: str, model_name: str, config: Dict[str, Any]):
             model_name=model_name,
             api_key=config.get("anthropic_api_key"),
             temperature=config.get("temperature", 0.7),
-            max_tokens=config.get("max_tokens", 800)
+            max_tokens=config.get("max_tokens", None)
         )
         return AnthropicLLMAdapter(model_config)
     else:

@@ -193,6 +193,25 @@ class LLMProvider(ABC):
         response = await self.chat(messages, response_format=response_format, **kwargs)
         return response.content
 
+    async def completion_stream(
+        self, prompt: str, response_format: Optional[ResponseFormat] = None, **kwargs
+    ) -> AsyncIterator[str]:
+        """
+        流式文本完成接口 (可选实现)
+
+        Args:
+            prompt: 输入提示
+            response_format: 响应格式，支持JSON Schema
+            **kwargs: 额外参数
+
+        Yields:
+            str: 流式文本片段
+        """
+        # 默认实现：转换为chat格式并使用流式
+        messages = [ChatMessage(role=MessageRole.USER, content=prompt)]
+        async for chunk in self.chat_stream(messages, response_format=response_format, **kwargs):
+            yield chunk
+
     async def function_call(
         self, messages: list[ChatMessage], functions: list[dict[str, Any]], **kwargs
     ) -> ChatResponse:

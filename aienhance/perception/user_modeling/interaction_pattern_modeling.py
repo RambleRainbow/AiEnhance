@@ -33,8 +33,16 @@ class InteractionPatternModelingSubModule(BaseSubModule):
                 context.user_id
             )
             
-            # 使用LLM分析用户交互模式
-            analysis_result = await self.process_with_llm(analysis_prompt, context)
+            # 使用LLM流式分析用户交互模式
+            logger.info("开始流式分析用户交互模式...")
+            analysis_result = ""
+            chunk_count = 0
+            async for chunk in self.process_with_llm_stream(analysis_prompt, context):
+                analysis_result += chunk
+                chunk_count += 1
+                if chunk_count % 10 == 0:  # 每10个chunk记录一次进度
+                    logger.debug(f"已接收 {chunk_count} 个响应片段，当前长度: {len(analysis_result)}")
+            logger.info(f"流式分析完成，总共接收 {chunk_count} 个片段，总长度: {len(analysis_result)}")
             
             # 解析LLM输出为结构化数据
             interaction_profile = self._parse_llm_output(analysis_result)

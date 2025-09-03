@@ -211,6 +211,50 @@ class OllamaLLMAdapter(LLMProvider):
             logger.error(f"Ollama文本完成失败: {e}")
             raise
 
+    async def completion_stream(self, prompt: str, **kwargs) -> AsyncIterator[str]:
+        """Ollama流式文本完成接口"""
+        if not self.is_initialized:
+            raise RuntimeError("Ollama LLM未初始化")
+
+        # 为每次流式调用创建新的session，避免事件循环冲突
+        timeout = aiohttp.ClientTimeout(total=self.config.timeout)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            try:
+                # 构建流式请求
+                request_data = {
+                    "model": self.config.model_name,
+                    "prompt": prompt,
+                    "stream": True,
+                    "options": self._build_generation_options(**kwargs),
+                }
+
+                async with session.post(
+                    f"{self.base_url}/api/generate", json=request_data
+                ) as response:
+                    response.raise_for_status()
+
+                    # 逐行处理流式响应
+                    async for line in response.content:
+                        if line:
+                            try:
+                                chunk_data = json.loads(line.decode('utf-8'))
+                                if 'response' in chunk_data:
+                                    text_chunk = chunk_data['response']
+                                    if text_chunk:  # 只yield非空内容
+                                        yield text_chunk
+                                        
+                                # 检查是否完成
+                                if chunk_data.get('done', False):
+                                    break
+                                    
+                            except json.JSONDecodeError:
+                                # 跳过无法解析的行
+                                continue
+                                
+            except Exception as e:
+                logger.error(f"Ollama流式文本完成失败: {e}")
+                raise
+
     async def _check_ollama_health(self):
         """检查Ollama服务健康状态"""
         try:

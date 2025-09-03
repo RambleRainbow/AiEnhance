@@ -122,6 +122,19 @@ class BaseSubModule(ABC):
             logger.error(f"LLM processing failed in {self.name}: {e}")
             raise
     
+    async def process_with_llm_stream(self, prompt: str, context: ProcessingContext):
+        """使用LLM流式处理的通用方法"""
+        if not self.llm_adapter:
+            raise ValueError(f"SubModule {self.name} requires LLM adapter")
+        
+        try:
+            # 使用completion_stream方法进行流式文本生成
+            async for chunk in self.llm_adapter.completion_stream(prompt):
+                yield chunk
+        except Exception as e:
+            logger.error(f"LLM streaming processing failed in {self.name}: {e}")
+            raise
+    
     def is_enabled(self) -> bool:
         """检查子模块是否启用"""
         return self.enabled
