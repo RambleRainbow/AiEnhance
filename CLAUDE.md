@@ -259,9 +259,8 @@ config.print_config_summary()
 
 ### Testing Strategy
 Tests are organized by system component:
-- `test_system_architecture.py`: Core system testing
-- `test_*_integration.py`: Integration tests for specific components
-- `test_*_layer.py`: Individual layer testing
+- 当前处于程序开发的早期，程序结构并不稳定。在生成相应的测试程序时，应只生成主要函数入口的测试，而不是所有函数入口。
+- 注意当前的测试更多是为了构造一个可运行环境，而不是健壮性
 
 ### Configuration Management
 All configuration is handled through:
