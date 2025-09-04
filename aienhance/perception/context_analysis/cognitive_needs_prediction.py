@@ -5,14 +5,12 @@
 预测所需的思维模式、推理策略和支持类型。
 """
 
-import json
 import logging
 from typing import Any
 
 from aienhance.core.base_architecture import (
     BaseSubModule,
     ProcessingContext,
-    ProcessingResult,
 )
 
 logger = logging.getLogger(__name__)
@@ -21,76 +19,16 @@ logger = logging.getLogger(__name__)
 class CognitiveNeedsPredictionSubModule(BaseSubModule):
     """认知需求预测子模块"""
 
-    def __init__(self, llm_adapter=None, config: dict[str, Any] = None):
+    def __init__(self, llm_adapter=None, config: dict[str, Any] | None = None):
         super().__init__("cognitive_needs_prediction", llm_adapter, config)
 
     async def _initialize_impl(self):
         """子模块初始化"""
         logger.info("Initializing Cognitive Needs Prediction SubModule")
 
-    async def process(self, context: ProcessingContext) -> ProcessingResult:
-        """处理认知需求预测"""
-        try:
-            # 构建认知需求预测提示词
-            analysis_prompt = self._build_cognitive_needs_prompt(
-                context.query,
-                context.session_context,
-                context.user_id,
-                context.module_outputs,
-            )
+    # 使用基类的标准化process方法，只需实现抽象方法
 
-            # 获取JSON Schema
-            cognitive_schema = self._get_cognitive_needs_schema()
-
-            # 使用LLM流式分析认知需求
-            logger.info("开始流式认知需求预测分析...")
-            analysis_result = ""
-            chunk_count = 0
-            async for chunk in self.process_with_llm_stream_json(
-                analysis_prompt, cognitive_schema, context
-            ):
-                analysis_result += chunk
-                chunk_count += 1
-                if chunk_count % 10 == 0:
-                    logger.debug(
-                        f"认知需求预测已接收 {chunk_count} 个片段，当前长度: {len(analysis_result)}"
-                    )
-
-            logger.info(
-                f"流式认知需求预测完成，总共接收 {chunk_count} 个片段，总长度: {len(analysis_result)}"
-            )
-
-            # 解析JSON结构化数据
-            cognitive_needs = self._parse_json_output(analysis_result)
-
-            return ProcessingResult(
-                success=True,
-                data={
-                    "cognitive_needs": cognitive_needs,
-                    "analysis_timestamp": context.metadata.get("created_at"),
-                    "primary_cognitive_strategy": cognitive_needs.get(
-                        "primary_cognitive_strategy"
-                    ),
-                    "confidence_score": cognitive_needs.get("confidence_score", 0.7),
-                },
-                metadata={
-                    "submodule": "cognitive_needs_prediction",
-                    "thinking_modes_required": cognitive_needs.get(
-                        "thinking_modes", []
-                    ),
-                    "support_intensity": cognitive_needs.get(
-                        "support_requirements", {}
-                    ).get("intensity_level", "moderate"),
-                },
-            )
-
-        except Exception as e:
-            logger.error(f"Cognitive needs prediction failed: {e}")
-            return ProcessingResult(
-                success=False, data={}, metadata={"error": str(e)}, error_message=str(e)
-            )
-
-    def _get_cognitive_needs_schema(self) -> dict:
+    def _get_output_schema(self) -> dict:
         """获取认知需求预测的JSON Schema"""
         return {
             "type": "object",
@@ -432,24 +370,19 @@ class CognitiveNeedsPredictionSubModule(BaseSubModule):
             ],
         }
 
-    def _build_cognitive_needs_prompt(
-        self,
-        query: str,
-        session_context: dict[str, Any],
-        user_id: str,
-        module_outputs: dict[str, Any],
+    async def _build_analysis_prompt(
+        self, query: str, session_context: dict[str, Any], user_id: str
     ) -> str:
         """构建认知需求预测提示词"""
 
         # 获取历史上下文和用户信息
         conversation_history = session_context.get("conversation_history", [])
         user_profile = session_context.get("user_profile", {})
+        user_profile["user_id"] = user_id  # 使用user_id参数
 
-        # 获取用户建模和任务类型识别的结果
-        user_modeling_result = module_outputs.get("perception.user_modeling", {})
-        task_analysis_result = module_outputs.get(
-            "context_analysis.task_type_identification", {}
-        )
+        # 获取之前模块的分析结果（从session_context中获取）
+        user_modeling_result = session_context.get("user_modeling_result", {})
+        task_analysis_result = session_context.get("task_analysis_result", {})
 
         prompt = f"""
 你是一位认知需求分析专家，需要基于用户查询、任务类型和用户特征，预测用户的认知需求和所需的思维支持。
@@ -471,7 +404,7 @@ class CognitiveNeedsPredictionSubModule(BaseSubModule):
 ### 1. 主要认知策略识别
 根据任务类型和用户特征，确定最适合的认知处理策略：
 - **分析推理 (analytical_reasoning)**: 逻辑分解、系统分析
-- **创意综合 (creative_synthesis)**: 创新思考、概念整合  
+- **创意综合 (creative_synthesis)**: 创新思考、概念整合
 - **模式识别 (pattern_recognition)**: 规律发现、类型归纳
 - **系统分解 (systematic_decomposition)**: 结构化拆解、层次分析
 - **直觉探索 (intuitive_exploration)**: 开放性思考、灵感激发
@@ -486,7 +419,7 @@ class CognitiveNeedsPredictionSubModule(BaseSubModule):
 ### 3. 记忆激活模式
 预测需要激活的记忆类型和深度：
 - **语义记忆**: 概念知识、领域知识的激活需求
-- **情景记忆**: 经验、案例、历史事件的激活需求  
+- **情景记忆**: 经验、案例、历史事件的激活需求
 - **程序记忆**: 技能、方法、操作流程的激活需求
 
 ### 4. 推理需求分析
@@ -519,19 +452,34 @@ class CognitiveNeedsPredictionSubModule(BaseSubModule):
 
         return prompt
 
-    def _parse_json_output(self, json_output: str) -> dict[str, Any]:
-        """解析JSON Schema约束的LLM输出"""
-        try:
-            # 直接解析JSON，因为通过Schema约束应该确保格式正确
-            cognitive_needs = json.loads(json_output)
-            logger.info("成功解析JSON Schema约束的认知需求预测结果")
-            return cognitive_needs
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON Schema输出解析失败: {e}")
-            logger.warning("回退到默认认知需求预测")
-            return self._create_default_cognitive_needs(json_output)
+    async def _build_result_data(
+        self, parsed_output: dict[str, Any], context: ProcessingContext
+    ) -> dict[str, Any]:
+        """构建处理结果的数据部分"""
+        return {
+            "cognitive_needs": parsed_output,
+            "analysis_timestamp": context.metadata.get("created_at"),
+            "primary_cognitive_strategy": parsed_output.get(
+                "primary_cognitive_strategy"
+            ),
+            "confidence_score": parsed_output.get("confidence_score", 0.7),
+        }
 
-    def _create_default_cognitive_needs(self, analysis_text: str) -> dict[str, Any]:
+    def _build_result_metadata(
+        self, parsed_output: dict[str, Any], analysis_prompt: str
+    ) -> dict[str, Any]:
+        """构建处理结果的元数据部分"""
+        return {
+            "submodule": "cognitive_needs_prediction",
+            "thinking_modes_required": parsed_output.get("thinking_modes", []),
+            "support_intensity": parsed_output.get("support_requirements", {}).get(
+                "intensity_level", "moderate"
+            ),
+            "confidence_score": parsed_output.get("confidence_score", 0.7),
+            "prompt_tokens": len(analysis_prompt.split()),
+        }
+
+    def _create_default_output(self, analysis_text: str = "") -> dict[str, Any]:
         """创建默认认知需求预测结果"""
         return {
             "primary_cognitive_strategy": "analytical_reasoning",
@@ -603,5 +551,7 @@ class CognitiveNeedsPredictionSubModule(BaseSubModule):
                 "learning_orientation": "understanding",
             },
             "confidence_score": 0.5,
-            "prediction_rationale": f"基于初始分析的认知需求预测: {analysis_text[:200]}...",
+            "prediction_rationale": (
+                f"基于初始分析的认知需求预测: {analysis_text[:200]}..."
+            ),
         }

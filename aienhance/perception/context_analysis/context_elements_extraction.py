@@ -5,14 +5,12 @@
 包括时间、空间、主题域、约束条件等影响认知处理的环境因素。
 """
 
-import json
 import logging
 from typing import Any
 
 from aienhance.core.base_architecture import (
     BaseSubModule,
     ProcessingContext,
-    ProcessingResult,
 )
 
 logger = logging.getLogger(__name__)
@@ -21,83 +19,16 @@ logger = logging.getLogger(__name__)
 class ContextElementsExtractionSubModule(BaseSubModule):
     """情境要素提取子模块"""
 
-    def __init__(self, llm_adapter=None, config: dict[str, Any] = None):
+    def __init__(self, llm_adapter=None, config: dict[str, Any] | None = None):
         super().__init__("context_elements_extraction", llm_adapter, config)
 
     async def _initialize_impl(self):
         """子模块初始化"""
         logger.info("Initializing Context Elements Extraction SubModule")
 
-    async def process(self, context: ProcessingContext) -> ProcessingResult:
-        """处理情境要素提取"""
-        try:
-            # 构建情境要素提取提示词
-            analysis_prompt = self._build_context_extraction_prompt(
-                context.query,
-                context.session_context,
-                context.user_id,
-                context.module_outputs,
-            )
+    # 使用基类的标准化process方法，只需实现抽象方法
 
-            # 获取JSON Schema
-            context_schema = self._get_context_elements_schema()
-
-            # 使用LLM流式分析情境要素
-            logger.info("开始流式情境要素提取分析...")
-            analysis_result = ""
-            chunk_count = 0
-            async for chunk in self.process_with_llm_stream_json(
-                analysis_prompt, context_schema, context
-            ):
-                analysis_result += chunk
-                chunk_count += 1
-                if chunk_count % 10 == 0:
-                    logger.debug(
-                        f"情境要素提取已接收 {chunk_count} 个片段，当前长度: {len(analysis_result)}"
-                    )
-
-            logger.info(
-                f"流式情境要素提取完成，总共接收 {chunk_count} 个片段，总长度: {len(analysis_result)}"
-            )
-
-            # 解析JSON结构化数据
-            context_elements = self._parse_json_output(analysis_result)
-
-            return ProcessingResult(
-                success=True,
-                data={
-                    "context_elements": context_elements,
-                    "analysis_timestamp": context.metadata.get("created_at"),
-                    "primary_domain": context_elements.get("domain_context", {}).get(
-                        "primary_domain"
-                    ),
-                    "context_complexity": context_elements.get(
-                        "complexity_assessment", {}
-                    ).get("overall_complexity", "medium"),
-                    "confidence_score": context_elements.get("confidence_score", 0.7),
-                },
-                metadata={
-                    "submodule": "context_elements_extraction",
-                    "domains_identified": len(
-                        context_elements.get("domain_context", {}).get(
-                            "relevant_domains", []
-                        )
-                    ),
-                    "constraints_count": len(
-                        context_elements.get("constraint_analysis", {}).get(
-                            "active_constraints", []
-                        )
-                    ),
-                },
-            )
-
-        except Exception as e:
-            logger.error(f"Context elements extraction failed: {e}")
-            return ProcessingResult(
-                success=False, data={}, metadata={"error": str(e)}, error_message=str(e)
-            )
-
-    def _get_context_elements_schema(self) -> dict:
+    def _get_output_schema(self) -> dict:
         """获取情境要素提取的JSON Schema"""
         return {
             "type": "object",
@@ -545,27 +476,20 @@ class ContextElementsExtractionSubModule(BaseSubModule):
             ],
         }
 
-    def _build_context_extraction_prompt(
-        self,
-        query: str,
-        session_context: dict[str, Any],
-        user_id: str,
-        module_outputs: dict[str, Any],
+    async def _build_analysis_prompt(
+        self, query: str, session_context: dict[str, Any], user_id: str
     ) -> str:
         """构建情境要素提取提示词"""
 
         # 获取历史上下文和用户信息
         conversation_history = session_context.get("conversation_history", [])
         user_profile = session_context.get("user_profile", {})
+        user_profile["user_id"] = user_id  # 使用user_id参数
 
-        # 获取之前模块的分析结果
-        user_modeling_result = module_outputs.get("perception.user_modeling", {})
-        task_analysis_result = module_outputs.get(
-            "context_analysis.task_type_identification", {}
-        )
-        cognitive_needs_result = module_outputs.get(
-            "context_analysis.cognitive_needs_prediction", {}
-        )
+        # 获取之前模块的分析结果（从session_context中获取）
+        user_modeling_result = session_context.get("user_modeling_result", {})
+        task_analysis_result = session_context.get("task_analysis_result", {})
+        cognitive_needs_result = session_context.get("cognitive_needs_result", {})
 
         prompt = f"""
 你是一位情境要素分析专家，需要深入提取和分析当前情境中影响认知处理的关键环境因素。
@@ -655,19 +579,41 @@ class ContextElementsExtractionSubModule(BaseSubModule):
 
         return prompt
 
-    def _parse_json_output(self, json_output: str) -> dict[str, Any]:
-        """解析JSON Schema约束的LLM输出"""
-        try:
-            # 直接解析JSON，因为通过Schema约束应该确保格式正确
-            context_elements = json.loads(json_output)
-            logger.info("成功解析JSON Schema约束的情境要素提取结果")
-            return context_elements
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON Schema输出解析失败: {e}")
-            logger.warning("回退到默认情境要素")
-            return self._create_default_context_elements(json_output)
+    async def _build_result_data(
+        self, parsed_output: dict[str, Any], context: ProcessingContext
+    ) -> dict[str, Any]:
+        """构建处理结果的数据部分"""
+        return {
+            "context_elements": parsed_output,
+            "analysis_timestamp": context.metadata.get("created_at"),
+            "primary_domain": parsed_output.get("domain_context", {}).get(
+                "primary_domain"
+            ),
+            "context_complexity": parsed_output.get("complexity_assessment", {}).get(
+                "overall_complexity", "medium"
+            ),
+            "confidence_score": parsed_output.get("confidence_score", 0.7),
+        }
 
-    def _create_default_context_elements(self, analysis_text: str) -> dict[str, Any]:
+    def _build_result_metadata(
+        self, parsed_output: dict[str, Any], analysis_prompt: str
+    ) -> dict[str, Any]:
+        """构建处理结果的元数据部分"""
+        return {
+            "submodule": "context_elements_extraction",
+            "domains_identified": len(
+                parsed_output.get("domain_context", {}).get("relevant_domains", [])
+            ),
+            "constraints_count": len(
+                parsed_output.get("constraint_analysis", {}).get(
+                    "active_constraints", []
+                )
+            ),
+            "confidence_score": parsed_output.get("confidence_score", 0.7),
+            "prompt_tokens": len(analysis_prompt.split()),
+        }
+
+    def _create_default_output(self, analysis_text: str = "") -> dict[str, Any]:
         """创建默认情境要素提取结果"""
         return {
             "temporal_context": {

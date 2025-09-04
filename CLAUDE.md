@@ -197,10 +197,143 @@ The system uses **Graphiti** as the primary memory system, which provides:
 - Collaboration layer failures → Continue with core 3 layers
 - Individual layer failures → Stop processing with detailed error info
 
+### SubModule Abstract Architecture
+
+**BaseSubModule Template Method Pattern**
+
+All submodules in the system follow a standardized architecture based on the **Template Method Pattern**. This provides consistent LLM-driven processing while allowing domain-specific customization.
+
+#### Core Structure
+
+```python
+from aienhance.core.base_architecture import BaseSubModule, ProcessingContext, ProcessingResult
+
+class YourSubModule(BaseSubModule):
+    """Your domain-specific submodule"""
+    
+    def __init__(self, llm_adapter=None, config: dict[str, Any] | None = None):
+        super().__init__("your_module_name", llm_adapter, config)
+    
+    async def _initialize_impl(self):
+        """Module-specific initialization logic"""
+        pass
+    
+    # ========== Required Abstract Methods ==========
+    
+    def _get_output_schema(self) -> dict:
+        """Define JSON Schema for LLM structured output"""
+        return {
+            "type": "object",
+            "properties": {
+                "your_field": {"type": "string"},
+                # ... define your schema
+            },
+            "required": ["your_field"]
+        }
+    
+    async def _build_analysis_prompt(
+        self, query: str, session_context: dict[str, Any], user_id: str
+    ) -> str:
+        """Build domain-specific analysis prompt"""
+        return f"""
+        You are a {self.name} expert. Analyze the following:
+        
+        User Query: {query}
+        Context: {session_context}
+        
+        Please provide structured analysis...
+        """
+    
+    async def _build_result_data(
+        self, parsed_output: dict[str, Any], context: ProcessingContext
+    ) -> dict[str, Any]:
+        """Transform parsed LLM output into result data"""
+        return {
+            "analysis_result": parsed_output,
+            "timestamp": context.metadata.get("created_at"),
+            # ... your specific data fields
+        }
+    
+    def _create_default_output(self, analysis_text: str = "") -> dict[str, Any]:
+        """Create fallback output when LLM parsing fails"""
+        return {
+            "your_field": "default_value",
+            "confidence_score": 0.3,
+            "analysis_notes": f"Fallback analysis: {analysis_text[:200]}..."
+        }
+    
+    # ========== Optional Helper Methods ==========
+    
+    def _build_result_metadata(
+        self, parsed_output: dict[str, Any], analysis_prompt: str
+    ) -> dict[str, Any]:
+        """Build metadata for the processing result (optional override)"""
+        return {
+            "submodule": self.name,
+            "prompt_tokens": len(analysis_prompt.split()),
+            # ... your specific metadata
+        }
+```
+
+#### Processing Flow
+
+The base class provides a standardized `process()` method that:
+
+1. **Calls** `_build_analysis_prompt()` to generate domain-specific prompt
+2. **Gets** JSON schema from `_get_output_schema()`
+3. **Executes** LLM streaming with JSON Schema constraint
+4. **Parses** LLM output using schema validation
+5. **Falls back** to `_create_default_output()` if parsing fails
+6. **Builds** result data via `_build_result_data()`
+7. **Returns** `ProcessingResult` with success/failure status
+
+#### Implementation Guidelines
+
+**✅ DO:**
+- Use `dict[str, Any]` instead of `Dict[str, Any]` for type annotations
+- Include `| None` for optional config parameters: `config: dict[str, Any] | None = None`
+- Make JSON schemas comprehensive with proper validation rules
+- Include confidence scores and analysis notes in outputs
+- Use async/await for all processing methods
+- Log important processing milestones
+- Preserve existing helper methods during refactoring
+
+**❌ DON'T:**
+- Implement your own `process()` method - use the base class template
+- Include manual LLM streaming or JSON parsing logic
+- Import unused classes like `ProcessingResult` in submodules
+- Use blocking I/O operations in async methods
+- Skip error handling in custom helper methods
+
+#### Migration from Legacy Submodules
+
+When refactoring existing submodules to use BaseSubModule:
+
+1. **Remove** the existing `process()` method
+2. **Convert** `_get_*_schema()` → `_get_output_schema()`
+3. **Convert** `_build_*_prompt()` → `_build_analysis_prompt()`
+4. **Add** missing abstract methods: `_build_result_data()`, `_create_default_output()`
+5. **Remove** duplicate JSON parsing and LLM streaming code
+6. **Keep** domain-specific helper methods
+7. **Fix** type annotations and imports
+8. **Test** thoroughly with verification script
+
+#### Examples of Refactored Submodules
+
+**Successfully Refactored:**
+- `CognitiveAbilityModelingSubModule` - Cognitive analysis with thinking style assessment
+- `CognitiveNeedsPredictionSubModule` - Learning preference prediction
+- `ContextElementsExtractionSubModule` - 8-dimensional context analysis
+- `InteractionPatternModelingSubModule` - User interaction behavior modeling
+- `KnowledgeStructureModelingSubModule` - Domain expertise and knowledge graph construction
+
+Each refactored module eliminated 50-90 lines of duplicate infrastructure code while preserving all domain-specific business logic.
+
 ### Working with LLM
-**LLM devloping best practice**
+**LLM developing best practice**
 - Use STREAMING style when calling LLM
-- Use JSON SCHEMA to contrain the format of LLM output 
+- Use JSON SCHEMA to constrain the format of LLM output 
+- All submodules automatically get streaming + JSON Schema via BaseSubModule
 
 ### use LATEST API docs
 - If you think this API interface cannot implement the specified function, first use the MCP tool (context7) to check the latest API documentation.

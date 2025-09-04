@@ -11,7 +11,6 @@ from typing import Any
 from aienhance.core.base_architecture import (
     BaseSubModule,
     ProcessingContext,
-    ProcessingResult,
 )
 
 logger = logging.getLogger(__name__)
@@ -20,80 +19,17 @@ logger = logging.getLogger(__name__)
 class InteractionPatternModelingSubModule(BaseSubModule):
     """交互模式维度建模子模块"""
 
-    def __init__(self, llm_adapter=None, config=None):
+    def __init__(self, llm_adapter=None, config: dict[str, Any] = None):
         super().__init__("interaction_pattern_modeling", llm_adapter, config)
 
     async def _initialize_impl(self):
         """子模块初始化"""
         logger.info("Initializing Interaction Pattern Modeling SubModule")
 
-    async def process(self, context: ProcessingContext) -> ProcessingResult:
-        """处理交互模式维度建模"""
-        try:
-            # 构建交互模式分析提示词
-            analysis_prompt = self._build_interaction_analysis_prompt(
-                context.query, context.session_context, context.user_id
-            )
+    # 使用BaseSubModule标准化流程进行交互模式分析
+    # process()方法由基类提供，通过以下抽象方法实现具体逻辑
 
-            # 获取JSON Schema
-            interaction_schema = self._get_interaction_pattern_schema()
-
-            # 使用LLM流式分析用户交互模式（结构化输出）
-            logger.info("开始流式交互模式建模分析...")
-            analysis_result = ""
-            chunk_count = 0
-            async for chunk in self.process_with_llm_stream_json(
-                analysis_prompt, interaction_schema, context
-            ):
-                analysis_result += chunk
-                chunk_count += 1
-                if chunk_count % 10 == 0:
-                    logger.debug(
-                        f"交互建模已接收 {chunk_count} 个片段，"
-                        f"当前长度: {len(analysis_result)}"
-                    )
-
-            logger.info(
-                f"流式交互建模完成，总共接收 {chunk_count} 个片段，"
-                f"总长度: {len(analysis_result)}"
-            )
-
-            # 解析JSON结构化数据
-            interaction_profile = self._parse_json_output(analysis_result)
-
-            # 添加实时交互数据
-            interaction_profile = self._enhance_with_realtime_data(
-                interaction_profile, context.session_context
-            )
-
-            return ProcessingResult(
-                success=True,
-                data={
-                    "interaction_profile": interaction_profile,
-                    "analysis_timestamp": context.metadata.get("created_at"),
-                    "interaction_preferences": interaction_profile.get(
-                        "preferences_summary", {}
-                    ),
-                    "cognitive_load_profile": interaction_profile.get(
-                        "cognitive_load", {}
-                    ),
-                },
-                metadata={
-                    "submodule": "interaction_pattern_modeling",
-                    "response_pattern": interaction_profile.get("response_timing", {}),
-                    "preferred_complexity": interaction_profile.get(
-                        "information_processing", {}
-                    ).get("complexity_preference"),
-                },
-            )
-
-        except Exception as e:
-            logger.error(f"Interaction pattern modeling failed: {e}")
-            return ProcessingResult(
-                success=False, data={}, metadata={"error": str(e)}, error_message=str(e)
-            )
-
-    def _get_interaction_pattern_schema(self) -> dict:
+    def _get_output_schema(self) -> dict:
         """获取交互模式分析的JSON Schema"""
         return {
             "type": "object",
@@ -456,8 +392,8 @@ class InteractionPatternModelingSubModule(BaseSubModule):
             ],
         }
 
-    def _build_interaction_analysis_prompt(
-        self, query: str, session_context: dict[str, Any], user_id: str  # noqa: ARG002
+    async def _build_analysis_prompt(
+        self, query: str, session_context: dict[str, Any], user_id: str
     ) -> str:
         """构建交互模式分析提示词"""
 
@@ -510,19 +446,42 @@ class InteractionPatternModelingSubModule(BaseSubModule):
 
         return prompt
 
-    def _parse_json_output(self, json_output: str) -> dict[str, Any]:
-        """解析JSON Schema约束的LLM输出"""
-        import json
+    async def _build_result_data(
+        self, parsed_output: dict[str, Any], context: ProcessingContext
+    ) -> dict[str, Any]:
+        """构建处理结果的数据部分"""
+        # 添加实时交互数据增强
+        enhanced_profile = self._enhance_with_realtime_data(
+            parsed_output, context.session_context
+        )
 
-        try:
-            # 直接解析JSON，因为通过Schema约束应该确保格式正确
-            interaction_profile = json.loads(json_output)
-            logger.info("成功解析JSON Schema约束的交互模式分析结果")
-            return interaction_profile
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON Schema输出解析失败: {e}")
-            logger.warning("回退到默认交互模式画像")
-            return self._create_default_interaction_profile(json_output)
+        return {
+            "interaction_profile": enhanced_profile,
+            "analysis_timestamp": context.metadata.get("created_at"),
+            "interaction_preferences": enhanced_profile.get(
+                "preferences_summary", {}
+            ),
+            "cognitive_load_profile": enhanced_profile.get(
+                "cognitive_load", {}
+            ),
+        }
+
+    def _build_result_metadata(
+        self, parsed_output: dict[str, Any], analysis_prompt: str
+    ) -> dict[str, Any]:
+        """构建处理结果的元数据部分"""
+        return {
+            "submodule": "interaction_pattern_modeling",
+            "response_pattern": parsed_output.get("response_timing", {}),
+            "preferred_complexity": parsed_output.get(
+                "information_processing", {}
+            ).get("complexity_preference"),
+            "prompt_tokens": len(analysis_prompt.split()),
+        }
+
+    def _create_default_output(self, analysis_text: str = "") -> dict[str, Any]:
+        """创建默认交互模式画像"""
+        return self._create_default_interaction_profile(analysis_text)
 
     def _calculate_interaction_stats(
         self, conversation_history: list, response_times: list
