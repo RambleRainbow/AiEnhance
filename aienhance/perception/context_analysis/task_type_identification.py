@@ -5,14 +5,12 @@
 为后续认知处理提供任务导向的指导。
 """
 
-import json
 import logging
 from typing import Any
 
 from aienhance.core.base_architecture import (
     BaseSubModule,
     ProcessingContext,
-    ProcessingResult,
 )
 
 logger = logging.getLogger(__name__)
@@ -21,69 +19,16 @@ logger = logging.getLogger(__name__)
 class TaskTypeIdentificationSubModule(BaseSubModule):
     """任务类型识别子模块"""
 
-    def __init__(self, llm_adapter=None, config: dict[str, Any] = None):
+    def __init__(self, llm_adapter=None, config: dict[str, Any] | None = None):
         super().__init__("task_type_identification", llm_adapter, config)
 
     async def _initialize_impl(self):
         """子模块初始化"""
         logger.info("Initializing Task Type Identification SubModule")
 
-    async def process(self, context: ProcessingContext) -> ProcessingResult:
-        """处理任务类型识别"""
-        try:
-            # 构建任务类型分析提示词
-            analysis_prompt = self._build_task_analysis_prompt(
-                context.query, context.session_context, context.user_id
-            )
+    # 使用基类的标准化process方法，只需实现抽象方法
 
-            # 获取JSON Schema
-            task_schema = self._get_task_type_schema()
-
-            # 使用LLM流式分析任务类型
-            logger.info("开始流式任务类型识别分析...")
-            analysis_result = ""
-            chunk_count = 0
-            async for chunk in self.process_with_llm_stream_json(
-                analysis_prompt, task_schema, context
-            ):
-                analysis_result += chunk
-                chunk_count += 1
-                if chunk_count % 10 == 0:
-                    logger.debug(
-                        f"任务类型识别已接收 {chunk_count} 个片段，当前长度: {len(analysis_result)}"
-                    )
-
-            logger.info(
-                f"流式任务类型识别完成，总共接收 {chunk_count} 个片段，总长度: {len(analysis_result)}"
-            )
-
-            # 解析JSON结构化数据
-            task_analysis = self._parse_json_output(analysis_result)
-
-            return ProcessingResult(
-                success=True,
-                data={
-                    "task_analysis": task_analysis,
-                    "analysis_timestamp": context.metadata.get("created_at"),
-                    "primary_task_type": task_analysis.get("primary_task_type"),
-                    "confidence_score": task_analysis.get("confidence_score", 0.7),
-                },
-                metadata={
-                    "submodule": "task_type_identification",
-                    "task_categories": task_analysis.get("task_categories", []),
-                    "complexity_level": task_analysis.get("task_complexity", {}).get(
-                        "level", "medium"
-                    ),
-                },
-            )
-
-        except Exception as e:
-            logger.error(f"Task type identification failed: {e}")
-            return ProcessingResult(
-                success=False, data={}, metadata={"error": str(e)}, error_message=str(e)
-            )
-
-    def _get_task_type_schema(self) -> dict:
+    def _get_output_schema(self) -> dict:
         """获取任务类型分析的JSON Schema"""
         return {
             "type": "object",
@@ -253,7 +198,7 @@ class TaskTypeIdentificationSubModule(BaseSubModule):
             ],
         }
 
-    def _build_task_analysis_prompt(
+    async def _build_analysis_prompt(
         self, query: str, session_context: dict[str, Any], user_id: str
     ) -> str:
         """构建任务类型分析提示词"""
@@ -261,6 +206,7 @@ class TaskTypeIdentificationSubModule(BaseSubModule):
         # 获取历史对话上下文
         conversation_history = session_context.get("conversation_history", [])
         user_profile = session_context.get("user_profile", {})
+        user_profile["user_id"] = user_id  # 使用user_id参数
         previous_tasks = session_context.get("previous_task_types", [])
 
         prompt = f"""
@@ -322,19 +268,32 @@ class TaskTypeIdentificationSubModule(BaseSubModule):
 
         return prompt
 
-    def _parse_json_output(self, json_output: str) -> dict[str, Any]:
-        """解析JSON Schema约束的LLM输出"""
-        try:
-            # 直接解析JSON，因为通过Schema约束应该确保格式正确
-            task_analysis = json.loads(json_output)
-            logger.info("成功解析JSON Schema约束的任务类型分析结果")
-            return task_analysis
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON Schema输出解析失败: {e}")
-            logger.warning("回退到默认任务分析")
-            return self._create_default_task_analysis(json_output)
+    async def _build_result_data(
+        self, parsed_output: dict[str, Any], context: ProcessingContext
+    ) -> dict[str, Any]:
+        """构建处理结果的数据部分"""
+        return {
+            "task_analysis": parsed_output,
+            "analysis_timestamp": context.metadata.get("created_at"),
+            "primary_task_type": parsed_output.get("primary_task_type"),
+            "confidence_score": parsed_output.get("confidence_score", 0.7),
+        }
 
-    def _create_default_task_analysis(self, analysis_text: str) -> dict[str, Any]:
+    def _build_result_metadata(
+        self, parsed_output: dict[str, Any], analysis_prompt: str
+    ) -> dict[str, Any]:
+        """构建处理结果的元数据部分"""
+        return {
+            "submodule": "task_type_identification",
+            "task_categories": parsed_output.get("task_categories", []),
+            "complexity_level": parsed_output.get("task_complexity", {}).get(
+                "level", "medium"
+            ),
+            "confidence_score": parsed_output.get("confidence_score", 0.7),
+            "prompt_tokens": len(analysis_prompt.split()),
+        }
+
+    def _create_default_output(self, analysis_text: str = "") -> dict[str, Any]:
         """创建默认任务分析结果"""
         return {
             "primary_task_type": "retrieval",

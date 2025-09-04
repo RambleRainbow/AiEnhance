@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 class ProcessingPhase(Enum):
     """处理阶段枚举"""
+
     INITIALIZING = "initializing"
     PROCESSING = "processing"
     COMPLETED = "completed"
@@ -35,6 +36,7 @@ class ProcessingPhase(Enum):
 @dataclass
 class ProcessingContext:
     """处理上下文，在层-模块-子模块间传递"""
+
     user_id: str
     query: str
     session_context: dict[str, Any]
@@ -51,15 +53,13 @@ class ProcessingContext:
         if not self.submodule_outputs:
             self.submodule_outputs = {}
         if not self.metadata:
-            self.metadata = {
-                "created_at": datetime.now(),
-                "processing_history": []
-            }
+            self.metadata = {"created_at": datetime.now(), "processing_history": []}
 
 
 @dataclass
 class ProcessingResult:
     """处理结果统一格式"""
+
     success: bool
     data: dict[str, Any]
     metadata: dict[str, Any]
@@ -67,24 +67,28 @@ class ProcessingResult:
 
     def __post_init__(self):
         if not self.metadata:
-            self.metadata = {
-                "processed_at": datetime.now(),
-                "processing_time_ms": 0
-            }
+            self.metadata = {"processed_at": datetime.now(), "processing_time_ms": 0}
 
 
 class BaseSubModule(ABC):
     """子模块抽象基类
-    
+
     所有子模块都继承此基类，实现具体的认知功能。
     原则上所有功能都通过大模型实现。
+
+    标准化接口流程：
+    1. 控制参数：模块配置、LLM接口
+    2. 输入处理：LLM接口、提示词模板、提示词参数
+    3. 输出处理：输出Schema、默认值
     """
 
-    def __init__(self, name: str, llm_adapter=None, config: dict[str, Any] = None):
+    def __init__(
+        self, name: str, llm_adapter=None, config: dict[str, Any] | None = None
+    ):
         self.name = name
         self.llm_adapter = llm_adapter
         self.config = config or {}
-        self.enabled = config.get('enabled', True) if config else True
+        self.enabled = config.get("enabled", True) if config else True
         self.phase = ProcessingPhase.INITIALIZING
 
     async def initialize(self) -> bool:
@@ -104,10 +108,112 @@ class BaseSubModule(ABC):
         """子模块具体初始化实现"""
         pass
 
-    @abstractmethod
     async def process(self, context: ProcessingContext) -> ProcessingResult:
-        """处理核心逻辑"""
+        """标准化处理流程
+
+        实现标准的LLM驱动子模块处理模式：
+        1. 构建分析提示词
+        2. 获取输出Schema
+        3. 流式LLM分析
+        4. 解析结构化输出
+        5. 返回处理结果
+        """
+        try:
+            # 1. 构建分析提示词
+            analysis_prompt = await self._build_analysis_prompt(
+                context.query, context.session_context, context.user_id
+            )
+
+            # 2. 获取JSON Schema
+            output_schema = self._get_output_schema()
+
+            # 3. 使用LLM流式分析
+            logger.info(f"开始流式分析处理... ({self.name})")
+            analysis_result = ""
+            chunk_count = 0
+            async for chunk in self.process_with_llm_stream_json(
+                analysis_prompt, output_schema, context
+            ):
+                analysis_result += chunk
+                chunk_count += 1
+                if chunk_count % 10 == 0:
+                    logger.debug(
+                        f"{self.name} 已接收 {chunk_count} 个片段，当前长度: {len(analysis_result)}"
+                    )
+
+            logger.info(
+                f"流式分析完成 ({self.name})，总共接收 {chunk_count} 个片段，总长度: {len(analysis_result)}"
+            )
+
+            # 4. 解析JSON结构化数据
+            parsed_output = self._parse_json_output(analysis_result)
+
+            # 5. 构建处理结果
+            result_data = await self._build_result_data(parsed_output, context)
+            result_metadata = self._build_result_metadata(
+                parsed_output, analysis_prompt
+            )
+
+            return ProcessingResult(
+                success=True, data=result_data, metadata=result_metadata
+            )
+
+        except Exception as e:
+            logger.error(f"{self.name} processing failed: {e}")
+            return ProcessingResult(
+                success=False,
+                data={},
+                metadata={"error": str(e), "submodule": self.name},
+                error_message=str(e),
+            )
+
+    @abstractmethod
+    def _get_output_schema(self) -> dict:
+        """获取输出的JSON Schema定义"""
         pass
+
+    @abstractmethod
+    async def _build_analysis_prompt(
+        self, query: str, session_context: dict[str, Any], user_id: str
+    ) -> str:
+        """构建分析提示词"""
+        pass
+
+    @abstractmethod
+    async def _build_result_data(
+        self, parsed_output: dict[str, Any], context: ProcessingContext
+    ) -> dict[str, Any]:
+        """构建处理结果的数据部分"""
+        pass
+
+    def _build_result_metadata(
+        self, parsed_output: dict[str, Any], analysis_prompt: str
+    ) -> dict[str, Any]:
+        """构建处理结果的元数据部分（可重写）"""
+        return {
+            "submodule": self.name,
+            "prompt_tokens": len(analysis_prompt.split()),
+            "confidence_score": parsed_output.get("confidence_score", 0.7),
+        }
+
+    @abstractmethod
+    def _create_default_output(self, analysis_text: str = "") -> dict[str, Any]:
+        """创建默认输出结构（用于解析失败时的回退）"""
+        pass
+
+    def _parse_json_output(self, json_output: str) -> dict[str, Any]:
+        """解析JSON Schema约束的LLM输出（标准实现）"""
+        try:
+            import json
+
+            # 直接解析JSON，因为通过Schema约束应该确保格式正确
+            parsed_data = json.loads(json_output)
+            logger.info(f"成功解析JSON Schema约束的{self.name}分析结果")
+            return parsed_data
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON Schema输出解析失败 ({self.name}): {e}")
+            logger.warning(f"回退到默认输出 ({self.name})")
+            return self._create_default_output(json_output)
 
     async def process_with_llm(self, prompt: str, context: ProcessingContext) -> str:
         """使用LLM处理的通用方法"""
@@ -135,7 +241,9 @@ class BaseSubModule(ABC):
             logger.error(f"LLM streaming processing failed in {self.name}: {e}")
             raise
 
-    async def process_with_llm_stream_json(self, prompt: str, json_schema: dict, context: ProcessingContext):
+    async def process_with_llm_stream_json(
+        self, prompt: str, json_schema: dict, context: ProcessingContext
+    ):
         """使用LLM流式处理并返回JSON结构化数据的通用方法"""
         if not self.llm_adapter:
             raise ValueError(f"SubModule {self.name} requires LLM adapter")
@@ -148,17 +256,13 @@ class BaseSubModule(ABC):
                 name="structured_output",
                 description="Structured output for cognitive analysis",
                 schema=json_schema,
-                strict=True
+                strict=True,
             )
-            response_format = ResponseFormat(
-                type="json_schema",
-                json_schema=schema_obj
-            )
+            response_format = ResponseFormat(type="json_schema", json_schema=schema_obj)
 
             # 使用流式生成结构化数据
             async for chunk in self.llm_adapter.completion_stream(
-                prompt,
-                response_format=response_format
+                prompt, response_format=response_format
             ):
                 yield chunk
 
@@ -177,15 +281,20 @@ class BaseSubModule(ABC):
 
 class BaseModule(ABC):
     """模块抽象基类
-    
+
     模块管理多个子模块，协调它们的工作流程
     """
 
-    def __init__(self, name: str, submodules: list[BaseSubModule] = None, config: dict[str, Any] = None):
+    def __init__(
+        self,
+        name: str,
+        submodules: list[BaseSubModule] | None = None,
+        config: dict[str, Any] | None = None,
+    ):
         self.name = name
         self.submodules = submodules or []
         self.config = config or {}
-        self.enabled = config.get('enabled', True) if config else True
+        self.enabled = config.get("enabled", True) if config else True
         self.phase = ProcessingPhase.INITIALIZING
 
     async def initialize(self) -> bool:
@@ -194,7 +303,7 @@ class BaseModule(ABC):
             # 初始化所有子模块
             init_results = await asyncio.gather(
                 *[submodule.initialize() for submodule in self.submodules],
-                return_exceptions=True
+                return_exceptions=True,
             )
 
             # 检查初始化结果
@@ -204,7 +313,9 @@ class BaseModule(ABC):
                     failed_submodules.append(self.submodules[i].name)
 
             if failed_submodules:
-                logger.warning(f"Module {self.name}: Some submodules failed to initialize: {failed_submodules}")
+                logger.warning(
+                    f"Module {self.name}: Some submodules failed to initialize: {failed_submodules}"
+                )
 
             # 执行模块级初始化
             await self._initialize_impl()
@@ -228,14 +339,20 @@ class BaseModule(ABC):
         """处理核心逻辑，协调子模块"""
         pass
 
-    async def process_submodules(self, context: ProcessingContext,
-                                submodule_names: list[str] = None) -> dict[str, ProcessingResult]:
+    async def process_submodules(
+        self,
+        context: ProcessingContext,
+        submodule_names: list[str] | None = None,
+    ) -> dict[str, ProcessingResult]:
         """处理指定的子模块"""
         if submodule_names is None:
             submodules_to_process = [sm for sm in self.submodules if sm.is_enabled()]
         else:
-            submodules_to_process = [sm for sm in self.submodules
-                                   if sm.name in submodule_names and sm.is_enabled()]
+            submodules_to_process = [
+                sm
+                for sm in self.submodules
+                if sm.name in submodule_names and sm.is_enabled()
+            ]
 
         results = {}
         for submodule in submodules_to_process:
@@ -250,7 +367,7 @@ class BaseModule(ABC):
                     success=False,
                     data={},
                     metadata={"error_time": datetime.now()},
-                    error_message=str(e)
+                    error_message=str(e),
                 )
 
         return results
@@ -277,15 +394,20 @@ class BaseModule(ABC):
 
 class BaseLayer(ABC):
     """层抽象基类
-    
+
     层管理多个模块，代表系统的主要认知功能层
     """
 
-    def __init__(self, name: str, modules: list[BaseModule] = None, config: dict[str, Any] = None):
+    def __init__(
+        self,
+        name: str,
+        modules: list[BaseModule] | None = None,
+        config: dict[str, Any] | None = None,
+    ):
         self.name = name
         self.modules = modules or []
         self.config = config or {}
-        self.enabled = config.get('enabled', True) if config else True
+        self.enabled = config.get("enabled", True) if config else True
         self.phase = ProcessingPhase.INITIALIZING
 
     async def initialize(self) -> bool:
@@ -294,7 +416,7 @@ class BaseLayer(ABC):
             # 初始化所有模块
             init_results = await asyncio.gather(
                 *[module.initialize() for module in self.modules],
-                return_exceptions=True
+                return_exceptions=True,
             )
 
             # 检查初始化结果
@@ -304,7 +426,9 @@ class BaseLayer(ABC):
                     failed_modules.append(self.modules[i].name)
 
             if failed_modules:
-                logger.warning(f"Layer {self.name}: Some modules failed to initialize: {failed_modules}")
+                logger.warning(
+                    f"Layer {self.name}: Some modules failed to initialize: {failed_modules}"
+                )
 
             # 执行层级初始化
             await self._initialize_impl()
@@ -328,14 +452,18 @@ class BaseLayer(ABC):
         """处理核心逻辑，协调模块"""
         pass
 
-    async def process_modules(self, context: ProcessingContext,
-                             module_names: list[str] = None) -> dict[str, ProcessingResult]:
+    async def process_modules(
+        self,
+        context: ProcessingContext,
+        module_names: list[str] | None = None,
+    ) -> dict[str, ProcessingResult]:
         """处理指定的模块"""
         if module_names is None:
             modules_to_process = [m for m in self.modules if m.is_enabled()]
         else:
-            modules_to_process = [m for m in self.modules
-                                if m.name in module_names and m.is_enabled()]
+            modules_to_process = [
+                m for m in self.modules if m.name in module_names and m.is_enabled()
+            ]
 
         results = {}
         for module in modules_to_process:
@@ -350,7 +478,7 @@ class BaseLayer(ABC):
                     success=False,
                     data={},
                     metadata={"error_time": datetime.now()},
-                    error_message=str(e)
+                    error_message=str(e),
                 )
 
         return results
@@ -377,11 +505,13 @@ class BaseLayer(ABC):
 
 class CognitiveSystem:
     """认知系统主类
-    
+
     管理四个认知层的协同工作
     """
 
-    def __init__(self, layers: list[BaseLayer], config: dict[str, Any] = None):
+    def __init__(
+        self, layers: list[BaseLayer], config: dict[str, Any] | None = None
+    ):
         self.layers = layers
         self.config = config or {}
         self.phase = ProcessingPhase.INITIALIZING
@@ -402,8 +532,7 @@ class CognitiveSystem:
 
             # 初始化所有层
             init_results = await asyncio.gather(
-                *[layer.initialize() for layer in self.layers],
-                return_exceptions=True
+                *[layer.initialize() for layer in self.layers], return_exceptions=True
             )
 
             # 检查初始化结果
@@ -413,7 +542,9 @@ class CognitiveSystem:
                     failed_layers.append(self.layers[i].name)
 
             if failed_layers:
-                logger.warning(f"System: Some layers failed to initialize: {failed_layers}")
+                logger.warning(
+                    f"System: Some layers failed to initialize: {failed_layers}"
+                )
                 if len(failed_layers) >= len(self.layers):
                     raise Exception("All layers failed to initialize")
 
@@ -426,7 +557,12 @@ class CognitiveSystem:
             logger.error(f"System initialization failed: {e}")
             return False
 
-    async def process(self, user_id: str, query: str, session_context: dict[str, Any] = None) -> ProcessingResult:
+    async def process(
+        self,
+        user_id: str,
+        query: str,
+        session_context: dict[str, Any] | None = None,
+    ) -> ProcessingResult:
         """系统处理主流程"""
         context = ProcessingContext(
             user_id=user_id,
@@ -435,7 +571,7 @@ class CognitiveSystem:
             layer_outputs={},
             module_outputs={},
             submodule_outputs={},
-            metadata={}
+            metadata={},
         )
 
         try:
@@ -445,7 +581,11 @@ class CognitiveSystem:
                     result = await layer.process(context)
                     context.layer_outputs[layer.name] = result.data
                     context.metadata["processing_history"].append(
-                        {"layer": layer.name, "status": "completed", "time": datetime.now()}
+                        {
+                            "layer": layer.name,
+                            "status": "completed",
+                            "time": datetime.now(),
+                        }
                     )
 
             return ProcessingResult(
@@ -453,18 +593,15 @@ class CognitiveSystem:
                 data={
                     "layer_outputs": context.layer_outputs,
                     "module_outputs": context.module_outputs,
-                    "submodule_outputs": context.submodule_outputs
+                    "submodule_outputs": context.submodule_outputs,
                 },
-                metadata=context.metadata
+                metadata=context.metadata,
             )
 
         except Exception as e:
             logger.error(f"System processing failed: {e}")
             return ProcessingResult(
-                success=False,
-                data={},
-                metadata=context.metadata,
-                error_message=str(e)
+                success=False, data={}, metadata=context.metadata, error_message=str(e)
             )
 
     def get_layer(self, name: str) -> BaseLayer | None:
